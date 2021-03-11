@@ -3,10 +3,11 @@ import sys
 from sklearn.utils.validation import check_X_y, check_is_fitted
 
 class PRIM:
-    def __init__(self, alpha = 0.05, mass_min = 20, target = 'pr_auc'):
+    def __init__(self, alpha = 0.05, mass_min = 20, target = 'pr_auc', threshold = 1):
         self.alpha = alpha
         self.mass_min = mass_min
         self.target = target
+        self.threshold = threshold
 
     def fit(self, X, y):
         # Check that X and y have correct shape
@@ -15,13 +16,13 @@ class PRIM:
         self.y_ = y.copy()
         self.box_ = self._get_initial_restrictions(X)
         self.N_ = len(y)
-        self.Np_ = sum(y)
+        self.Np_ = np.sum(y)
         
         highest = hgh = self._target_fun(self.Np_, self.N_)
         ret_ind = 1        
         boxes = [self.box_.copy()]
         i = 1
-        while self.X_.shape[0] >= self.mass_min and i < 100:
+        while self.X_.shape[0] >= self.mass_min and i < 100 and highest < self.threshold:
             if hgh > highest:   # this comparison being first prevents self.X_.shape[0] < self.mass_min
                 highest = hgh
                 ret_ind = i
@@ -38,6 +39,35 @@ class PRIM:
         
         return self
     
+    def _peel_one(self):
+        hgh, bnd = -np.inf, -np.inf
+        rn, cn = -1, -1
+        for i in range(0, self.X_.shape[1]):
+            bound = np.quantile(self.X_[:,i], self.alpha, interpolation = 'midpoint')
+            retain = self.X_[:,i] > bound
+            tar = self._target_fun(np.sum(self.y_[retain]), np.count_nonzero(retain))
+            if tar > hgh:
+                hgh = tar
+                inds = retain
+                rn = 0
+                cn = i
+                bnd = bound
+            bound = np.quantile(self.X_[:,i], 1-self.alpha, interpolation = 'midpoint')
+            retain = self.X_[:,i] < bound
+            tar = self._target_fun(np.sum(self.y_[retain]), np.count_nonzero(retain))
+            if tar > hgh:
+                hgh = tar
+                inds = retain
+                rn = 1
+                cn = i
+                bnd = bound
+        
+        self.X_ = self.X_[inds]
+        self.y_ = self.y_[inds]
+        self.box_[rn,cn] = bnd
+        
+        return hgh
+    
     def get_params(self, deep=True):
         return {"alpha": self.alpha, "mass_min": self.mass_min, "target": self.target}
 
@@ -51,7 +81,7 @@ class PRIM:
         X, y = check_X_y(X, y)
         # Check is fit had been called
         check_is_fitted(self)
-        if sum(y) == 0: return 0
+        if np.sum(y) == 0: return 0
         if score_fun is None: score_fun = self.target
         if score_fun == 'pr_auc':
             prec, rec = np.empty(0), np.empty(0)
@@ -60,9 +90,9 @@ class PRIM:
                 ind_in_box = np.ones(len(y), dtype = bool)
                 for i in range(0, box.shape[1]):
                     ind_in_box = np.logical_and(ind_in_box, np.logical_and(X[:,i] >= box[0,i], X[:,i] <= box[1,i]))
-                if sum(ind_in_box) != 0:
-                    prec = np.append(prec, sum(y[ind_in_box])/sum(ind_in_box))
-                    rec = np.append(rec, sum(y[ind_in_box])/sum(y))
+                if np.sum(ind_in_box) != 0:
+                    prec = np.append(prec, np.sum(y[ind_in_box])/np.sum(ind_in_box))
+                    rec = np.append(rec, np.sum(y[ind_in_box])/np.sum(y))
             res = -prec[0] - np.trapz(np.append(prec, prec[-1]), np.append(rec, 0))
         else:
             box = self.boxes_[-1]
@@ -70,47 +100,16 @@ class PRIM:
             for i in range(0, box.shape[1]):
                 ind_in_box = np.logical_and(ind_in_box, np.logical_and(X[:,i] >= box[0,i], X[:,i] <= box[1,i]))
             if score_fun == 'precision':
-                res = sum(y[ind_in_box])/sum(ind_in_box)
+                res = np.sum(y[ind_in_box])/np.sum(ind_in_box)
             elif score_fun == 'wracc':
-                res = (sum(ind_in_box)/len(y))*(sum(y[ind_in_box])/sum(ind_in_box) - sum(y)/len(y))
+                res = (np.sum(ind_in_box)/len(y))*(np.sum(y[ind_in_box])/np.sum(ind_in_box) - np.sum(y)/len(y))
             else:
                 sys.exit("The target function is unknown. It should be either wracc or precision")
                    
         return res              
-    
-    def _peel_one(self):
-        hgh, bnd = -np.inf, -np.inf
-        rn, cn = -1, -1
-        for i in range(0, self.X_.shape[1]):
-            bound = np.quantile(self.X_[:,i], self.alpha, interpolation = 'midpoint')
-            retain = self.X_[:,i] > bound
-            tar = self._target_fun(sum(self.y_[retain]), sum(retain))
-            if tar > hgh:
-                hgh = tar
-                inds = retain
-                rn = 0
-                cn = i
-                bnd = bound
-            bound = np.quantile(self.X_[:,i], 1-self.alpha, interpolation = 'midpoint')
-            retain = self.X_[:,i] < bound
-            tar = self._target_fun(sum(self.y_[retain]), sum(retain))
-            if tar > hgh:
-                hgh = tar
-                inds = retain
-                rn = 1
-                cn = i
-                bnd = bound
-        
-        self.X_ = self.X_[inds]
-        self.y_ = self.y_[inds]
-        self.box_[rn,cn] = bnd
-        
-        return hgh
 
     def _get_initial_restrictions(self, X):
-        # maximum = X.max(axis=0)
-        # minimum = X.min(axis=0)
-        # return np.vstack((minimum, maximum))
+        # return np.vstack((X.min(axis=0), X.max(axis=0)))
         return np.vstack((np.full(X.shape[1],-np.inf), np.full(X.shape[1],np.inf)))
     
     def _target_fun(self, npos, n):
@@ -124,12 +123,11 @@ class PRIM:
 
 
 
-
 # =============================================================================
 # # generated data 
 # 
 # np.random.seed(seed=1)
-# dx = np.random.random((1000,4))
+# dx = np.random.random((100000,4))
 # dy = ((dx > 0.3).sum(axis = 1) == 4) - 0
 # 
 # import time
@@ -137,7 +135,7 @@ class PRIM:
 # start = time.time()
 # pr_new.fit(dx,dy)  
 # end = time.time()
-# print(end - start)   # ~ 0.51 s
+# print(end - start)   # ~ 0.25 s
 # pr_new.score(dx, dy, score_fun = 'wracc')
 # pr_new.score(dx, dy, score_fun = 'precision')
 # pr_new.score(dx, dy, score_fun = 'pr_auc')
@@ -157,7 +155,7 @@ class PRIM:
 # # real dataa
 # 
 # import pandas as pd
-# df = pd.read_csv("src\\main\\subgroup_discovery\\dsgc_sym.csv")
+# df = pd.read_csv("src\\data\\dsgc_sym.csv")
 # df.head()
 # dx = df.to_numpy()[9500:,0:12].copy()
 # dy = df.to_numpy()[9500:,12].copy()
@@ -173,9 +171,9 @@ class PRIM:
 # from sklearn.model_selection import GridSearchCV
 # parameters = {'alpha':[0.01, 0.1, 0.45]}
 # pr_new = PRIM()
-# reds = GridSearchCV(pr_new, parameters)
-# reds.fit(dx, dy)
-# reds.best_params_
+# primcv = GridSearchCV(pr_new, parameters)
+# primcv.fit(dx, dy)
+# primcv.best_params_
 # 
 # # HPO WRAcc
 # 
@@ -185,25 +183,24 @@ class PRIM:
 # pr_001_w = PRIM(target = 'wracc', alpha = 0.01)
 # pr_01_w = PRIM(target = 'wracc', alpha = 0.1)
 # pr_045_w = PRIM(target = 'wracc', alpha = 0.45)
-# reds_w = GridSearchCV(pr_w, parameters)
+# primcv_w = GridSearchCV(pr_w, parameters)
 # 
 # pr_w.fit(dx, dy)
 # pr_001_w.fit(dx, dy)
 # pr_01_w.fit(dx, dy)
 # pr_045_w.fit(dx, dy)
-# reds_w.fit(dx, dy)
-# reds_w.best_params_
+# primcv_w.fit(dx, dy)
+# primcv_w.best_params_
 # 
-# pr_hpo_w = reds_w.best_estimator_
+# pr_hpo_w = primcv_w.best_estimator_
 # 
 # pr_hpo_w.score(dx, dy)
-# reds_w.score(dx, dy)
+# primcv_w.score(dx, dy)
 # pr_w.score(dx, dy)
 # pr_001_w.score(dx, dy)
 # pr_01_w.score(dx, dy)
 # pr_045_w.score(dx, dy) # the hyperparameters were optimized
 # =============================================================================
-
 
 
 

@@ -22,7 +22,7 @@ class BI:
         # Check that X and y have correct shape
         X, y = check_X_y(X, y)
         self.N_ = len(y)
-        self.Np_ = sum(y)
+        self.Np_ = np.sum(y)
         dim = X.shape[1]
         
         if np.logical_or(y.min() < 0, y.max() > 1):
@@ -52,12 +52,12 @@ class BI:
                 # - all boxes following the self.beam_size-th one 
                 if res_tab.shape[0] > self.beam_size:
                     retain = res_tab[:,0] >= np.sort(res_tab[:,0])[::-1][self.beam_size - 1]
-                    if sum(retain) < len(retain):
+                    if np.sum(retain) < len(retain):
                             res_tab = res_tab[retain]
                             res_box = [res_box[i] for i in np.where(retain)[0]]
                     if len(res_box) > 1:
                         retain = self._get_dup_boxes(res_box)
-                        if sum(retain) < len(retain):
+                        if np.sum(retain) < len(retain):
                             res_tab = res_tab[retain]
                             res_box = [res_box[i] for i in np.where(retain)[0]]
                     if res_tab.shape[0] > self.beam_size:
@@ -96,8 +96,11 @@ class BI:
         ind_in_box = np.ones(len(y), dtype = bool)
         for i in range(0, self.box_.shape[1]):
             ind_in_box = np.logical_and(ind_in_box, np.logical_and(X[:,i] >= self.box_[0,i], X[:,i] <= self.box_[1,i]))
-
-        res = (sum(ind_in_box)/len(y))*(sum(y[ind_in_box])/sum(ind_in_box) - sum(y)/len(y))                 
+        
+        if np.sum(ind_in_box) > 0:
+            res = (np.sum(ind_in_box)/len(y))*(np.sum(y[ind_in_box])/np.sum(ind_in_box) - np.sum(y)/len(y)) 
+        else:
+            res = np.nan                
         return res    
 
     def _get_dup_boxes(self, boxes):
@@ -161,14 +164,12 @@ class BI:
         return (n/N)*(npos/n - Np/N)
     
     def _get_initial_restrictions(self, X):
-        # maximum = X.max(axis=0)
-        # minimum = X.min(axis=0)
-        # return np.vstack((minimum, maximum))
+        # return np.vstack((X.min(axis=0), X.max(axis=0)))
         return np.vstack((np.full(X.shape[1],-np.inf), np.full(X.shape[1],np.inf)))
 
 
-
 # =============================================================================
+# 
 # # real data
 # 
 # import pandas as pd
@@ -202,7 +203,7 @@ class BI:
 # # generated data 
 # 
 # np.random.seed(seed=1)
-# dx = np.random.random((1000,4))
+# dx = np.random.random((10000,4))
 # dy = ((dx > 0.3).sum(axis = 1) == 4) - 0
 # 
 # # 1
@@ -211,8 +212,8 @@ class BI:
 # start = time.time()
 # bi.fit(dx,dy)  
 # end = time.time()
-# print(end - start)   # ~ 0.36 s
-# bi.score(dx, dy) # 0.186999
+# print(end - start)   # ~ 12,2 s
+# bi.score(dx, dy) # 0.18 s
 # 
 # # 2
 # dx[:,1] = dx[:,1]*2
