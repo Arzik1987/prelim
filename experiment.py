@@ -10,6 +10,10 @@ from src.utils.data_splitter import DataSplitter
 import numpy as np
 from multiprocessing import Pool
 
+import pandas as pd
+def nunique(a, axis):
+    return (np.diff(np.sort(a,axis=axis),axis=axis)!=0).sum(axis=axis)+1
+
 
 def opt_param(tmp, dim):
     fit_res = np.empty((0,dim))
@@ -21,10 +25,12 @@ def opt_param(tmp, dim):
 
 def experiment_BI(i):
     print(i)
-    d = np.genfromtxt('src/data/sylva.csv', delimiter=',')[1:,:]        # load data
-    X = d[:,0:(d.shape[1] - 1)]
-    y = d[:,d.shape[1] - 1]
-    y[y == -1] = 0	
+    df = pd.read_csv('data/new/htru/HTRU_2.csv', delimiter = ",", header = None)
+    y = (df[8] == 1).astype(int).to_numpy()
+    X  = df.iloc[:, : 8].to_numpy()
+    y = y[~np.isnan(X).any(axis = 1)]
+    X = X[~np.isnan(X).any(axis = 1)]
+    X = X[:, nunique(X, 0) > 19]
 
     nsets = 18                                                          # number of splits
     ds = DataSplitter()             
@@ -40,7 +46,7 @@ def experiment_BI(i):
     sd.fit(X, y)                                                        # fit SD baseline
     old_tmp = sd.score(Xtest, ytest)                                    # add baseline score
     
-    par_vals = [4, 8, 12, 16, 20]
+    par_vals = [2,4,6,8]
     parameters = {'depth': par_vals}                                    # params for SD with HPO
     tmp = GridSearchCV(sd, parameters, refit = False).fit(X, y).cv_results_    # fit SD with HPO
     sdcv = BI(depth = par_vals[opt_param(tmp, len(par_vals))]).fit(X, y)
@@ -221,7 +227,7 @@ def experiment_IREP_comp(i):
 
 def exp_parallel():
   pool = Pool(3)
-  result = pool.map(experiment_RIPPER_comp, range(0,18))
+  result = pool.map(experiment_BI, range(0,18))
   pool.close()
   pool.join()
   return(result)
@@ -229,7 +235,7 @@ def exp_parallel():
 
 if __name__ == "__main__":
   res = np.asarray(exp_parallel())
-  np.savetxt('src/data/res_ripper_comp.csv', res, delimiter = ",")
+  np.savetxt('src/data/res_BI.csv', res, delimiter = ",")
 
 
 
