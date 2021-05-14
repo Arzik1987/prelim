@@ -9,6 +9,9 @@ class Gen_dummy:
 
     def sample(self, n_samples = 1):
         return self.X_.copy()
+    
+    def my_name(self):
+        return "dummy"
 
 
 

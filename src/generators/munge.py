@@ -44,6 +44,9 @@ class Gen_munge:
         
         return new_data[inds,:][:n_samples,:]
 
+    def my_name(self):
+        return "munge"
+
 
 
 # =============================================================================

@@ -15,6 +15,9 @@ class Gen_randn:
 
     def sample(self, n_samples = 1):
         return np.random.multivariate_normal(self.location_, self.covariance_, n_samples)
+
+    def my_name(self):
+        return "randn"
     
 
 
@@ -30,6 +33,9 @@ class Gen_randu:
 
     def sample(self, n_samples = 1):
         return np.random.random((n_samples, len(self.range_)))*self.range_ + self.minimum_
+    
+    def my_name(self):
+        return "randu"
     
 
 

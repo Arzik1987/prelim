@@ -18,6 +18,9 @@ class Gen_gmm:
     def sample(self, n_samples = 1, X_new = None):
         return self.model_.sample(n_samples)[0]
     
+    def my_name(self):
+        return "gmm"
+    
     
 class Gen_gmmbic:
 
@@ -42,6 +45,9 @@ class Gen_gmmbic:
 
     def sample(self, n_samples = 1):
         return self.model_.sample(n_samples)[0]
+
+    def my_name(self):
+        return "gmmbic"
 
 
 

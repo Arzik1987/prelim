@@ -17,6 +17,9 @@ class Gen_perfect:
             res = res[np.random.choice(res.shape[0], n_samples, replace = False), :]
         return res
 
+    def my_name(self):
+        return "perfect"
+
 
 # =============================================================================
 # # TEST

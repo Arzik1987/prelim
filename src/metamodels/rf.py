@@ -18,6 +18,9 @@ class Meta_rf:
 
     def predict_proba(self, X):
         return self.model_.predict_proba(X)[:, int(np.where(self.model_.classes_ == 1)[0])]
+    
+    def my_name(self):
+        return "rf"
 
 
 # =============================================================================

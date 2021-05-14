@@ -1,4 +1,3 @@
-
 from sklearn.utils.validation import check_is_fitted
 import numpy as np
 

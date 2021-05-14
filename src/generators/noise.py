@@ -17,6 +17,9 @@ class Gen_noise:
             mod_data[:,col] = mod_data[:,col] + np.random.uniform(-mindist, mindist, len(mod_data[:,col]))
         return mod_data
     
+    def my_name(self):
+        return "noise"
+    
 
 # =============================================================================
 # # TEST

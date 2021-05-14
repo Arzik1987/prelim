@@ -131,3 +131,6 @@ dmypy.json
 
 data/
 src/data/
+src/data/
+registry/
+trials/

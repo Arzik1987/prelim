@@ -94,6 +94,7 @@ class PRIM:
                     prec = np.append(prec, np.sum(y[ind_in_box])/np.sum(ind_in_box))
                     rec = np.append(rec, np.sum(y[ind_in_box])/np.sum(y))
             res = -prec[0] - np.trapz(np.append(prec, prec[-1]), np.append(rec, 0))
+            self.prec, self.rec = prec, rec
         else:
             box = self.boxes_[-1]
             ind_in_box = np.ones(len(y), dtype = bool)
@@ -120,6 +121,9 @@ class PRIM:
         else:
             sys.exit("The target function is unknown. It should be either wracc or precision")
         return tar
+    
+    def get_pr(self):
+        return np.array2string(self.prec, separator = '_', precision = 3, max_line_width = 10000).strip('[]').replace(' ', ''), np.array2string(self.rec, separator = '_', precision = 3, max_line_width = 10000).strip('[]').replace(' ', '')
 
 
 
@@ -139,6 +143,8 @@ class PRIM:
 # pr_new.score(dx, dy, score_fun = 'wracc')
 # pr_new.score(dx, dy, score_fun = 'precision')
 # pr_new.score(dx, dy, score_fun = 'pr_auc')
+# 
+# pr_new.get_pr()
 # 
 # # compare different target functions
 # 
