@@ -16,9 +16,11 @@ class Meta_xgb:
         self.seed_ = seed
 
     def fit(self, X, y):
-        self.model_ = RandomizedSearchCV(XGBClassifier(nthread = 1, verbosity = 0, use_label_encoder = False), 
+        tmp = RandomizedSearchCV(XGBClassifier(nthread = 1, verbosity = 0, use_label_encoder = False), 
                                          self.params_, random_state = self.seed_,
-                                         cv = self.cv_, n_iter = 50, n_jobs = 1).fit(X, y).best_estimator_
+                                         cv = self.cv_, n_iter = 50, n_jobs = 1).fit(X, y)
+        self.model_ = tmp.best_estimator_
+        self.cvscore_ = tmp.best_score_
         return self
 
     def predict(self, X):
@@ -26,6 +28,9 @@ class Meta_xgb:
 
     def predict_proba(self, X):
         return self.model_.predict_proba(X)[:, int(np.where(self.model_.classes_ == 1)[0])]
+    
+    def fit_score(self):
+        return self.cvscore_
     
     def my_name(self):
         return "xgb"
@@ -38,7 +43,7 @@ class Meta_xgb:
 # mean = [0, 0]
 # cov = [[1, 0], [0, 1]]
 # x = np.random.multivariate_normal(mean, cov, 500)
-# mean = [5, 5]
+# mean = [3,3]
 # x = np.vstack((x,np.random.multivariate_normal(mean, cov, 500)))
 # y = np.hstack((np.zeros(500), np.ones(500))).astype(int)
 # plt.scatter(x[:,0], x[:,1], c = y)
@@ -47,6 +52,6 @@ class Meta_xgb:
 # xgb.fit(x, y)
 # sum(abs(xgb.predict(x) - y)) 
 # sum(abs(xgb.predict_proba(x) - y))
+# xgb.fit_score()
 # =============================================================================
-
 

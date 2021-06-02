@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-import arff
+# import arff
 import sys
 
 def nunique(a, axis):
@@ -35,17 +35,17 @@ def load_data(dname):
                         pd.read_csv('data/new/avila/avila-ts.txt', delimiter = ",", header = None)])
         y = (df[10] == 'A').astype(int).to_numpy()
         X  = df.iloc[:, : 10].to_numpy()
-    elif dname == "gamma_telescope": # 10 gamma_telescope
+    elif dname == "gt": # 10 gamma_telescope
         df = pd.read_csv('data/new/gamma_telescope/magic04.data', delimiter = ",", header = None)
         y = (df[10] == "g").astype(int).to_numpy()
         X  = df.iloc[:, : 10].to_numpy()
-    elif dname == "credit_cards": # 14 credit_cards
+    elif dname == "cc": # 14 credit_cards
         # df = pd.read_excel('data/new/credit_cards/default of credit card clients.xls', header = 1)
         # df.to_csv('data/new/credit_cards/default_of_credit_card_clients.csv', index = False)
         df = pd.read_csv('data/new/credit_cards/default_of_credit_card_clients.csv', delimiter = ",")
         y = (df.iloc[:, 24] == 1).astype(int).to_numpy()
         X  = df.iloc[:, 1:24].to_numpy()
-    elif dname == "eeg_eye_state": # 14 eeg_eye_state
+    elif dname == "ees": # 14 eeg_eye_state
         df = pd.read_csv('data/new/eeg_eye_state/phplE7q6h.csv', delimiter = ",")
         y = (df['Class'] == 1).astype(int).to_numpy()
         X  = df.iloc[:, : 14].to_numpy()
@@ -119,9 +119,9 @@ def load_data(dname):
         df = pd.read_csv('data/regression/ccpp/Folds5x2_pp.csv', delimiter = ",")
         y = (df['PE'] > 455).astype(int).to_numpy()
         X  = df[df.columns.drop('PE')].to_numpy()        
-    elif dname == "seoul_bike": # seoul_bike 7
-        df = pd.read_csv('data/regression/seoul_bike/SeoulBikeData.csv', delimiter = ",")
-        y = (df['Rented Bike Count'] > 1000).astype(int).to_numpy()
+    elif dname == "seoul": # seoul_bike 7
+        df = pd.read_csv('data/regression/seoul_bike/SeoulBikeData.csv', delimiter = ",", skiprows = 1, header = None)
+        y = (df.iloc[:, 1] > 800).astype(int).to_numpy()
         X  = df.iloc[:, 2:9].to_numpy()
     elif dname == "turbine": # turbine 9
         df = pd.concat([pd.read_csv('data/regression/turbine/gt_2011.csv', delimiter = ","), 
@@ -139,7 +139,7 @@ def load_data(dname):
         df = pd.read_csv('data/regression/parkinson/parkinsons_updrs.data', delimiter = ",")
         y = (df['motor_UPDRS'] > 23).astype(int).to_numpy()
         X  = df.iloc[:, 6:].to_numpy()
-    elif dname == "dry_bean": # dry_bean 16
+    elif dname == "dry": # dry_bean 16
         # df = pd.read_excel('data/regression/dry_bean/Dry_Bean_Dataset.xls', sheet_name = 'Dry_Beans_Dataset')
         # df.to_csv('data/regression/dry_bean/Dry_Bean_Dataset.csv', index = False)
         df = pd.read_csv('data/regression/dry_bean/Dry_Bean_Dataset.csv', delimiter = ",")
@@ -149,7 +149,7 @@ def load_data(dname):
         df = pd.read_csv('data/regression/anuran/Frogs_MFCCs.csv', delimiter = ",")
         y = (df['Family'] == 'Hylidae').astype(int).to_numpy()
         X  = df.iloc[:, 1: 22].to_numpy()
-    elif dname == "ml_prove": # ml_prove 51
+    elif dname == "ml": # ml_prove 51
         df = pd.concat([pd.read_csv('data/regression/ml_prove/train.csv', delimiter = ",", header = None), 
                         pd.read_csv('data/regression/ml_prove/test.csv', delimiter = ",", header = None),
                         pd.read_csv('data/regression/ml_prove/validation.csv', delimiter = ",", header = None)])
@@ -165,9 +165,8 @@ def load_data(dname):
     return X, y
 
 # =============================================================================
-# X, y = load_data("clean2")
+# X, y = load_data("seoul_bike")
 # =============================================================================
-
 
 
 

@@ -1,7 +1,7 @@
 import numpy as np
 from imblearn.over_sampling import ADASYN
 import warnings
-from rand import Gen_randu
+from src.generators.rand import Gen_randu
 
 class Gen_adasyn:
 

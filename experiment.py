@@ -14,11 +14,13 @@ from src.metamodels.rf import Meta_rf
 from src.metamodels.xgb import Meta_xgb
 
 from src.generators.gmm import Gen_gmmbic#, Gen_gmm
-from src.generators.kde import Gen_kdebw, Gen_kdebwhl
+from src.generators.kde import Gen_kdebw#, Gen_kdebwhl
 from src.generators.munge import Gen_munge
 from src.generators.noise import Gen_noise
 from src.generators.rand import Gen_randn, Gen_randu
 from src.generators.dummy import Gen_dummy
+from src.generators.smote import Gen_smote
+from src.generators.adasyn import Gen_adasyn
 
 # from src.subgroup_discovery.BI import BI
 from src.subgroup_discovery.PRIM import PRIM
@@ -40,17 +42,16 @@ import time
 if not os.path.exists('registry'):
     os.makedirs('registry')
 
-# NSETS = 2
-NSETS = 25                                                               # number of splits
+NSETS = 2                                                               # number of splits
 SPLITNS = list(range(0, NSETS))
-# DNAMES = ["ml_prove", "sensorless"]
-DNAMES = ["occupancy", "higgs7", "electricity", "htru", "shuttle", "avila",
-          "credit_cards", "eeg_eye_state", "pendata", "ring", "sylva", "higgs21",
-          "jm1", "saac2", "stocks", 
-            "sensorless", "bankruptcy", "nomao",
-          "ccpp", "seoul_bike", "turbine", "wine", "parkinson", "dry_bean", "anuran", "ml_prove"]
-# DSIZES = [200]
-DSIZES = [100, 200, 400, 800]
+DNAMES = ["occupancy"]
+# DNAMES = ["occupancy", "higgs7", "electricity", "htru", "shuttle", "avila",
+#           "cc", "ees", "pendata", "ring", "sylva", "higgs21",
+#           "jm1", "saac2", "stocks", 
+#           "sensorless", "bankruptcy", "nomao",
+#           "ccpp", "seoul", "turbine", "wine", "parkinson", "dry", "anuran", "ml"]
+DSIZES = [100]
+# DSIZES = [100, 200, 400, 800]
 
 
 def opt_param(cvres, nval):
@@ -71,12 +72,14 @@ def get_bi_param(nval, nattr):
 def experiment_class(splitn, dname, dsize):                                                                              
     gengmmbic = Gen_gmmbic() 
     genkde = Gen_kdebw()
-    genkdehl = Gen_kdebwhl()
+    # genkdehl = Gen_kdebwhl()
     genmunge = Gen_munge()
     genrandu = Gen_randu()
     genrandn = Gen_randn()
     gendummy = Gen_dummy()
     gennoise = Gen_noise()
+    genadasyn = Gen_adasyn()
+    gensmote = Gen_smote()
                                                
     metarf = Meta_rf()
     metaxgb = Meta_xgb()
@@ -84,8 +87,8 @@ def experiment_class(splitn, dname, dsize):
     
     dt = DecisionTreeClassifier()
     dt_comp = DecisionTreeClassifier(max_depth = 3)
-    ripper = lw.RIPPER(max_rules = 10)
-    irep = lw.IREP(max_rules = 10)
+    ripper = lw.RIPPER(max_rules = 8)
+    irep = lw.IREP(max_rules = 8)
     prim = PRIM()
     
     # get datasets
@@ -96,7 +99,8 @@ def experiment_class(splitn, dname, dsize):
     X, y = ds.get_train(splitn)                                           
     Xtest, ytest = ds.get_test(splitn) 
     filetme = open("registry/" + dname + "_" + "%s" % splitn + "_" + "%s" % dsize + "_times.csv", "a")
-    filetme.write("defaultsc" + "," + "%s" % max(ytest.mean(), 1-ytest.mean()) + "\n") 
+    filetme.write("testprec" + "," + "%s" % max(ytest.mean(), 1-ytest.mean()) + "\n") 
+    filetme.write("trainprec" + "," + "%s" % max(y.mean(), 1-y.mean()) + "\n") 
     filetme.close()                                 
 
     fileres = open("registry/" + dname + "_" + "%s" % splitn + "_" + "%s" % dsize + ".csv", "a")
@@ -190,21 +194,26 @@ def experiment_class(splitn, dname, dsize):
     ss.fit(X)                                                       
     Xs = ss.transform(X) 
                                                 
-    for i in [gengmmbic, genkde, genkdehl, genmunge, genrandu, genrandn, gendummy, gennoise]:
+    for i in [gengmmbic, genkde, genmunge, genrandu, genrandn, gendummy,\
+              gennoise, gensmote, genadasyn]:
         filetme = open("registry/" + dname + "_" + "%s" % splitn + "_" + "%s" % dsize + "_times.csv", "a")                                      
         start = time.time()
         i.fit(Xs)
         end = time.time()
         filetme.write(i.my_name() + "," + "%s" % (end-start) + "\n") 
         filetme.close()
+        
     for j in [metarf, metaxgb, metanb]: 
         filetme = open("registry/" + dname + "_" + "%s" % splitn + "_" + "%s" % dsize + "_times.csv", "a")                                     
         start = time.time()
         j.fit(Xs, y)
         end = time.time()
         filetme.write(j.my_name() + "," + "%s" % (end-start) + "\n") 
+        filetme.write(j.my_name() + "acc," + "%s" % j.fit_score() + "\n") 
         filetme.close()
-    for i, j in product([gengmmbic, genkde, genkdehl, genmunge, genrandu, genrandn, gendummy, gennoise], [metarf, metaxgb, metanb]):
+        
+    for i, j in product([gengmmbic, genkde, genmunge, genrandu, genrandn, gendummy,\
+                         gennoise, gensmote, genadasyn], [metarf, metaxgb, metanb]):
         filetme = open("registry/" + dname + "_" + "%s" % splitn + "_" + "%s" % dsize + "_times.csv", "a")              
 
         start = time.time()
@@ -216,6 +225,7 @@ def experiment_class(splitn, dname, dsize):
         Xnews = ss.inverse_transform(Xnews)  
         end = time.time()
         filetme.write(i.my_name() + j.my_name() + "," + "%s" % (end-start) + "\n")  
+        filetme.write(i.my_name() + j.my_name() + "prec" + "," + "%s" % max(ynew.mean(), 1-ynew.mean()) + "\n")
         filetme.close()                             
         
         fileres = open("registry/" + dname + "_" + "%s" % splitn + "_" + "%s" % dsize + ".csv", "a")
@@ -295,8 +305,8 @@ def experiment_class(splitn, dname, dsize):
         
 
 def exp_parallel():
-    # pool = Pool(4)
-    pool = Pool(32)
+    pool = Pool(2)
+    # pool = Pool(32)
     pool.starmap(experiment_class, list(product(SPLITNS, DNAMES, DSIZES)))
     pool.close()
     pool.join()
