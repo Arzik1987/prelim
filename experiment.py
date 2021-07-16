@@ -8,7 +8,7 @@ os.environ.update(
 )
 
 # from src.metamodels.kriging import Meta_kriging
-from src.metamodels.nb import Meta_nb
+# from src.metamodels.nb import Meta_nb
 from src.metamodels.rf import Meta_rf
 # from src.metamodels.svm import Meta_svm
 from src.metamodels.xgb import Meta_xgb
@@ -25,7 +25,7 @@ from src.generators.adasyn import Gen_adasyn
 # from src.subgroup_discovery.BI import BI
 from src.subgroup_discovery.PRIM import PRIM
 from sklearn.tree import DecisionTreeClassifier
-import wittgenstein as lw
+# import wittgenstein as lw
 
 from src.utils.data_splitter import DataSplitter
 from src.utils.data_loader import load_data
@@ -42,16 +42,16 @@ import time
 if not os.path.exists('registry'):
     os.makedirs('registry')
 
-NSETS = 2                                                               # number of splits
+NSETS = 25                                                               # number of splits
 SPLITNS = list(range(0, NSETS))
-DNAMES = ["occupancy"]
-# DNAMES = ["occupancy", "higgs7", "electricity", "htru", "shuttle", "avila",
-#           "cc", "ees", "pendata", "ring", "sylva", "higgs21",
-#           "jm1", "saac2", "stocks", 
-#           "sensorless", "bankruptcy", "nomao",
-#           "ccpp", "seoul", "turbine", "wine", "parkinson", "dry", "anuran", "ml"]
-DSIZES = [100]
-# DSIZES = [100, 200, 400, 800]
+# DNAMES = ["occupancy"]
+DNAMES = ["occupancy", "higgs7", "electricity", "htru", "shuttle", "avila",
+          "cc", "ees", "pendata", "ring", "sylva", "higgs21",
+          "jm1", "saac2", "stocks", 
+          "sensorless", "bankruptcy", "nomao",
+          "ccpp", "seoul", "turbine", "wine", "parkinson", "dry", "anuran", "ml"]
+# DSIZES = [100]
+DSIZES = [100, 200, 800]
 
 
 def opt_param(cvres, nval):
@@ -83,12 +83,12 @@ def experiment_class(splitn, dname, dsize):
                                                
     metarf = Meta_rf()
     metaxgb = Meta_xgb()
-    metanb = Meta_nb()
+    # metanb = Meta_nb()
     
     dt = DecisionTreeClassifier()
     dt_comp = DecisionTreeClassifier(max_depth = 3)
-    ripper = lw.RIPPER(max_rules = 8)
-    irep = lw.IREP(max_rules = 8)
+    # ripper = lw.RIPPER(max_rules = 8)
+    # irep = lw.IREP(max_rules = 8)
     prim = PRIM()
     
     # get datasets
@@ -104,7 +104,6 @@ def experiment_class(splitn, dname, dsize):
     filetme.close()                                 
 
     fileres = open("registry/" + dname + "_" + "%s" % splitn + "_" + "%s" % dsize + ".csv", "a")
-    # Decision Trees
     start = time.time()
     dt.fit(X, y)
     end = time.time()                                                  
@@ -120,19 +119,19 @@ def experiment_class(splitn, dname, dsize):
     sctest = dt_comp.score(Xtest, ytest)
     fileres.write("\n" + "dt_comp" + ",na,na," + "%s" % sctrain + ",nan," + "%s" % sctest + "," + "%s" % (end-start)) 
     # 
-    start = time.time()
-    ripper.fit(X, y)
-    end = time.time()                                                   
-    sctrain = ripper.score(X, y)
-    sctest = ripper.score(Xtest, ytest)
-    fileres.write("\n" + "ripper" + ",na,na," + "%s" % sctrain + ",nan," + "%s" % sctest + "," + "%s" % (end-start)) 
-    # 
-    start = time.time()
-    irep.fit(X, y)
-    end = time.time()                                                   
-    sctrain = irep.score(X, y)
-    sctest = irep.score(Xtest, ytest)
-    fileres.write("\n" + "irep" + ",na,na," + "%s" % sctrain + ",nan," + "%s" % sctest + "," + "%s" % (end-start)) 
+    # start = time.time()
+    # ripper.fit(X, y)
+    # end = time.time()                                                   
+    # sctrain = ripper.score(X, y)
+    # sctest = ripper.score(Xtest, ytest)
+    # fileres.write("\n" + "ripper" + ",na,na," + "%s" % sctrain + ",nan," + "%s" % sctest + "," + "%s" % (end-start)) 
+    # # 
+    # start = time.time()
+    # irep.fit(X, y)
+    # end = time.time()                                                   
+    # sctrain = irep.score(X, y)
+    # sctest = irep.score(Xtest, ytest)
+    # fileres.write("\n" + "irep" + ",na,na," + "%s" % sctrain + ",nan," + "%s" % sctest + "," + "%s" % (end-start)) 
     fileres.close() 
     
     # DT HPO
@@ -203,7 +202,7 @@ def experiment_class(splitn, dname, dsize):
         filetme.write(i.my_name() + "," + "%s" % (end-start) + "\n") 
         filetme.close()
         
-    for j in [metarf, metaxgb, metanb]: 
+    for j in [metarf, metaxgb]: 
         filetme = open("registry/" + dname + "_" + "%s" % splitn + "_" + "%s" % dsize + "_times.csv", "a")                                     
         start = time.time()
         j.fit(Xs, y)
@@ -213,16 +212,16 @@ def experiment_class(splitn, dname, dsize):
         filetme.close()
         
     for i, j in product([gengmmbic, genkde, genmunge, genrandu, genrandn, gendummy,\
-                         gennoise, gensmote, genadasyn], [metarf, metaxgb, metanb]):
+                         gennoise, gensmote, genadasyn], [metarf, metaxgb]):
         filetme = open("registry/" + dname + "_" + "%s" % splitn + "_" + "%s" % dsize + "_times.csv", "a")              
 
         start = time.time()
         Xnew = i.sample(100000)                                                                      
         ynew = j.predict(Xnew)
         Xnew = ss.inverse_transform(Xnew)      
-        Xnews = i.sample(10000) # RIPPER and IREP                                                            
-        ynews = j.predict(Xnews)
-        Xnews = ss.inverse_transform(Xnews)  
+        # Xnews = i.sample(10000) # RIPPER and IREP                                                            
+        # ynews = j.predict(Xnews)
+        # Xnews = ss.inverse_transform(Xnews)  
         end = time.time()
         filetme.write(i.my_name() + j.my_name() + "," + "%s" % (end-start) + "\n")  
         filetme.write(i.my_name() + j.my_name() + "prec" + "," + "%s" % max(ynew.mean(), 1-ynew.mean()) + "\n")
@@ -247,23 +246,23 @@ def experiment_class(splitn, dname, dsize):
         fileres.write("\n" + "dt_comp" + "," + i.my_name() + "," + j.my_name() + 
                       "," + "%s" % sctrain + "," + "%s" % scnew + "," + "%s" % sctest + "," + "%s" % (end-start)) 
         
-        start = time.time()
-        ripper.fit(Xnews, ynews)
-        end = time.time()                                     
-        sctrain = ripper.score(X, y)
-        scnew = ripper.score(Xnews, ynews)
-        sctest = ripper.score(Xtest, ytest)                                       
-        fileres.write("\n" + "ripper" + "," + i.my_name() + "," + j.my_name() + 
-                      "," + "%s" % sctrain + "," + "%s" % scnew + "," + "%s" % sctest + "," + "%s" % (end-start)) 
+        # start = time.time()
+        # ripper.fit(Xnews, ynews)
+        # end = time.time()                                     
+        # sctrain = ripper.score(X, y)
+        # scnew = ripper.score(Xnews, ynews)
+        # sctest = ripper.score(Xtest, ytest)                                       
+        # fileres.write("\n" + "ripper" + "," + i.my_name() + "," + j.my_name() + 
+        #               "," + "%s" % sctrain + "," + "%s" % scnew + "," + "%s" % sctest + "," + "%s" % (end-start)) 
         
-        start = time.time()
-        irep.fit(Xnews, ynews)    
-        end = time.time()                                 
-        sctrain = irep.score(X, y)
-        scnew = irep.score(Xnews, ynews)
-        sctest = irep.score(Xtest, ytest)                                       
-        fileres.write("\n" + "irep" + "," + i.my_name() + "," + j.my_name() + 
-                      "," + "%s" % sctrain + "," + "%s" % scnew + "," + "%s" % sctest + "," + "%s" % (end-start)) 
+        # start = time.time()
+        # irep.fit(Xnews, ynews)    
+        # end = time.time()                                 
+        # sctrain = irep.score(X, y)
+        # scnew = irep.score(Xnews, ynews)
+        # sctest = irep.score(Xtest, ytest)                                       
+        # fileres.write("\n" + "irep" + "," + i.my_name() + "," + j.my_name() + 
+        #               "," + "%s" % sctrain + "," + "%s" % scnew + "," + "%s" % sctest + "," + "%s" % (end-start)) 
         
         start = time.time()
         dtcv.fit(Xnew, ynew)    
@@ -272,8 +271,23 @@ def experiment_class(splitn, dname, dsize):
         scnew = dtcv.score(Xnew, ynew)
         sctest = dtcv.score(Xtest, ytest)                                       
         fileres.write("\n" + "dtcv" + "," + i.my_name() + "," + j.my_name() + 
+                      "," + "%s" % sctrain + "," + "%s" % scnew + "," + "%s" % sctest + "," + "%s" % (end-start))         
+        
+        par_vals = [1,2,3,4,5,6,7,None]
+        parameters = {'max_depth': par_vals}   
+        start = time.time()                           
+        tmp = GridSearchCV(dt, parameters, refit = False).fit(Xnew, ynew).cv_results_ 
+        tmp = opt_param(tmp, len(par_vals))
+        dtcv2 = DecisionTreeClassifier(max_depth = par_vals[tmp[0]])                                            
+        dtcv2.fit(Xnew, ynew)
+        end = time.time()
+        sctrain = dtcv2.score(X, y)
+        scnew = dtcv2.score(Xnew, ynew)
+        sctest = dtcv2.score(Xtest, ytest)                                       
+        fileres.write("\n" + "dtcv2" + "," + i.my_name() + "," + j.my_name() + 
                       "," + "%s" % sctrain + "," + "%s" % scnew + "," + "%s" % sctest + "," + "%s" % (end-start)) 
-        fileres.close()
+        fileres.close()      
+        
         
         fileprim = open("registry/" + dname + "_" + "%s" % splitn + "_" + "%s" % dsize + "_prim.csv", "a")
         start = time.time()
@@ -305,8 +319,8 @@ def experiment_class(splitn, dname, dsize):
         
 
 def exp_parallel():
-    pool = Pool(2)
-    # pool = Pool(32)
+    # pool = Pool(2)
+    pool = Pool(32)
     pool.starmap(experiment_class, list(product(SPLITNS, DNAMES, DSIZES)))
     pool.close()
     pool.join()

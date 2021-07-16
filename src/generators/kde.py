@@ -18,7 +18,7 @@ class Gen_kdebw:
         else:
             sys.exit("The method must be either scott or silverman")
 
-    def fit(self, X):
+    def fit(self, X, y = None):
         bw = self.bw_method_(X)
         if bw.max()/bw.min() > 10:
             warnings.warn("Bandwidths for different dimensions differ by more than order of magnitude. Consider using z-score scaling")
@@ -68,7 +68,7 @@ class Gen_kdebwhl:
         else:
             sys.exit("The method must be either scott or silverman")
 
-    def fit(self, X):
+    def fit(self, X, y = None):
         bw = self.bw_method_(X)
         if bw.max()/bw.min() > 10:
             warnings.warn("Bandwidths for different dimensions differ by more than order of magnitude. Consider using z-score scaling")

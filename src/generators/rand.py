@@ -7,7 +7,7 @@ class Gen_randn:
     def __init__(self, seed = 2020):
         self.seed_ = seed
 
-    def fit(self, X):
+    def fit(self, X, y = None):
         cov = MinCovDet(random_state = self.seed_).fit(X)
         self.covariance_ = cov.covariance_
         self.location_ = cov.location_
@@ -26,7 +26,7 @@ class Gen_randu:
     def __init__(self):
         return None
 
-    def fit(self, X):
+    def fit(self, X, y = None):
         self.range_ = X.max(axis=0) - X.min(axis=0)
         self.minimum_ = X.min(axis=0)
         return self

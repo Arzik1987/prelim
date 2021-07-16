@@ -5,7 +5,7 @@ class Gen_perfect:
     def __init__(self):
         return None
         
-    def fit(self, X):
+    def fit(self, X, y = None):
         self.data_ = X.copy()
         return self
 

@@ -8,7 +8,7 @@ class Gen_smote:
     def __init__(self):
         self.X_ = None
 
-    def fit(self, X):
+    def fit(self, X, y = None):
         self.X_ = X.copy()
         return self
 

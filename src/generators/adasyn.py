@@ -7,8 +7,9 @@ class Gen_adasyn:
 
     def __init__(self):
         self.X_ = None
+        self.mname_ = "adasyn"
 
-    def fit(self, X):
+    def fit(self, X, y = None):
         self.X_ = X.copy()
         return self
 
@@ -17,14 +18,31 @@ class Gen_adasyn:
         if self.X_.shape[0] > n_samples:
             warnings.warn("The required sample size is smaller that the number of observations in train")
             parss = 'all'
-        parknn = min(5, n_samples, self.X_.shape[0])
         y = np.concatenate((np.ones(self.X_.shape[0]), np.zeros(n_samples)))
         X = np.concatenate((self.X_ ,Gen_randu().fit(self.X_).sample(n_samples = n_samples)))
-        X, y = ADASYN(sampling_strategy = parss, n_neighbors = parknn, random_state = 2020).fit_resample(X, y)
-        return X[y == 1,:][0:n_samples,:]
+        Xnew = None
+        parknn = min(5, n_samples, self.X_.shape[0])
+        try:
+            Xnew, y = ADASYN(sampling_strategy = parss, n_neighbors = parknn, random_state = 2020).fit_resample(X, y)
+        except:
+            while type(Xnew) is not np.ndarray and parknn <= n_samples and parknn <= self.X_.shape[0]:
+                try:
+                    Xnew, y = ADASYN(sampling_strategy = parss, n_neighbors = parknn, random_state = 2020).fit_resample(X, y)
+                except:
+                    parknn = parknn*2
+        print(parknn)
+        if type(Xnew) is not np.ndarray:
+            from imblearn.over_sampling import SMOTE
+            parknn = min(5, n_samples, self.X_.shape[0])
+            Xnew, y = SMOTE(sampling_strategy = parss, k_neighbors = parknn, random_state = 2020).fit_resample(X, y)
+            self.mname_ = "adasyns"
+        else:
+            self.mname_ = "adasyn"
+        
+        return Xnew[y == 1,:][0:n_samples,:]
     
     def my_name(self):
-        return "adasyn"
+        return self.mname_
     
 
 # =============================================================================
@@ -42,3 +60,4 @@ class Gen_adasyn:
 # df = ada_gen.sample(n_samples = 201)
 # plt.scatter(df[:,0], df[:,1])
 # =============================================================================
+

@@ -28,7 +28,7 @@ class Gen_gmmbic:
                                  "covariance_type": ["full", "tied", "diag", "spherical"]}, cv = 5):
         self.params_ = params
 
-    def fit(self, X):
+    def fit(self, X, y = None):
         # see https://scikit-learn.org/stable/auto_examples/mixture/plot_gmm_selection.html
         lowest_bic = np.infty
         for cv_type in self.params_['covariance_type']:

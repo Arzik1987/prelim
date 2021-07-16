@@ -5,7 +5,7 @@ class Gen_noise:
     def __init__(self, scale = 0.3):
         self.scale_ = scale
 
-    def fit(self, X):
+    def fit(self, X, y = None):
         self.data_ = X.copy()
         self.data_ = self.data_.astype(float)
         return self

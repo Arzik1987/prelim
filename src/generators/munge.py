@@ -13,7 +13,7 @@ class Gen_munge:
         self.local_var_ = local_var
         self.seed_ = seed
 
-    def fit(self, X):
+    def fit(self, X, y = None):
         self.data_ = X.copy()
         self.index_ = NearestNeighbors(n_neighbors = 1).fit(self.data_).kneighbors()[1]
         return self

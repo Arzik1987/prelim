@@ -133,4 +133,6 @@ data/
 src/data/
 src/data/
 registry/
+registrydt/
 trials/
+densityforest.py
