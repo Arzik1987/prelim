@@ -136,3 +136,4 @@ registry/
 registrydt/
 trials/
 densityforest.py
+results/
