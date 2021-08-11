@@ -23,8 +23,7 @@ from src.generators.smote import Gen_smote
 from src.generators.adasyn import Gen_adasyn
 from src.generators.rfdens import Gen_rfdens
 
-# import wittgenstein as lw
-from src.subgroup_discovery.BI import BI
+from src.subgroup_discovery.PRIM import PRIM
 
 from src.utils.data_splitter import DataSplitter
 from src.utils.data_loader import load_data
@@ -38,8 +37,8 @@ from itertools import product
 import time
 import copy
 
-if not os.path.exists('registrybi'):
-    os.makedirs('registrybi')
+if not os.path.exists('registryprim'):
+    os.makedirs('registryprim')
     
 # =============================================================================
 
@@ -50,17 +49,12 @@ SPLITNS = list(range(0, NSETS))
 DNAMES = ["occupancy", "higgs7", "electricity", "htru", "shuttle", "avila",
           "cc", "ees", "pendata", "ring", "sylva", "higgs21",
           "jm1", "saac2", "stocks", 
-          "sensorless", "bankruptcy", 
-          # "gas", "clean2", "seizure", "nomao",
+          "sensorless", "bankruptcy", "nomao",
+          "gas", "clean2", "seizure",
           "ccpp", "seoul", "turbine", "wine", "parkinson", "dry", "anuran", "ml"]
 # DSIZES = [100]
 DSIZES = [100, 200, 400, 800]
 
-def get_bi_param(nval, nattr):
-    a = [ -x for x in range(-nattr, 0, np.ceil(nattr/nval).astype(int))]
-    b = [ -x for x in range(-nattr, min(-nattr + nval, 0), 1)]
-    res = a if len(a) > nval/2 + 1 else b
-    return np.flip(res)
 
 def opt_param(cvres, nval):
     fit_res = np.empty((0, nval))
@@ -70,7 +64,8 @@ def opt_param(cvres, nval):
     tmp = np.nanmean(fit_res, 0)
     return tmp
 
-def experiment_rules(splitn, dname, dsize):                                                                              
+
+def experiment_prim(splitn, dname, dsize):                                                                              
     gengmmbic = Gen_gmmbic() 
     genkde = Gen_kdebw()
     genmunge = Gen_munge()
@@ -85,7 +80,7 @@ def experiment_rules(splitn, dname, dsize):
     metarf = Meta_rf()
     metaxgb = Meta_xgb()
     
-    bi = BI()
+    prim = PRIM(target = 'wracc')
     
     # get datasets
     X, y = load_data(dname)    
@@ -94,7 +89,7 @@ def experiment_rules(splitn, dname, dsize):
     ds.configure(NSETS, dsize)                                         
     X, y = ds.get_train(splitn)       
     if y.sum() == 0:
-        fileres = open("registrybi/%s_%s_%s_zeros.csv" % (dname, splitn, dsize), "a")
+        fileres = open("registryprim/%s_%s_%s_zeros.csv" % (dname, splitn, dsize), "a")
         fileres.close()
         return                                    
     Xtest, ytest = ds.get_test(splitn) 
@@ -104,39 +99,39 @@ def experiment_rules(splitn, dname, dsize):
     defprec = 1 if y.mean() >= 0.5 else 0
     testprec = ytest.mean() if defprec == 1 else 1 - ytest.mean()
     trainprec = y.mean() if defprec == 1 else 1 - y.mean()
-    filetme = open("registrybi/%s_%s_%s_times.csv" % (dname, splitn, dsize), "a")
+    filetme = open("registryprim/%s_%s_%s_times.csv" % (dname, splitn, dsize), "a")
     filetme.write("testprec,%s\n" % testprec) 
     filetme.write("trainprec,%s\n" % trainprec) 
     filetme.close()        
 
-    #===== SD                         
+    #===== prim                         
 
-    fileres = open("registrybi/%s_%s_%s.csv" % (dname, splitn, dsize), "a")
+    fileres = open("registryprim/%s_%s_%s.csv" % (dname, splitn, dsize), "a")
     # (1) model (2) gen (3) met (4) sctr (5) scnew (6) sctest (7) nrestr (8) time
     start = time.time()
-    bi.fit(X, y)
+    prim.fit(X, y)
     end = time.time()                                                   
-    sctrain = bi.score(X, y)
-    sctest = bi.score(Xtest, ytest)
-    fileres.write("bi,na,na,%s,nan,%s,nan,%s" % (sctrain, sctest, (end-start))) 
+    sctrain = prim.score(X, y)
+    sctest = prim.score(Xtest, ytest)
+    fileres.write("prim,na,na,%s,nan,%s,nan,%s" % (sctrain, sctest, (end-start))) 
 
-    # BI HPO
-    parsbi = get_bi_param(5, X.shape[1])
-    parameters = {'depth': parsbi}                                      # params for SD with HPO
+    # prim HPO
+    par_vals = [0.03, 0.05, 0.07, 0.1, 0.13, 0.16, 0.2]
+    parameters = {'alpha': par_vals}                                      # params for SD with HPO
     start = time.time() 
-    tmp = GridSearchCV(bi, parameters, refit = False).fit(X, y).cv_results_ 
-    tmp = opt_param(tmp, len(parsbi))
-    bicv = BI(depth = parsbi[np.argmax(tmp)])
-    bicv.fit(X, y)
+    tmp = GridSearchCV(prim, parameters, refit = False).fit(X, y).cv_results_ 
+    tmp = opt_param(tmp, len(par_vals))
+    primcv = PRIM(target = 'wracc', alpha = par_vals[np.argmax(tmp)])
+    primcv.fit(X, y)
     end = time.time()
-    sctrain = bicv.score(X, y)
-    sctest = bicv.score(Xtest, ytest)     
-    fileres.write("\nbicv,na,na,%s,nan,%s,%s,%s" % (sctrain, sctest, parsbi[np.argmax(tmp)], (end-start))) 
+    sctrain = primcv.score(X, y)
+    sctest = primcv.score(Xtest, ytest)     
+    fileres.write("\nprimcv,na,na,%s,nan,%s,%s,%s" % (sctrain, sctest, par_vals[np.argmax(tmp)], (end-start))) 
     fileres.close()
     
-    filetme = open("registrybi/%s_%s_%s_times.csv" % (dname, splitn, dsize), "a")
-    filetme.write("bicvsc,%s\n" % tmp[np.argmax(tmp)])
-    filetme.write("bisc,%s\n" % tmp[-1])
+    filetme = open("registryprim/%s_%s_%s_times.csv" % (dname, splitn, dsize), "a")
+    filetme.write("primcvsc,%s\n" % tmp[np.argmax(tmp)])
+    filetme.write("primsc,%s\n" % tmp[1])
     # filetme.write("dtcompsc,%s\n" % tmp[par_vals.index(3)])
     filetme.close()  
     
@@ -148,7 +143,7 @@ def experiment_rules(splitn, dname, dsize):
                                                 
     for i in [gengmmbic, genkde, genmunge, genrandu, genrandn, gendummy,\
               gennoise, gensmote, genadasyn, genrfdens]:
-        filetme = open("registrybi/%s_%s_%s_times.csv" % (dname, splitn, dsize), "a")                                      
+        filetme = open("registryprim/%s_%s_%s_times.csv" % (dname, splitn, dsize), "a")                                      
         start = time.time()
         i.fit(Xs, y)
         end = time.time()
@@ -156,7 +151,7 @@ def experiment_rules(splitn, dname, dsize):
         filetme.close()
         
     for j in [metarf, metaxgb]: 
-        filetme = open("registrybi/%s_%s_%s_times.csv" % (dname, splitn, dsize), "a")                                     
+        filetme = open("registryprim/%s_%s_%s_times.csv" % (dname, splitn, dsize), "a")                                     
         start = time.time()
         j.fit(Xs, y)
         end = time.time()
@@ -166,10 +161,10 @@ def experiment_rules(splitn, dname, dsize):
         
     for i, j in product([gengmmbic, genkde, genmunge, genrandu, genrandn, gendummy,\
                          gennoise, gensmote, genadasyn, genrfdens], [metarf, metaxgb]):
-        filetme = open("registrybi/%s_%s_%s_times.csv" % (dname, splitn, dsize), "a")              
+        filetme = open("registryprim/%s_%s_%s_times.csv" % (dname, splitn, dsize), "a")              
 
         start = time.time()
-        Xnew = i.sample(10000 - dsize)                                                                      
+        Xnew = i.sample(25000 - dsize)                                                                      
         ynew = j.predict(Xnew)
         ynewp = j.predict_proba(Xnew)
         Xnew = ss.inverse_transform(Xnew)
@@ -181,48 +176,47 @@ def experiment_rules(splitn, dname, dsize):
         filetme.write(i.my_name() + j.my_name() + "prec,%s\n" % (ynew.mean() if defprec == 1 else 1 - ynew.mean()))
         filetme.close()                             
         
-        fileres = open("registrybi/%s_%s_%s.csv" % (dname, splitn, dsize), "a")
+        fileres = open("registryprim/%s_%s_%s.csv" % (dname, splitn, dsize), "a")
         
         start = time.time()
-        bi.fit(Xnew, ynew)
+        prim.fit(Xnew, ynew)
         end = time.time()                                     
-        sctrain = bi.score(X, y)
-        scnew = bi.score(Xnew, ynew)
-        sctest = bi.score(Xtest, ytest)
-        fileres.write("\nbi,%s,%s,%s,%s,%s,nan,%s" % (i.my_name(), j.my_name(), sctrain, scnew, sctest, (end-start))) 
+        sctrain = prim.score(X, y)
+        scnew = prim.score(Xnew, ynew)
+        sctest = prim.score(Xtest, ytest)
+        fileres.write("\nprim,%s,%s,%s,%s,%s,nan,%s" % (i.my_name(), j.my_name(), sctrain, scnew, sctest, (end-start))) 
         
         start = time.time()
-        bi.fit(Xnewp, ynewp)
+        prim.fit(Xnewp, ynewp)
         end = time.time()                                     
-        sctrain = bi.score(X, y)
-        scnew = bi.score(Xnewp, ynewp)
-        sctest = bi.score(Xtest, ytest)
-        fileres.write("\nbip,%s,%s,%s,%s,%s,nan,%s" % (i.my_name(), j.my_name(), sctrain, scnew, sctest, (end-start))) 
+        sctrain = prim.score(X, y)
+        scnew = prim.score(Xnewp, ynewp)
+        sctest = prim.score(Xtest, ytest)
+        fileres.write("\nprimp,%s,%s,%s,%s,%s,nan,%s" % (i.my_name(), j.my_name(), sctrain, scnew, sctest, (end-start))) 
         
         start = time.time()
-        bicv.fit(Xnew, ynew) 
+        primcv.fit(Xnew, ynew) 
         end = time.time()                                    
-        sctrain = bicv.score(X, y)
-        scnew = bicv.score(Xnew, ynew)
-        sctest = bicv.score(Xtest, ytest)                                       
-        fileres.write("\nbicv,%s,%s,%s,%s,%s,%s,%s" % (i.my_name(), j.my_name(), sctrain, scnew, sctest, parsbi[np.argmax(tmp)], (end-start)))
+        sctrain = primcv.score(X, y)
+        scnew = primcv.score(Xnew, ynew)
+        sctest = primcv.score(Xtest, ytest)                                       
+        fileres.write("\nprimcv,%s,%s,%s,%s,%s,%s,%s" % (i.my_name(), j.my_name(), sctrain, scnew, sctest, par_vals[np.argmax(tmp)], (end-start)))
         
         start = time.time()
-        bicv.fit(Xnewp, ynewp) 
+        primcv.fit(Xnewp, ynewp) 
         end = time.time()                                    
-        sctrain = bicv.score(X, y)
-        scnew = bicv.score(Xnewp, ynewp)
-        sctest = bicv.score(Xtest, ytest)                                       
-        fileres.write("\nbicvp,%s,%s,%s,%s,%s,%s,%s" % (i.my_name(), j.my_name(), sctrain, scnew, sctest, parsbi[np.argmax(tmp)], (end-start)))
+        sctrain = primcv.score(X, y)
+        scnew = primcv.score(Xnewp, ynewp)
+        sctest = primcv.score(Xtest, ytest)                                       
+        fileres.write("\nprimcvp,%s,%s,%s,%s,%s,%s,%s" % (i.my_name(), j.my_name(), sctrain, scnew, sctest, par_vals[np.argmax(tmp)], (end-start)))
         
         fileres.close()      
-        # TODO: experiment with probabilities?
         
 
 def exp_parallel():
     # pool = Pool(4)
     pool = Pool(cpu_count())
-    pool.starmap_async(experiment_rules, product(SPLITNS, DNAMES, DSIZES))
+    pool.starmap_async(experiment_prim, product(SPLITNS, DNAMES, DSIZES))
     pool.close()
     pool.join()
 

@@ -19,15 +19,16 @@ class PRIM:
         self.Np_ = np.sum(y)
         
         highest = hgh = self._target_fun(self.Np_, self.N_)
+        cont = True
         ret_ind = 1        
         boxes = [self.box_.copy()]
         i = 1
-        while self.X_.shape[0] >= self.mass_min and i < 100 and highest < self.threshold:
+        while self.X_.shape[0] >= self.mass_min and i < 100 and highest < self.threshold and cont:
             if hgh > highest:   # this comparison being first prevents self.X_.shape[0] < self.mass_min
                 highest = hgh
                 ret_ind = i
             i = i + 1
-            hgh = self._peel_one()
+            hgh, cont = self._peel_one()
             boxes.append(self.box_.copy())
         
         self.X_ = None
@@ -42,31 +43,39 @@ class PRIM:
     def _peel_one(self):
         hgh, bnd = -np.inf, -np.inf
         rn, cn = -1, -1
+        cont = False
         for i in range(0, self.X_.shape[1]):
-            bound = np.quantile(self.X_[:,i], self.alpha, interpolation = 'midpoint')
-            retain = self.X_[:,i] > bound
-            tar = self._target_fun(np.sum(self.y_[retain]), np.count_nonzero(retain))
-            if tar > hgh:
-                hgh = tar
-                inds = retain
-                rn = 0
-                cn = i
-                bnd = bound
-            bound = np.quantile(self.X_[:,i], 1-self.alpha, interpolation = 'midpoint')
-            retain = self.X_[:,i] < bound
-            tar = self._target_fun(np.sum(self.y_[retain]), np.count_nonzero(retain))
-            if tar > hgh:
-                hgh = tar
-                inds = retain
-                rn = 1
-                cn = i
-                bnd = bound
+            if len(np.unique(self.X_[:,i])) > 1:
+                cont = True
+                bound = np.quantile(self.X_[:,i], self.alpha, interpolation = 'midpoint')
+                retain = self.X_[:,i] > bound
+                if np.count_nonzero(retain) == 0:
+                    retain = self.X_[:,i] >= bound
+                tar = self._target_fun(np.sum(self.y_[retain]), np.count_nonzero(retain))
+                if tar > hgh:
+                    hgh = tar
+                    inds = retain
+                    rn = 0
+                    cn = i
+                    bnd = bound
+                bound = np.quantile(self.X_[:,i], 1-self.alpha, interpolation = 'midpoint')
+                retain = self.X_[:,i] < bound
+                if np.count_nonzero(retain) == 0:
+                    retain = self.X_[:,i] <= bound
+                tar = self._target_fun(np.sum(self.y_[retain]), np.count_nonzero(retain))
+                if tar > hgh:
+                    hgh = tar
+                    inds = retain
+                    rn = 1
+                    cn = i
+                    bnd = bound
         
-        self.X_ = self.X_[inds]
-        self.y_ = self.y_[inds]
-        self.box_[rn,cn] = bnd
+        if cont:
+            self.X_ = self.X_[inds]
+            self.y_ = self.y_[inds]
+            self.box_[rn,cn] = bnd
         
-        return hgh
+        return hgh, cont
     
     def get_params(self, deep=True):
         return {"alpha": self.alpha, "mass_min": self.mass_min, "target": self.target}

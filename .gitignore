@@ -135,6 +135,9 @@ src/data/
 registry/
 registrydt/
 registryrules/
+registrybi/
+registryprim/
+registryill/
 trials/
 densityforest.py
 results/
