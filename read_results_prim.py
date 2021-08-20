@@ -7,6 +7,8 @@ import sys
 import time
 
 WHERE = 'registryprim/' 
+if os.path.exists(WHERE + "res.csv"):
+    os.remove(WHERE + "res.csv")
 _, _, filenames = next(os.walk(WHERE))
 
 #### check if all jobs have terminated
@@ -116,14 +118,17 @@ for i in filenames:
         print("error at " + i)
 res = pd.concat(res)
 res.loc[res['gen'] == 'adasyns','gen'] = 'adasyn'
+res.to_csv(WHERE + 'res.csv')
 
 
 #### accuracy increase
 
-for thrval in [0.01, 0.03, 0.05, 0.07, 0.1, np.inf]:
-    
+for thr in [0.03, 0.05, 0.1, np.inf]:
+
     a = res.copy()
-    a = a[(a['npr']/a['tpr'] < (1 + thrval)) & (a['npr']/a['tpr'] > (1 - thrval))]
+    # a = a[(a['npr']/a['tpr'] < (1 + thr)) & (a['npr']/a['tpr'] > (1 - thr))]
+    a.loc[(a['npr']/a['tpr'] > (1 + thr)) | (a['npr']/a['tpr'] < (1 - thr)), 'tes']=\
+                a.loc[(a['npr']/a['tpr'] > (1 + thr)) | (a['npr']/a['tpr'] < (1 - thr)), 'ora']
     
     a = a[['alg', 'gen', 'met', 'npt', 'tes', 'ora']].groupby(['alg', 'gen', 'met', 'npt']).mean()
     a.to_csv(WHERE + 'a.csv')
@@ -154,20 +159,20 @@ for thrval in [0.01, 0.03, 0.05, 0.07, 0.1, np.inf]:
     fg.set_axis_labels("metamodel", "generator")
     fg.set_titles(col_template="{col_name}", row_template="{row_name}")
     fg.tight_layout()
-    fg.savefig("results/prim_wracc_heatmap_short_" + str(thrval) + ".png")
+    fg.savefig("results/prim_wracc_heatmap_short_" + str(thr) + ".png")
 
-#### check values:
-# df = a[(a['npt'] == 800) & (a['alg'] == 'dtcomp')]
-# dfna = df.pivot('gen', 'met', 'tes')
-# dfoa = df.pivot('gen', 'met', 'ora')
-# (dfna - dfoa)/dfoa
+
+# FYI
+a = res.copy()
+a['dif'] = np.sign(a['tes'] - a['ora'])
+a = a[['alg', 'gen', 'met', 'npt', 'dif']]
+a = a.groupby(['alg', 'gen', 'met', 'npt']).dif.value_counts().unstack()
+
+
 
 #### to compare to bi we need to exclude some datasets
 a = res[~res['dat'].isin(["gas", "clean2", "seizure", "nomao"])].copy()
 
-thrval = np.inf
-a = a[(a['npr']/a['tpr'] < (1 + thrval)) & (a['npr']/a['tpr'] > (1 - thrval))]
-    
 a = a[['alg', 'gen', 'met', 'npt', 'tes', 'ora']].groupby(['alg', 'gen', 'met', 'npt']).mean()
 a.to_csv(WHERE + 'a.csv')
 a = pd.read_csv(WHERE + 'a.csv', delimiter = ",")
@@ -200,12 +205,3 @@ fg.tight_layout()
 fg.savefig("results/prim_wracc_heatmap_to_bi.png")
 
 
-# as in dt
-a = res.copy()
-
-thrval = 0.05
-a = a[(a['npr']/a['tpr'] < (1 + thrval)) & (a['npr']/a['tpr'] > (1 - thrval))]
-
-a['dif'] = np.sign(a['tes'] - a['ora'])
-a = a[['alg', 'gen', 'met', 'npt', 'dif']]
-a = a.groupby(['alg', 'gen', 'met', 'npt']).dif.value_counts().unstack()

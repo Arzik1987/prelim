@@ -23,7 +23,7 @@ from src.generators.smote import Gen_smote
 from src.generators.adasyn import Gen_adasyn
 from src.generators.rfdens import Gen_rfdens
 
-import wittgenstein as lw
+import src.classification_rules.wittgenstein as lw
 
 from src.utils.data_splitter import DataSplitter
 from src.utils.data_loader import load_data
@@ -105,14 +105,14 @@ def experiment_rules(splitn, dname, dsize):
     end = time.time()                                                   
     sctrain = ripper.score(X, y)
     sctest = ripper.score(Xtest, ytest)
-    fileres.write("ripper,na,na,%s,nan,%s,nan,%s" % (sctrain, sctest, (end-start))) 
+    fileres.write("ripper,na,na,%s,nan,%s,%s,%s" % (sctrain, sctest, len(ripper.ruleset_), (end-start))) 
 
     start = time.time()
     irep.fit(X, y)
     end = time.time()                                                   
     sctrain = irep.score(X, y)
     sctest = irep.score(Xtest, ytest)
-    fileres.write("\nirep,na,na,%s,nan,%s,nan,%s" % (sctrain, sctest, (end-start))) 
+    fileres.write("\nirep,na,na,%s,nan,%s,%s,%s" % (sctrain, sctest, len(irep.ruleset_), (end-start))) 
     
     
     # prelim
@@ -160,7 +160,7 @@ def experiment_rules(splitn, dname, dsize):
         sctrain = ripper.score(X, y)
         scnew = ripper.score(Xnew, ynew)
         sctest = ripper.score(Xtest, ytest)
-        fileres.write("\nripper,%s,%s,%s,%s,%s,nan,%s" % (i.my_name(), j.my_name(), sctrain, scnew, sctest, (end-start))) 
+        fileres.write("\nripper,%s,%s,%s,%s,%s,%s,%s" % (i.my_name(), j.my_name(), sctrain, scnew, sctest, len(ripper.ruleset_), (end-start))) 
         
         start = time.time()
         irep.fit(Xnew, ynew) 
@@ -168,10 +168,9 @@ def experiment_rules(splitn, dname, dsize):
         sctrain = irep.score(X, y)
         scnew = irep.score(Xnew, ynew)
         sctest = irep.score(Xtest, ytest)                                       
-        fileres.write("\nirep,%s,%s,%s,%s,%s,nan,%s" % (i.my_name(), j.my_name(), sctrain, scnew, sctest, (end-start)))
+        fileres.write("\nirep,%s,%s,%s,%s,%s,%s,%s" % (i.my_name(), j.my_name(), sctrain, scnew, sctest, len(irep.ruleset_), (end-start)))
         
         fileres.close()      
-        # TODO: experiment with probabilities?
         
 
 def exp_parallel():

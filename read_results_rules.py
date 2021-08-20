@@ -111,10 +111,11 @@ for i in filenames:
         print("error at " + i)
 res = pd.concat(res)
 res.loc[res['gen'] == 'adasyns','gen'] = 'adasyn'
+res.to_csv(WHERE + 'res.csv')
 
 #### if we exclude time-consuming experiments, will it affect much?
 
-res = res[~res['dat'].isin(tcf)]
+# res = res[~res['dat'].isin(tcf)]
 
 
 #### accuracy increase

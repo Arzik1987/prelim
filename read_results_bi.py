@@ -7,6 +7,9 @@ import sys
 import time
 
 WHERE = 'registrybi/' 
+if os.path.exists(WHERE + "res.csv"):
+    os.remove(WHERE + "res.csv")
+    
 _, _, filenames = next(os.walk(WHERE))
 
 #### check if all jobs have terminated
@@ -116,15 +119,17 @@ for i in filenames:
         print("error at " + i)
 res = pd.concat(res)
 res.loc[res['gen'] == 'adasyns','gen'] = 'adasyn'
+res.to_csv(WHERE + 'res.csv')
 
 
 #### accuracy increase
 
-for thrval in [0.01, 0.03, 0.05, 0.07, 0.1, np.inf]:
-    
-    threshold = thrval
+for thr in [0.03, 0.05, 0.1, np.inf]:
+
     a = res.copy()
-    a = a[(a['npr']/a['tpr'] < (1 + threshold)) & (a['npr']/a['tpr'] > (1 - threshold))]
+    # a = a[(a['npr']/a['tpr'] < (1 + thr)) & (a['npr']/a['tpr'] > (1 - thr))]
+    a.loc[(a['npr']/a['tpr'] > (1 + thr)) | (a['npr']/a['tpr'] < (1 - thr)), 'tes']=\
+                a.loc[(a['npr']/a['tpr'] > (1 + thr)) | (a['npr']/a['tpr'] < (1 - thr)), 'ora']
     
     a = a[['alg', 'gen', 'met', 'npt', 'tes', 'ora']].groupby(['alg', 'gen', 'met', 'npt']).mean()
     a.to_csv(WHERE + 'a.csv')
@@ -155,18 +160,10 @@ for thrval in [0.01, 0.03, 0.05, 0.07, 0.1, np.inf]:
     fg.set_axis_labels("metamodel", "generator")
     fg.set_titles(col_template="{col_name}", row_template="{row_name}")
     fg.tight_layout()
-    fg.savefig("results/bi_wracc_heatmap_short_" + str(thrval) + ".png")
-
-#### check values:
-# df = a[(a['npt'] == 800) & (a['alg'] == 'dtcomp')]
-# dfna = df.pivot('gen', 'met', 'tes')
-# dfoa = df.pivot('gen', 'met', 'ora')
-# (dfna - dfoa)/dfoa
+    fg.savefig("results/bi_wracc_heatmap_short_" + str(thr) + ".png")
 
 
-
-# an interesting fact is that although the relative improvement drops with 'npt',
-# this improvement is more consistent over the experiments:
+# FYI
 a = res.copy()
 a['dif'] = np.sign(a['tes'] - a['ora'])
 a = a[['alg', 'gen', 'met', 'npt', 'dif']]
