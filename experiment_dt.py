@@ -15,6 +15,7 @@ from src.metamodels.xgb import Meta_xgb
 
 from src.generators.gmm import Gen_gmmbic
 from src.generators.kde import Gen_kdebw
+from src.generators.kdem import Gen_kdebwm
 from src.generators.munge import Gen_munge
 from src.generators.noise import Gen_noise
 from src.generators.rand import Gen_randn, Gen_randu
@@ -22,6 +23,7 @@ from src.generators.dummy import Gen_dummy
 from src.generators.smote import Gen_smote
 from src.generators.adasyn import Gen_adasyn
 from src.generators.rfdens import Gen_rfdens
+from src.generators.vva import Gen_vva
 
 from sklearn.tree import DecisionTreeClassifier, _tree
 
@@ -89,6 +91,7 @@ def n_leaves(tree):
 def experiment_dt(splitn, dname, dsize):                                                                              
     gengmmbic = Gen_gmmbic() 
     genkde = Gen_kdebw()
+    genkdem = Gen_kdebwm()
     genmunge = Gen_munge()
     genrandu = Gen_randu()
     genrandn = Gen_randn()
@@ -97,6 +100,7 @@ def experiment_dt(splitn, dname, dsize):
     genadasyn = Gen_adasyn()
     gensmote = Gen_smote()
     genrfdens = Gen_rfdens()
+    genvva = Gen_vva()
                                                
     metarf = Meta_rf()
     metaxgb = Meta_xgb()
@@ -105,6 +109,7 @@ def experiment_dt(splitn, dname, dsize):
     dtcomp = DecisionTreeClassifier(max_depth = 3)
     dtcomp2 = DecisionTreeClassifier(max_leaf_nodes = 8)
     dtcv = DecisionTreeClassifier()
+    dtcv2 = DecisionTreeClassifier()
     
     # get datasets
     X, y = load_data(dname)    
@@ -120,6 +125,11 @@ def experiment_dt(splitn, dname, dsize):
     Xtest = Xtest[:,(X.max(axis=0) != X.min(axis=0))]
     X = X[:,(X.max(axis=0) != X.min(axis=0))]
     
+    ss = StandardScaler()                                               
+    ss.fit(X)                                                       
+    X = ss.transform(X) 
+    Xtest = ss.transform(Xtest)
+    
     defprec = 1 if y.mean() >= 0.5 else 0
     testprec = ytest.mean() if defprec == 1 else 1 - ytest.mean()
     trainprec = y.mean() if defprec == 1 else 1 - y.mean()
@@ -132,26 +142,13 @@ def experiment_dt(splitn, dname, dsize):
 
     fileres = open("registrydt/%s_%s_%s.csv" % (dname, splitn, dsize), "a")
     # (1) model (2) gen (3) met (4) sctr (5) scnew (6) sctest (7) nleaves (8) time
-    start = time.time()
-    dt.fit(X, y)
-    end = time.time()                                                  
-    sctrain = dt.score(X, y)
-    sctest = dt.score(Xtest, ytest)
-    fileres.write("dt,na,na,%s,nan,%s,%s,%s" % (sctrain, sctest, n_leaves(dt), (end-start))) 
-
-    start = time.time()
-    dtcomp.fit(X, y)  
-    end = time.time()                                                 
-    sctrain = dtcomp.score(X, y)
-    sctest = dtcomp.score(Xtest, ytest)
-    fileres.write("\ndtcomp,na,na,%s,nan,%s,%s,%s" % (sctrain, sctest, n_leaves(dtcomp), (end-start))) 
-    
-    start = time.time()
-    dtcomp2.fit(X, y)  
-    end = time.time()                                                 
-    sctrain = dtcomp2.score(X, y)
-    sctest = dtcomp2.score(Xtest, ytest)
-    fileres.write("\ndtcomp2,na,na,%s,nan,%s,%s,%s" % (sctrain, sctest, n_leaves(dtcomp2), (end-start))) 
+    for k, names in zip([dt, dtcomp, dtcomp2],["dt", "dtcomp", "dtcomp2"]):
+        start = time.time()
+        k.fit(X, y)
+        end = time.time()                                                  
+        sctrain = k.score(X, y)
+        sctest = k.score(Xtest, ytest)
+        fileres.write(names + ",na,na,%s,nan,%s,%s,%s\n" % (sctrain, sctest, n_leaves(k), (end-start))) 
     
     # DT HPO
     par_vals = [1,2,3,4,5,6,7]
@@ -163,27 +160,40 @@ def experiment_dt(splitn, dname, dsize):
     dtcv.fit(X, y)
     end = time.time()
     sctrain = dtcv.score(X, y)
-    sctest = dtcv.score(Xtest, ytest)   
-    fileres.write("\ndtcv,na,na,%s,nan,%s,%s,%s" % (sctrain, sctest, n_leaves(dtcv), (end-start))) 
-    fileres.close()
-    
+    sctest = dtcv.score(Xtest, ytest) 
+    fileres.write("dtcv,na,na,%s,nan,%s,%s,%s\n" % (sctrain, sctest, n_leaves(dtcv), (end-start))) 
     filetme = open("registrydt/%s_%s_%s_times.csv" % (dname, splitn, dsize), "a")
     filetme.write("dtcvsc,%s\n" % tmp[np.argmax(tmp)])
-    # filetme.write("dtsc,%s\n" % tmp[par_vals.index(None)])
     filetme.write("dtcompsc,%s\n" % tmp[par_vals.index(3)])
     filetme.close()  
+    dtcv = DecisionTreeClassifier(max_depth = dtcv.get_depth())
+    
+    par_vals = [2**number for number in par_vals]
+    parameters = {'max_leaf_nodes': par_vals}   
+    start = time.time()                           
+    tmp = GridSearchCV(dtcv2, parameters, refit = False).fit(X, y).cv_results_ 
+    tmp = opt_param(tmp, len(par_vals))
+    dtcv2 = DecisionTreeClassifier(max_leaf_nodes = par_vals[np.argmax(tmp)])                                            
+    dtcv2.fit(X, y)
+    end = time.time()
+    sctrain = dtcv2.score(X, y)
+    sctest = dtcv2.score(Xtest, ytest) 
+    fileres.write("dtcv2,na,na,%s,nan,%s,%s,%s\n" % (sctrain, sctest, n_leaves(dtcv2), (end-start)))
+    filetme = open("registrydt/%s_%s_%s_times.csv" % (dname, splitn, dsize), "a")
+    filetme.write("dtcv2sc,%s\n" % tmp[np.argmax(tmp)])
+    filetme.write("dtcomp2sc,%s\n" % tmp[par_vals.index(8)])
+    filetme.close() 
+    fileres.close()  
+    dtcv2 = DecisionTreeClassifier(max_leaf_nodes = max(n_leaves(dtcv2),2))
     
     
     # prelim
-    ss = StandardScaler()                                               
-    ss.fit(X)                                                       
-    Xs = ss.transform(X) 
                                                 
     for i in [gengmmbic, genkde, genmunge, genrandu, genrandn, gendummy,\
-              gennoise, gensmote, genadasyn, genrfdens]:
+              gennoise, gensmote, genadasyn, genrfdens, genkdem]:
         filetme = open("registrydt/%s_%s_%s_times.csv" % (dname, splitn, dsize), "a")                                      
         start = time.time()
-        i.fit(Xs, y)
+        i.fit(X, y)
         end = time.time()
         filetme.write(i.my_name() + ",%s\n" % (end-start)) 
         filetme.close()
@@ -191,62 +201,104 @@ def experiment_dt(splitn, dname, dsize):
     for j in [metarf, metaxgb]: 
         filetme = open("registrydt/%s_%s_%s_times.csv" % (dname, splitn, dsize), "a")                                     
         start = time.time()
-        j.fit(Xs, y)
+        j.fit(X, y)
         end = time.time()
         filetme.write(j.my_name() + ",%s\n" % (end-start)) 
         filetme.write(j.my_name() + "acc,%s\n" % j.fit_score()) 
         filetme.close()
         
-    for i, j in product([gengmmbic, genkde, genmunge, genrandu, genrandn, gendummy,\
-                         gennoise, gensmote, genadasyn, genrfdens], [metarf, metaxgb]):
-        filetme = open("registrydt/%s_%s_%s_times.csv" % (dname, splitn, dsize), "a")              
-
-        start = time.time()
-        Xnew = i.sample(100000 - dsize)                                                                      
-        ynew = j.predict(Xnew)
-        Xnew = ss.inverse_transform(Xnew)  
-        Xnew = np.concatenate([Xnew, X])
-        ynew = np.concatenate([ynew, y])
+    for j in [metarf, metaxgb]:
+        ntrain = int(np.ceil(X.shape[0]*2/3))
+        Xstrain = X[:ntrain,:].copy()
+        Xstest = X[ntrain:,:].copy()
+        ystrain = y[:ntrain].copy()
+        ystest = y[ntrain:].copy()
+        start = time.time() 
+        genvva.fit(Xstrain, j)
         end = time.time()
-        filetme.write(i.my_name() + j.my_name() + ",%s\n" % (end-start))  
-        filetme.write(i.my_name() + j.my_name() + "prec,%s\n" % (ynew.mean() if defprec == 1 else 1 - ynew.mean()))
-        filetme.close()                             
+        filetme = open("registrydt/%s_%s_%s_times.csv" % (dname, splitn, dsize), "a")
+        filetme.write(j.my_name() + "vva,%s\n" % (end-start))
+        filetme.close()
         
-        fileres = open("registrydt/%s_%s_%s.csv" % (dname, splitn, dsize), "a")
+        for k, names in zip([dt, dtcomp, dtcomp2, dtcv, dtcv2], ["dt", "dtcomp", "dtcomp2", "dtcv", "dtcv2"]):
+            start = time.time()            
+            k.fit(Xstrain, ystrain)
+            sctest0 = k.score(Xstest, ystest)
+            ropt = 0
+            
+            if genvva.will_generate():
+                for r in np.linspace(0.5, 2.5, num = 5):
+                    Xnew = genvva.sample(r)    
+                    ynew = np.concatenate([j.predict(Xnew), ystrain]) 
+                    k.fit(np.concatenate([Xnew, Xstrain]), ynew)                                    
+                    sctest = k.score(Xstest, ystest)
+                    if sctest > sctest0:
+                        sctest0 = sctest
+                        ropt = r
+               
+            end = time.time()
+            filetme = open("registrydt/%s_%s_%s_times.csv" % (dname, splitn, dsize), "a")
+            filetme.write(names + j.my_name() + "vvaopt,%s\n" % (end-start))
+            filetme.write(names + j.my_name() + "ropt,%s\n" % ropt)
+            
+            start = time.time()
+            if ropt > 0:
+                Xnew = Gen_vva().fit(X, j).sample(ropt)  
+                ynew = j.predict(Xnew) 
+                Xnew = np.concatenate([Xnew, X])
+                ynew = np.concatenate([ynew, y])
+            else:
+                Xnew = X.copy()
+                ynew = y.copy()
+                
+            end = time.time()
+            filetme.write(names + j.my_name() + "vvagen,%s\n" % (end-start))            
+            filetme.close() 
+                              
+            fileres = open("registrydt/%s_%s_%s.csv" % (dname, splitn, dsize), "a")
+            start = time.time()
+            k.fit(Xnew, ynew)
+            end = time.time()                                     
+            sctrain = k.score(X, y)
+            scnew = k.score(Xnew, ynew)
+            sctest = k.score(Xtest, ytest)
+            fileres.write(names + ",vva,%s,%s,nan,%s,%s,%s\n" % (j.my_name(), sctrain, sctest, n_leaves(k), (end-start))) 
+            fileres.close()      
+                
+    
+    for i in [gengmmbic, genkde, genmunge, genrandu, genrandn, gendummy,\
+                         gennoise, gensmote, genadasyn, genrfdens, genkdem]:
+        
+        filetme = open("registrydt/%s_%s_%s_times.csv" % (dname, splitn, dsize), "a")
         start = time.time()
-        dt.fit(Xnew, ynew)
-        end = time.time()                                     
-        sctrain = dt.score(X, y)
-        scnew = dt.score(Xnew, ynew)
-        sctest = dt.score(Xtest, ytest)
-        fileres.write("\ndt,%s,%s,%s,nan,%s,%s,%s" % (i.my_name(), j.my_name(), sctrain, sctest, n_leaves(dt), (end-start))) 
+        Xgen = i.sample(100000 - dsize)  
+        end = time.time()
+        filetme.write(i.my_name() + "gen,%s\n" % (end-start))
+        filetme.close()   
         
-        start = time.time()
-        dtcomp.fit(Xnew, ynew) 
-        end = time.time()                                    
-        sctrain = dtcomp.score(X, y)
-        scnew = dtcomp.score(Xnew, ynew)
-        sctest = dtcomp.score(Xtest, ytest)                                       
-        fileres.write("\ndtcomp,%s,%s,%s,nan,%s,%s,%s" % (i.my_name(), j.my_name(), sctrain, sctest, n_leaves(dtcomp), (end-start)))
+        for j in [metarf, metaxgb]:
+            filetme = open("registrydt/%s_%s_%s_times.csv" % (dname, splitn, dsize), "a")
+            start = time.time()
+            Xnew = Xgen.copy()  
+            ynew = j.predict(Xnew)
+            Xnew = np.concatenate([Xnew, X])
+            ynew = np.concatenate([ynew, y])
+            end = time.time()
+            filetme.write(i.my_name() + j.my_name() + ",%s\n" % (end-start))  
+            filetme.write(i.my_name() + j.my_name() + "prec,%s\n" % (ynew.mean() if defprec == 1 else 1 - ynew.mean()))
+            filetme.close()
+            
+            for k, names in zip([dt, dtcomp, dtcomp2, dtcv, dtcv2], ["dt", "dtcomp", "dtcomp2", "dtcv", "dtcv2"]):
+                fileres = open("registrydt/%s_%s_%s.csv" % (dname, splitn, dsize), "a")
+                start = time.time()
+                k.fit(Xnew, ynew)
+                end = time.time()                                     
+                sctrain = k.score(X, y)
+                scnew = k.score(Xnew, ynew)
+                sctest = k.score(Xtest, ytest)
+                fileres.write(names +",%s,%s,%s,nan,%s,%s,%s\n" % (i.my_name(), j.my_name(), sctrain, sctest, n_leaves(k), (end-start))) 
+                fileres.close()      
         
-        start = time.time()
-        dtcomp2.fit(Xnew, ynew) 
-        end = time.time()                                    
-        sctrain = dtcomp2.score(X, y)
-        scnew = dtcomp2.score(Xnew, ynew)
-        sctest = dtcomp2.score(Xtest, ytest)                                       
-        fileres.write("\ndtcomp2,%s,%s,%s,nan,%s,%s,%s" % (i.my_name(), j.my_name(), sctrain, sctest, n_leaves(dtcomp2), (end-start)))
-        
-        start = time.time()
-        dtcv.fit(Xnew, ynew)    
-        end = time.time()                                 
-        sctrain = dtcv.score(X, y)
-        scnew = dtcv.score(Xnew, ynew)
-        sctest = dtcv.score(Xtest, ytest)                                       
-        fileres.write("\ndtcv,%s,%s,%s,nan,%s,%s,%s" % (i.my_name(), j.my_name(), sctrain, sctest, n_leaves(dtcv), (end-start)))
-        
-        fileres.close()      
-        # TODO: experiment with probabilities?
         
 
 def exp_parallel():
@@ -259,3 +311,5 @@ def exp_parallel():
 if __name__ == "__main__":
     exp_parallel()
 
+
+# experiment_dt(2, "avila", 200)
