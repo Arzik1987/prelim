@@ -164,9 +164,23 @@ def load_data(dname):
     # sum(y)/len(y)
     return X, y
 
+
 # =============================================================================
-# X, y = load_data("seoul_bike")
+# res = []
+# for i in ['anuran', 'avila', 'bankruptcy', 'ccpp', 'cc', 'clean2', 'dry',
+#        'ees', 'electricity', 'gas', 'gt', 'higgs21', 'higgs7', 'htru', 'jm1',
+#        'ml', 'nomao', 'occupancy', 'parkinson', 'pendata', 'ring',
+#        'saac2', 'seizure', 'sensorless', 'seoul', 'shuttle', 'stocks',
+#        'sylva', 'turbine', 'wine']:
+#     print(i)
+#     X, y = load_data(i)
+#     res.append([i, X.shape[0], X.shape[1], np.round(sum(y)/len(y), 2)])
+# 
+# res = pd.DataFrame(res, columns=['name','n','m', 'pos'])
+# res.to_csv('datasets.csv')
 # =============================================================================
+    
+
 
 
 

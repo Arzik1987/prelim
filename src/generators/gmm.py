@@ -19,7 +19,7 @@ class Gen_gmm:
         return self.model_.sample(n_samples)[0]
     
     def my_name(self):
-        return "gmm"
+        return "gmmcv"
     
     
 class Gen_gmmbic:
@@ -47,8 +47,33 @@ class Gen_gmmbic:
         return self.model_.sample(n_samples)[0]
 
     def my_name(self):
-        return "gmmbic"
+        return "gmm"
 
+
+class Gen_gmmbical:
+
+    def __init__(self, params = {"n_components": list(range(1, 30))}, cv = 5):
+        self.params_ = params
+
+    def fit(self, X, y = None):
+        # see https://scikit-learn.org/stable/auto_examples/mixture/plot_gmm_selection.html
+        lowest_bic = np.infty
+        for n_components in self.params_['n_components']:
+            gmm = GaussianMixture(n_components = n_components, covariance_type = "diag")
+            gmm.fit(X)
+            bic = gmm.bic(X)
+            if bic < lowest_bic:
+                lowest_bic = bic
+                best_gmm = gmm
+        
+        self.model_ = best_gmm
+        return self
+
+    def sample(self, n_samples = 1):
+        return self.model_.sample(n_samples)[0]
+
+    def my_name(self):
+        return "gmmal"
 
 
 # =============================================================================

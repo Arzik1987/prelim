@@ -42,10 +42,10 @@ def get_acc_increase(d, tmp_times):
         d.loc[d['alg'] == i,'ora'] = [orig_acc]*d.loc[d['alg'] == i].shape[0]
         d.loc[d['alg'] == i,'orn'] = [orig_nle]*d.loc[d['alg'] == i].shape[0]
         
-    d['npr'] = d['gen'] + d['met'] + 'prec'
-    for i in d['npr'].unique():
-        newprec = tmp_times[tmp_times['alg'].isin([i])]['val'].iloc[0]
-        d.loc[d['npr'] == i, 'npr'] = [newprec]*d.loc[d['npr'] == i].shape[0]
+    # d['npr'] = d['gen'] + d['met'] + 'prec'
+    # for i in d['npr'].unique():
+    #     newprec = tmp_times[tmp_times['alg'].isin([i])]['val'].iloc[0]
+    #     d.loc[d['npr'] == i, 'npr'] = [newprec]*d.loc[d['npr'] == i].shape[0]
         
     d['tpr'] = [tmp_times[tmp_times['alg'].isin(['trainprec'])]['val'].iloc[0]]*d.shape[0]
     d['cva'] = [tmp_times[tmp_times['alg'].isin(['dtcvsc'])]['val'].iloc[0]]*d.shape[0]
@@ -93,6 +93,8 @@ res.to_csv(WHERE + 'res.csv')
 
 
 #### accuracy increase
+
+res = pd.read_csv(WHERE + 'res.csv', delimiter = ",")
 
 def draw_heatmap(*args, **kwargs):
     data = kwargs.pop('data')
@@ -157,9 +159,9 @@ def draw_with_thr(thrtype = 'acc', thrvals = [0, 1, 1.05]):
             fg.tight_layout()
             fg.savefig("results/dt_accuracy_" + thrtype + str(thr) + ".png")
 
-draw_with_thr(thrtype = 'acc', thrvals = [0, 1, 1.05])
-draw_with_thr(thrtype = 'prec', thrvals = [np.inf, 0.1, 0.05, 0.03])
-draw_with_thr(thrtype = 'inc', thrvals = [0, 0.05, 0.1, 0.15])
+draw_with_thr(thrtype = 'acc', thrvals = [0])
+# draw_with_thr(thrtype = 'prec', thrvals = [np.inf, 0.1, 0.05, 0.03])
+# draw_with_thr(thrtype = 'inc', thrvals = [0, 0.05, 0.1, 0.15])
 
 
 
@@ -171,21 +173,22 @@ draw_with_thr(thrtype = 'inc', thrvals = [0, 0.05, 0.1, 0.15])
 
 
 
-#### number of rules decrease
+# #### number of rules decrease
 
-a['dec'] = (-a['nle'] + a['orn'])/a['nle']
+# a = res.copy()
+# a['dec'] = (-a['nle'] + a['orn'])/a['nle']
 
-rdgn = sns.diverging_palette(h_neg = 10, h_pos = 130, s = 99, l = 55, sep = 3, as_cmap = True)
-fg = sns.FacetGrid(a, col = 'alg', row = 'npt', margin_titles = True, despine = False)
-fg.map_dataframe(draw_heatmap, 'met', 'gen', 'dec', cbar = False, cmap = rdgn, center = 0.0, annot = True, fmt ='.0%')
-fg.set_axis_labels("metamodel", "generator")
-fg.set_titles(col_template="{col_name}", row_template="{row_name}")
-fg.tight_layout()
-fg.savefig("results/dt_complexity_heatmap.png")
+# rdgn = sns.diverging_palette(h_neg = 10, h_pos = 130, s = 99, l = 55, sep = 3, as_cmap = True)
+# fg = sns.FacetGrid(a, col = 'alg', row = 'npt', margin_titles = True, despine = False)
+# fg.map_dataframe(draw_heatmap, 'met', 'gen', 'dec', cbar = False, cmap = rdgn, center = 0.0, annot = True, fmt ='.0%')
+# fg.set_axis_labels("metamodel", "generator")
+# fg.set_titles(col_template="{col_name}", row_template="{row_name}")
+# fg.tight_layout()
+# fg.savefig("results/dt_complexity_heatmap.png")
 
 
-# FYI
-a = res.copy()
-a['dif'] = np.sign(a['tes'] - a['ora'])
-a = a[['alg', 'gen', 'met', 'npt', 'dif']]
-a = a.groupby(['alg', 'gen', 'met', 'npt']).dif.value_counts().unstack()
+# # FYI
+# a = res.copy()
+# a['dif'] = np.sign(a['tes'] - a['ora'])
+# a = a[['alg', 'gen', 'met', 'npt', 'dif']]
+# a = a.groupby(['alg', 'gen', 'met', 'npt']).dif.value_counts().unstack()
