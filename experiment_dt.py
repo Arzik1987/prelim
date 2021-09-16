@@ -171,6 +171,7 @@ def experiment_dt(splitn, dname, dsize):
     filetme.write("dtcvsc,%s\n" % tmp[np.argmax(tmp)])
     filetme.write("dtcompsc,%s\n" % tmp[par_vals.index(3)])
     filetme.close()  
+    dtcvold = copy.deepcopy(dtcv) 
     dtcv = DecisionTreeClassifier(max_depth = dtcv.get_depth())
     
     par_vals = [2**number for number in par_vals]
@@ -189,6 +190,7 @@ def experiment_dt(splitn, dname, dsize):
     filetme.write("dtcomp2sc,%s\n" % tmp[par_vals.index(8)])
     filetme.close() 
     fileres.close()  
+    dtcvold2 = copy.deepcopy(dtcv2)
     dtcv2 = DecisionTreeClassifier(max_leaf_nodes = max(n_leaves(dtcv2),2))
     
     
@@ -208,10 +210,13 @@ def experiment_dt(splitn, dname, dsize):
         start = time.time()
         j.fit(X, y)
         end = time.time()
+        ypredtest = j.predict(Xtest)
         filetme.write(j.my_name() + ",%s\n" % (end-start)) 
         filetme.write(j.my_name() + "acc,%s\n" % j.fit_score()) 
+        for k, names in zip([dt, dtcomp, dtcomp2, dtcvold, dtcvold2], ["dt", "dtcomp", "dtcomp2", "dtcv", "dtcv2"]):
+            fidel = np.count_nonzero(k.predict(Xtest) == ypredtest)/len(ypredtest)
+            filetme.write(j.my_name() + names + "fid,%s\n" % (fidel))
         filetme.close()
-        ypredtest = j.predict(Xtest)
         
         # rerx generator
         genrerx.fit(X, y, j)
