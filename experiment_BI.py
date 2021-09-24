@@ -7,23 +7,24 @@ os.environ.update(
     MKL_NUM_THREADS = '1',
 )
 
-# from src.metamodels.kriging import Meta_kriging
-# from src.metamodels.nb import Meta_nb
-# from src.metamodels.svm import Meta_svm
+
 from src.metamodels.rf import Meta_rf
 from src.metamodels.xgb import Meta_xgb
 
-from src.generators.gmm import Gen_gmmbic
+from src.generators.gmm import Gen_gmmbic, Gen_gmmbical
 from src.generators.kde import Gen_kdebw
+from src.generators.kdem import Gen_kdebwm
 from src.generators.munge import Gen_munge
-from src.generators.noise import Gen_noise
+from src.generators.kdeb import Gen_kdeb
+# from src.generators.noise import Gen_noise
 from src.generators.rand import Gen_randn, Gen_randu
 from src.generators.dummy import Gen_dummy
 from src.generators.smote import Gen_smote
 from src.generators.adasyn import Gen_adasyn
 from src.generators.rfdens import Gen_rfdens
+from src.generators.vva import Gen_vva
+from src.generators.rerx import Gen_rerx
 
-# import wittgenstein as lw
 from src.subgroup_discovery.BI import BI
 
 from src.utils.data_splitter import DataSplitter
@@ -38,8 +39,9 @@ from itertools import product
 import time
 import copy
 
-if not os.path.exists('registrybi'):
-    os.makedirs('registrybi')
+dirnme = 'registrybi'
+if not os.path.exists(dirnme):
+    os.makedirs(dirnme)
     
 # =============================================================================
 
@@ -50,17 +52,12 @@ SPLITNS = list(range(0, NSETS))
 DNAMES = ["occupancy", "higgs7", "electricity", "htru", "shuttle", "avila",
           "cc", "ees", "pendata", "ring", "sylva", "higgs21",
           "jm1", "saac2", "stocks", 
-          "sensorless", "bankruptcy", 
+          "sensorless", "bankruptcy", "gt", 
           # "gas", "clean2", "seizure", "nomao",
           "ccpp", "seoul", "turbine", "wine", "parkinson", "dry", "anuran", "ml"]
 # DSIZES = [100]
-DSIZES = [100, 200, 400, 800]
+DSIZES = [100, 400]
 
-def get_bi_param(nval, nattr):
-    a = [ -x for x in range(-nattr, 0, np.ceil(nattr/nval).astype(int))]
-    b = [ -x for x in range(-nattr, min(-nattr + nval, 0), 1)]
-    res = a if len(a) > nval/2 + 1 else b
-    return np.flip(res)
 
 def opt_param(cvres, nval):
     fit_res = np.empty((0, nval))
@@ -70,17 +67,23 @@ def opt_param(cvres, nval):
     tmp = np.nanmean(fit_res, 0)
     return tmp
 
-def experiment_rules(splitn, dname, dsize):                                                                              
+
+def experiment_bi(splitn, dname, dsize):                                                                              
     gengmmbic = Gen_gmmbic() 
     genkde = Gen_kdebw()
+    genkdeb = Gen_kdeb()
+    genkdem = Gen_kdebwm()
     genmunge = Gen_munge()
     genrandu = Gen_randu()
     genrandn = Gen_randn()
     gendummy = Gen_dummy()
-    gennoise = Gen_noise()
+    # gennoise = Gen_noise()
     genadasyn = Gen_adasyn()
     gensmote = Gen_smote()
     genrfdens = Gen_rfdens()
+    genvva = Gen_vva()
+    gengmmbical = Gen_gmmbical()
+    genrerx = Gen_rerx()
                                                
     metarf = Meta_rf()
     metaxgb = Meta_xgb()
@@ -94,138 +97,227 @@ def experiment_rules(splitn, dname, dsize):
     ds.configure(NSETS, dsize)                                         
     X, y = ds.get_train(splitn)       
     if y.sum() == 0:
-        fileres = open("registrybi/%s_%s_%s_zeros.csv" % (dname, splitn, dsize), "a")
+        fileres = open(dirnme + "/%s_%s_%s_zeros.csv" % (dname, splitn, dsize), "a")
         fileres.close()
         return                                    
     Xtest, ytest = ds.get_test(splitn) 
     Xtest = Xtest[:,(X.max(axis=0) != X.min(axis=0))]
     X = X[:,(X.max(axis=0) != X.min(axis=0))]
     
+    ss = StandardScaler()                                               
+    ss.fit(X)                                                       
+    X = ss.transform(X) 
+    Xtest = ss.transform(Xtest)
+    
     defprec = 1 if y.mean() >= 0.5 else 0
     testprec = ytest.mean() if defprec == 1 else 1 - ytest.mean()
     trainprec = y.mean() if defprec == 1 else 1 - y.mean()
-    filetme = open("registrybi/%s_%s_%s_times.csv" % (dname, splitn, dsize), "a")
+    filetme = open(dirnme + "/%s_%s_%s_times.csv" % (dname, splitn, dsize), "a")
     filetme.write("testprec,%s\n" % testprec) 
     filetme.write("trainprec,%s\n" % trainprec) 
     filetme.close()        
 
-    #===== SD                         
+    #===== trees                         
 
-    fileres = open("registrybi/%s_%s_%s.csv" % (dname, splitn, dsize), "a")
-    # (1) model (2) gen (3) met (4) sctr (5) scnew (6) sctest (7) nrestr (8) time
-    start = time.time()
-    bi.fit(X, y)
-    end = time.time()                                                   
-    sctrain = bi.score(X, y)
-    sctest = bi.score(Xtest, ytest)
-    fileres.write("bi,na,na,%s,nan,%s,nan,%s" % (sctrain, sctest, (end-start))) 
-
-    # BI HPO
-    parsbi = get_bi_param(5, X.shape[1])
-    parameters = {'depth': parsbi}                                      # params for SD with HPO
-    start = time.time() 
-    tmp = GridSearchCV(bi, parameters, refit = False).fit(X, y).cv_results_ 
-    tmp = opt_param(tmp, len(parsbi))
-    bicv = BI(depth = parsbi[np.argmax(tmp)])
-    bicv.fit(X, y)
-    end = time.time()
-    sctrain = bicv.score(X, y)
-    sctest = bicv.score(Xtest, ytest)     
-    fileres.write("\nbicv,na,na,%s,nan,%s,%s,%s" % (sctrain, sctest, parsbi[np.argmax(tmp)], (end-start))) 
-    fileres.close()
+    fileres = open(dirnme + "/%s_%s_%s.csv" % (dname, splitn, dsize), "a")
+    # (1) model (2) gen (3) met (4) sctr (5) scnew (6) sctest (7) nleaves (8) time (9) fidelity
+    for k, names in zip([dt, dtcomp, dtcomp2],["dt", "dtcomp", "dtcomp2"]):
+        start = time.time()
+        k.fit(X, y)
+        end = time.time()                                                  
+        sctrain = k.score(X, y)
+        sctest = k.score(Xtest, ytest)
+        fileres.write(names + ",na,na,%s,nan,%s,%s,%s,na\n" % (sctrain, sctest, n_leaves(k), (end-start))) 
     
-    filetme = open("registrybi/%s_%s_%s_times.csv" % (dname, splitn, dsize), "a")
-    filetme.write("bicvsc,%s\n" % tmp[np.argmax(tmp)])
-    filetme.write("bisc,%s\n" % tmp[-1])
-    # filetme.write("dtcompsc,%s\n" % tmp[par_vals.index(3)])
+    # DT HPO
+    par_vals = [1,2,3,4,5,6,7]
+    parameters = {'max_depth': par_vals}   
+    start = time.time()                           
+    tmp = GridSearchCV(dtcv, parameters, refit = False).fit(X, y).cv_results_ 
+    tmp = opt_param(tmp, len(par_vals))
+    dtcv = DecisionTreeClassifier(max_depth = par_vals[np.argmax(tmp)])                                            
+    dtcv.fit(X, y)
+    end = time.time()
+    sctrain = dtcv.score(X, y)
+    sctest = dtcv.score(Xtest, ytest) 
+    fileres.write("dtcv,na,na,%s,nan,%s,%s,%s,na\n" % (sctrain, sctest, n_leaves(dtcv), (end-start))) 
+    filetme = open(dirnme + "/%s_%s_%s_times.csv" % (dname, splitn, dsize), "a")
+    filetme.write("dtcvsc,%s\n" % tmp[np.argmax(tmp)])
+    filetme.write("dtcompsc,%s\n" % tmp[par_vals.index(3)])
     filetme.close()  
+    dtcvold = copy.deepcopy(dtcv) 
+    dtcv = DecisionTreeClassifier(max_depth = dtcv.get_depth())
+    
+    par_vals = [2**number for number in par_vals]
+    parameters = {'max_leaf_nodes': par_vals}   
+    start = time.time()                           
+    tmp = GridSearchCV(dtcv2, parameters, refit = False).fit(X, y).cv_results_ 
+    tmp = opt_param(tmp, len(par_vals))
+    dtcv2 = DecisionTreeClassifier(max_leaf_nodes = par_vals[np.argmax(tmp)])                                            
+    dtcv2.fit(X, y)
+    end = time.time()
+    sctrain = dtcv2.score(X, y)
+    sctest = dtcv2.score(Xtest, ytest) 
+    fileres.write("dtcv2,na,na,%s,nan,%s,%s,%s,na\n" % (sctrain, sctest, n_leaves(dtcv2), (end-start)))
+    filetme = open(dirnme + "/%s_%s_%s_times.csv" % (dname, splitn, dsize), "a")
+    filetme.write("dtcv2sc,%s\n" % tmp[np.argmax(tmp)])
+    filetme.write("dtcomp2sc,%s\n" % tmp[par_vals.index(8)])
+    filetme.close() 
+    fileres.close()  
+    dtcvold2 = copy.deepcopy(dtcv2)
+    dtcv2 = DecisionTreeClassifier(max_leaf_nodes = max(n_leaves(dtcv2),2))
     
     
     # prelim
-    ss = StandardScaler()                                               
-    ss.fit(X)                                                       
-    Xs = ss.transform(X) 
                                                 
     for i in [gengmmbic, genkde, genmunge, genrandu, genrandn, gendummy,\
-              gennoise, gensmote, genadasyn, genrfdens]:
-        filetme = open("registrybi/%s_%s_%s_times.csv" % (dname, splitn, dsize), "a")                                      
+              gengmmbical, gensmote, genadasyn, genrfdens, genkdem, genkdeb]:
+        filetme = open(dirnme + "/%s_%s_%s_times.csv" % (dname, splitn, dsize), "a")                                      
         start = time.time()
-        i.fit(Xs, y)
+        i.fit(X, y)
         end = time.time()
         filetme.write(i.my_name() + ",%s\n" % (end-start)) 
         filetme.close()
         
     for j in [metarf, metaxgb]: 
-        filetme = open("registrybi/%s_%s_%s_times.csv" % (dname, splitn, dsize), "a")                                     
+        filetme = open(dirnme + "/%s_%s_%s_times.csv" % (dname, splitn, dsize), "a")                                     
         start = time.time()
-        j.fit(Xs, y)
+        j.fit(X, y)
         end = time.time()
+        ypredtest = j.predict(Xtest)
         filetme.write(j.my_name() + ",%s\n" % (end-start)) 
         filetme.write(j.my_name() + "acc,%s\n" % j.fit_score()) 
+        for k, names in zip([dt, dtcomp, dtcomp2, dtcvold, dtcvold2], ["dt", "dtcomp", "dtcomp2", "dtcv", "dtcv2"]):
+            fidel = np.count_nonzero(k.predict(Xtest) == ypredtest)/len(ypredtest)
+            filetme.write(j.my_name() + names + "fid,%s\n" % (fidel))
         filetme.close()
         
-    for i, j in product([gengmmbic, genkde, genmunge, genrandu, genrandn, gendummy,\
-                         gennoise, gensmote, genadasyn, genrfdens], [metarf, metaxgb]):
-        filetme = open("registrybi/%s_%s_%s_times.csv" % (dname, splitn, dsize), "a")              
-
-        start = time.time()
-        Xnew = i.sample(10000 - dsize)                                                                      
+        # rerx generator
+        genrerx.fit(X, y, j)
+        Xnew = genrerx.sample()  
         ynew = j.predict(Xnew)
-        ynewp = j.predict_proba(Xnew)
-        Xnew = ss.inverse_transform(Xnew)
-        Xnewp = Xnew.copy()
-        Xnew = np.concatenate([Xnew, X])
-        ynew = np.concatenate([ynew, y])
+        filetme = open(dirnme + "/%s_%s_%s_times.csv" % (dname, splitn, dsize), "a")                                      
+        filetme.write("rerxndel,%s\n" % (dsize - len(y))) 
+        filetme.close()
+        
+        for k, names in zip([dt, dtcomp, dtcomp2, dtcv, dtcv2], ["dt", "dtcomp", "dtcomp2", "dtcv", "dtcv2"]):
+            fileres = open(dirnme + "/%s_%s_%s.csv" % (dname, splitn, dsize), "a")
+            start = time.time()
+            k.fit(Xnew, ynew)
+            end = time.time()                                     
+            sctrain = k.score(X, y)
+            scnew = k.score(Xnew, ynew)
+            sctest = k.score(Xtest, ytest)
+            fidel = np.count_nonzero(k.predict(Xtest) == ypredtest)/len(ypredtest)
+            fileres.write(names +",%s,%s,%s,nan,%s,%s,%s,%s\n" % (genrerx.my_name(), j.my_name(), sctrain, sctest, n_leaves(k), (end-start), fidel)) 
+            fileres.close()    
+        
+        # vva generator
+        ntrain = int(np.ceil(X.shape[0]*2/3))
+        Xstrain = X[:ntrain,:].copy()
+        Xstest = X[ntrain:,:].copy()
+        ystrain = y[:ntrain].copy()
+        ystest = y[ntrain:].copy()
+        start = time.time() 
+        genvva.fit(Xstrain, j)
         end = time.time()
-        filetme.write(i.my_name() + j.my_name() + ",%s\n" % (end-start))  
-        filetme.write(i.my_name() + j.my_name() + "prec,%s\n" % (ynew.mean() if defprec == 1 else 1 - ynew.mean()))
-        filetme.close()                             
+        filetme = open(dirnme + "/%s_%s_%s_times.csv" % (dname, splitn, dsize), "a")
+        filetme.write(j.my_name() + "vva,%s\n" % (end-start))
+        filetme.close()
         
-        fileres = open("registrybi/%s_%s_%s.csv" % (dname, splitn, dsize), "a")
+        for k, names in zip([dt, dtcomp, dtcomp2, dtcv, dtcv2], ["dt", "dtcomp", "dtcomp2", "dtcv", "dtcv2"]):
+            start = time.time()            
+            k.fit(Xstrain, ystrain)
+            sctest0 = k.score(Xstest, ystest)
+            ropt = 0
+            
+            if genvva.will_generate():
+                for r in np.linspace(0.5, 2.5, num = 5):
+                    Xnew = genvva.sample(r)    
+                    ynew = np.concatenate([j.predict(Xnew), ystrain]) 
+                    k.fit(np.concatenate([Xnew, Xstrain]), ynew)                                    
+                    sctest = k.score(Xstest, ystest)
+                    if sctest > sctest0:
+                        sctest0 = sctest
+                        ropt = r
+               
+            end = time.time()
+            filetme = open(dirnme + "v/%s_%s_%s_times.csv" % (dname, splitn, dsize), "a")
+            filetme.write(names + j.my_name() + "vvaopt,%s\n" % (end-start))
+            filetme.write(names + j.my_name() + "ropt,%s\n" % ropt)
+            
+            start = time.time()
+            if ropt > 0:
+                Xnew = Gen_vva().fit(X, j).sample(ropt)  
+                ynew = j.predict(Xnew) 
+                Xnew = np.concatenate([Xnew, X])
+                ynew = np.concatenate([ynew, y])
+            else:
+                Xnew = X.copy()
+                ynew = y.copy()
+                
+            end = time.time()
+            filetme.write(names + j.my_name() + "vvagen,%s\n" % (end-start))            
+            filetme.close() 
+                              
+            fileres = open(dirnme + "/%s_%s_%s.csv" % (dname, splitn, dsize), "a")
+            start = time.time()
+            k.fit(Xnew, ynew)
+            end = time.time()                                     
+            sctrain = k.score(X, y)
+            scnew = k.score(Xnew, ynew)
+            sctest = k.score(Xtest, ytest)
+            fidel = np.count_nonzero(k.predict(Xtest) == ypredtest)/len(ypredtest)
+            fileres.write(names + ",vva,%s,%s,nan,%s,%s,%s,%s\n" % (j.my_name(), sctrain, sctest, n_leaves(k), (end-start), fidel)) 
+            fileres.close()      
+                
+    
+    for i in [gengmmbic, genkde, genmunge, genrandu, genrandn, gendummy,\
+                         gengmmbical, gensmote, genadasyn, genrfdens, genkdem, genkdeb]:
         
+        filetme = open(dirnme + "/%s_%s_%s_times.csv" % (dname, splitn, dsize), "a")
         start = time.time()
-        bi.fit(Xnew, ynew)
-        end = time.time()                                     
-        sctrain = bi.score(X, y)
-        scnew = bi.score(Xnew, ynew)
-        sctest = bi.score(Xtest, ytest)
-        fileres.write("\nbi,%s,%s,%s,%s,%s,nan,%s" % (i.my_name(), j.my_name(), sctrain, scnew, sctest, (end-start))) 
+        Xgen = i.sample(100000 - dsize)  
+        end = time.time()
+        filetme.write(i.my_name() + "gen,%s\n" % (end-start))
+        filetme.close()   
         
-        start = time.time()
-        bi.fit(Xnewp, ynewp)
-        end = time.time()                                     
-        sctrain = bi.score(X, y)
-        scnew = bi.score(Xnewp, ynewp)
-        sctest = bi.score(Xtest, ytest)
-        fileres.write("\nbip,%s,%s,%s,%s,%s,nan,%s" % (i.my_name(), j.my_name(), sctrain, scnew, sctest, (end-start))) 
+        for j in [metarf, metaxgb]:
+            filetme = open(dirnme + "/%s_%s_%s_times.csv" % (dname, splitn, dsize), "a")
+            start = time.time()
+            Xnew = Xgen.copy()  
+            ynew = j.predict(Xnew)
+            Xnew = np.concatenate([Xnew, X])
+            ynew = np.concatenate([ynew, y])
+            end = time.time()
+            filetme.write(i.my_name() + j.my_name() + ",%s\n" % (end-start))  
+            filetme.write(i.my_name() + j.my_name() + "prec,%s\n" % (ynew.mean() if defprec == 1 else 1 - ynew.mean()))
+            filetme.close()
+            ypredtest = j.predict(Xtest) # not too efficient to calculate it here...
+            
+            for k, names in zip([dt, dtcomp, dtcomp2, dtcv, dtcv2], ["dt", "dtcomp", "dtcomp2", "dtcv", "dtcv2"]):
+                fileres = open(dirnme + "/%s_%s_%s.csv" % (dname, splitn, dsize), "a")
+                start = time.time()
+                k.fit(Xnew, ynew)
+                end = time.time()                                     
+                sctrain = k.score(X, y)
+                scnew = k.score(Xnew, ynew)
+                sctest = k.score(Xtest, ytest)
+                fidel = np.count_nonzero(k.predict(Xtest) == ypredtest)/len(ypredtest)
+                fileres.write(names +",%s,%s,%s,nan,%s,%s,%s,%s\n" % (i.my_name(), j.my_name(), sctrain, sctest, n_leaves(k), (end-start), fidel)) 
+                fileres.close()      
         
-        start = time.time()
-        bicv.fit(Xnew, ynew) 
-        end = time.time()                                    
-        sctrain = bicv.score(X, y)
-        scnew = bicv.score(Xnew, ynew)
-        sctest = bicv.score(Xtest, ytest)                                       
-        fileres.write("\nbicv,%s,%s,%s,%s,%s,%s,%s" % (i.my_name(), j.my_name(), sctrain, scnew, sctest, parsbi[np.argmax(tmp)], (end-start)))
-        
-        start = time.time()
-        bicv.fit(Xnewp, ynewp) 
-        end = time.time()                                    
-        sctrain = bicv.score(X, y)
-        scnew = bicv.score(Xnewp, ynewp)
-        sctest = bicv.score(Xtest, ytest)                                       
-        fileres.write("\nbicvp,%s,%s,%s,%s,%s,%s,%s" % (i.my_name(), j.my_name(), sctrain, scnew, sctest, parsbi[np.argmax(tmp)], (end-start)))
-        
-        fileres.close()      
-        # TODO: experiment with probabilities?
         
 
 def exp_parallel():
     # pool = Pool(4)
     pool = Pool(cpu_count())
-    pool.starmap_async(experiment_rules, product(SPLITNS, DNAMES, DSIZES))
+    pool.starmap_async(experiment_bi, product(SPLITNS, DNAMES, DSIZES))
     pool.close()
     pool.join()
 
 if __name__ == "__main__":
     exp_parallel()
 
+
+# experiment_dt(0, "avila", 100)

@@ -46,14 +46,14 @@ if not os.path.exists('registryrules'):
 NSETS = 25
 SPLITNS = list(range(0, NSETS))
 # DNAMES = ["avila", "higgs7"]
-DNAMES = ["occupancy", "higgs7", "electricity", "htru", "shuttle", "avila",
+DNAMES = ["nomao", "gas", "clean2", "seizure",
+          "occupancy", "higgs7", "electricity", "htru", "shuttle", "avila",
           "cc", "ees", "pendata", "ring", "sylva", "higgs21",
           "jm1", "saac2", "stocks", 
-          "sensorless", "bankruptcy", "nomao",
-          "gas", "clean2", "seizure", "gt",
+          "sensorless", "bankruptcy", "gt",
           "ccpp", "seoul", "turbine", "wine", "parkinson", "dry", "anuran", "ml"]
 # DSIZES = [100]
-DSIZES = [100, 200, 400, 800]
+DSIZES = [400, 100]
 
 
 def experiment_rules(splitn, dname, dsize):                                                                              
@@ -117,6 +117,9 @@ def experiment_rules(splitn, dname, dsize):
         sctrain = k.score(X, y)
         sctest = k.score(Xtest, ytest)
         fileres.write(names + ",na,na,%s,nan,%s,%s,%s,na\n" % (sctrain, sctest, len(k.ruleset_), (end-start))) 
+        
+    ripperc = lw.RIPPER(max_rules = len(ripper.ruleset_))
+    irepc = lw.IREP(max_rules = len(irep.ruleset_))
     
     # prelim
                                                 
@@ -150,7 +153,7 @@ def experiment_rules(splitn, dname, dsize):
         filetme.write("rerxndel,%s\n" % (dsize - len(y))) 
         filetme.close()
         
-        for k, names in zip([ripper, irep],["ripper", "irep"]):
+        for k, names in zip([ripper, irep, ripperc, irepc],["ripper", "irep", "ripperc", "irepc"]):
             fileres = open("registryrules/%s_%s_%s.csv" % (dname, splitn, dsize), "a")
             start = time.time()
             k.fit(Xnew, ynew)
@@ -175,7 +178,7 @@ def experiment_rules(splitn, dname, dsize):
         filetme.write(j.my_name() + "vva,%s\n" % (end-start))
         filetme.close()
         
-        for k, names in zip([ripper, irep],["ripper", "irep"]):
+        for k, names in zip([ripper, irep, ripperc, irepc],["ripper", "irep", "ripperc", "irepc"]):
             start = time.time()            
             k.fit(Xstrain, ystrain)
             sctest0 = k.score(Xstest, ystest)
@@ -184,8 +187,11 @@ def experiment_rules(splitn, dname, dsize):
             if genvva.will_generate():
                 for r in np.linspace(0.5, 2.5, num = 5):
                     Xnew = genvva.sample(r)    
-                    ynew = np.concatenate([j.predict(Xnew), ystrain]) 
-                    k.fit(np.concatenate([Xnew, Xstrain]), ynew)                                    
+                    ynew = np.concatenate([j.predict(Xnew), ystrain])
+                    try:
+                        k.fit(np.concatenate([Xnew, Xstrain]), ynew)
+                    except:
+                        pass                                    
                     sctest = k.score(Xstest, ystest)
                     if sctest > sctest0:
                         sctest0 = sctest
@@ -212,7 +218,10 @@ def experiment_rules(splitn, dname, dsize):
                               
             fileres = open("registryrules/%s_%s_%s.csv" % (dname, splitn, dsize), "a")
             start = time.time()
-            k.fit(Xnew, ynew)
+            try:
+                k.fit(Xnew, ynew)
+            except:
+                k.fit(X, y)
             end = time.time()                                     
             sctrain = k.score(X, y)
             scnew = k.score(Xnew, ynew)
@@ -227,7 +236,7 @@ def experiment_rules(splitn, dname, dsize):
         
         filetme = open("registryrules/%s_%s_%s_times.csv" % (dname, splitn, dsize), "a")
         start = time.time()
-        Xgen = i.sample(100000 - dsize)  
+        Xgen = i.sample(10000 - dsize)  
         end = time.time()
         filetme.write(i.my_name() + "gen,%s\n" % (end-start))
         filetme.close()   
@@ -245,7 +254,7 @@ def experiment_rules(splitn, dname, dsize):
             filetme.close()
             ypredtest = j.predict(Xtest) # not too efficient to calculate it here...
             
-            for k, names in zip([ripper, irep],["ripper", "irep"]):
+            for k, names in zip([ripper, irep, ripperc, irepc],["ripper", "irep", "ripperc", "irepc"]):
                 fileres = open("registryrules/%s_%s_%s.csv" % (dname, splitn, dsize), "a")
                 start = time.time()
                 k.fit(Xnew, ynew)
