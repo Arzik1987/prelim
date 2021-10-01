@@ -8,6 +8,7 @@ import sys
 WHERE = 'registrydt/' 
 if os.path.exists(WHERE + "res.csv"):
     os.remove(WHERE + "res.csv")
+    os.remove(WHERE + "res_met.csv")
 
 _, _, filenames = next(os.walk(WHERE))
 
@@ -35,10 +36,10 @@ _, _, filenames = next(os.walk(WHERE))
 def get_acc_increase(d, tmp_times):
     precdefault = tmp_times[tmp_times['alg'].isin(['testprec'])]['val'].iloc[0]
     d['tes'] = d['tes'] - precdefault
-    d['fid'] = pd.to_numeric(d['fid'], errors = 'coerce') - precdefault
-    for i in range(0,len(tmp_times)):
-        if 'fid' in tmp_times['alg'].iloc[i]:
-            tmp_times['val'].iloc[i] = tmp_times['val'].iloc[i] - precdefault
+    # d['fid'] = pd.to_numeric(d['fid'], errors = 'coerce') - precdefault
+    # for i in range(0,len(tmp_times)):
+    #     if 'fid' in tmp_times['alg'].iloc[i]:
+    #         tmp_times['val'].iloc[i] = tmp_times['val'].iloc[i] - precdefault
             
     algnames = d['alg'].unique()
     for i in algnames:
@@ -88,6 +89,7 @@ for i in filenames:
         print("error at " + i)
 res = pd.concat(res)
 res.loc[res['gen'] == 'adasyns','gen'] = 'adasyn'
+res['fid'] = pd.to_numeric(res['fid'], errors = 'coerce')
 res.to_csv(WHERE + 'res.csv')
 
 
@@ -121,8 +123,9 @@ def draw_big_heatmap(clname, clnameo, mlt = 100, pal = 'normal', npts = 100, ylb
     os.remove(WHERE + "tmp1.csv")
     a = pd.concat([tmp1, a.drop(columns = [clnameo])])
     
-    a = a.replace('dtcv2', 'dtcv')
-    a = a.replace('dtcomp2', 'dtcomp')
+    a = a.replace('dtcv2', 'DTcv')
+    a = a.replace('dtcomp2', 'DTcomp')
+    a = a.replace('dt', 'DT')
     a = a.replace('cmmrf', 'cmm')
     a = a.replace('kdebw', 'kde')
     a = a.replace('kdebwm', 'kdem')
@@ -180,7 +183,7 @@ os.remove(WHERE + "a.csv")
 
 a = a[a['alg'].isin(('dt','dtcomp2', "dtcv2"))]    
 a = a[a['gen'] == 'kdebw']
-a = a[a['npt'].isin((100,400))]
+a = a[a['npt'].isin((100,400,800))]
 
 a['wdl'] = a['1.0'].astype(int).astype(str) + "/" + a['0.0'].astype(int).astype(str)\
     + "/" + a['-1.0'].astype(int).astype(str)

@@ -174,66 +174,68 @@ class BI:
 
 
 
-# real data
-
-import pandas as pd
-df = pd.read_csv("src\\data\\dsgc_sym.csv")
-df.head()
-dx = df.to_numpy()[9500:,0:12].copy()
-dy = df.to_numpy()[9500:,12].copy()
-bi = BI(depth = 12)
-bi.fit(dx,dy)  
-bi.score(df.to_numpy()[:9500,0:12], df.to_numpy()[:9500,12]) # 0.051309052631578915
-bi.get_nrestr()
-
-bi = BI(depth = 3)
-bi.fit(dx,dy)
-bi.get_nrestr()
-
-# HPO
-
-from sklearn.utils.estimator_checks import check_estimator
-check_estimator(BI())
-
-from sklearn.model_selection import GridSearchCV
-parameters = {'depth':[1,3,5,7,9,11]}
-bi = BI()
-reds = GridSearchCV(bi, parameters)
-reds.fit(dx, dy)
-reds.best_params_
-reds.score(df.to_numpy()[:9500,0:12], df.to_numpy()[:9500,12])
-
-bi = BI(depth = 5)
-bi.fit(dx,dy)
-bi.score(df.to_numpy()[:9500,0:12], df.to_numpy()[:9500,12])
-
-
-# generated data 
-
-np.random.seed(seed=1)
-dx = np.random.random((10000,4))
-dy = ((dx > 0.3).sum(axis = 1) == 4) - 0
-
-# 1
-import time
-bi = BI()
-start = time.time()
-bi.fit(dx,dy)  
-end = time.time()
-print(end - start)   # ~ 12,2 s
-bi.score(dx, dy) # 0.18 s
-
-# 2
-dx[:,1] = dx[:,1]*2
-
-bi = BI(depth = 4, beam_size = 1)
-bi.fit(dx, dy)
-bi.score(dx, dy)
-
-bi = BI(depth = 4, beam_size = 4)
-bi.fit(dx, dy)
-bi.score(dx, dy)
-
-bi = BI(depth = 3, beam_size = 1)
-bi.fit(dx, dy)
-bi.score(dx, dy)
+# =============================================================================
+# # real data
+# 
+# import pandas as pd
+# df = pd.read_csv("src\\data\\dsgc_sym.csv")
+# df.head()
+# dx = df.to_numpy()[9500:,0:12].copy()
+# dy = df.to_numpy()[9500:,12].copy()
+# bi = BI(depth = 12)
+# bi.fit(dx,dy)  
+# bi.score(df.to_numpy()[:9500,0:12], df.to_numpy()[:9500,12]) # 0.051309052631578915
+# bi.get_nrestr()
+# 
+# bi = BI(depth = 3)
+# bi.fit(dx,dy)
+# bi.get_nrestr()
+# 
+# # HPO
+# 
+# from sklearn.utils.estimator_checks import check_estimator
+# check_estimator(BI())
+# 
+# from sklearn.model_selection import GridSearchCV
+# parameters = {'depth':[1,3,5,7,9,11]}
+# bi = BI()
+# reds = GridSearchCV(bi, parameters)
+# reds.fit(dx, dy)
+# reds.best_params_
+# reds.score(df.to_numpy()[:9500,0:12], df.to_numpy()[:9500,12])
+# 
+# bi = BI(depth = 5)
+# bi.fit(dx,dy)
+# bi.score(df.to_numpy()[:9500,0:12], df.to_numpy()[:9500,12])
+# 
+# 
+# # generated data 
+# 
+# np.random.seed(seed=1)
+# dx = np.random.random((10000,4))
+# dy = ((dx > 0.3).sum(axis = 1) == 4) - 0
+# 
+# # 1
+# import time
+# bi = BI()
+# start = time.time()
+# bi.fit(dx,dy)  
+# end = time.time()
+# print(end - start)   # ~ 12,2 s
+# bi.score(dx, dy) # 0.18 s
+# 
+# # 2
+# dx[:,1] = dx[:,1]*2
+# 
+# bi = BI(depth = 4, beam_size = 1)
+# bi.fit(dx, dy)
+# bi.score(dx, dy)
+# 
+# bi = BI(depth = 4, beam_size = 4)
+# bi.fit(dx, dy)
+# bi.score(dx, dy)
+# 
+# bi = BI(depth = 3, beam_size = 1)
+# bi.fit(dx, dy)
+# bi.score(dx, dy)
+# =============================================================================

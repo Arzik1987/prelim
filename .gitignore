@@ -138,6 +138,8 @@ registryrules/
 registrybi/
 registryprim/
 registryill/
+registrysd/
 trials/
 densityforest.py
 results/
+PRIM_full.py

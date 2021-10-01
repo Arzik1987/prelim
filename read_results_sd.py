@@ -5,24 +5,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 import sys
 
-WHERE = 'registryrules/' 
+WHERE = 'registrysd/' 
 if os.path.exists(WHERE + "res.csv"):
     os.remove(WHERE + "res.csv")
 
 _, _, filenames = next(os.walk(WHERE))
-
-
-# find errors
-k = 0
-for i in filenames:
-    k = k + 1
-    sys.stdout.write('\r' + "Loading" + "." + str(k))
-    if not "times" in i and not "zeros" in i:
-        tmp = pd.read_csv(WHERE + i, delimiter = ",", header = None)
-        if len(tmp) < 114:
-            print(i)
-            print(len(tmp))
-
 
 #### check if all jobs have terminated
 
@@ -45,35 +32,22 @@ for i in filenames:
 #### calculate accuracy increase with respect to naive prediction
 #### for a single experiment
 
-
-def get_acc_increase(d, tmp_times):
-    precdefault = tmp_times[tmp_times['alg'].isin(['testprec'])]['val'].iloc[0]
-    d['tes'] = d['tes'] - precdefault
-    d['fid'] = pd.to_numeric(d['fid'], errors = 'coerce') - precdefault
-    for i in range(0,len(tmp_times)):
-        if 'fid' in tmp_times['alg'].iloc[i]:
-            tmp_times['val'].iloc[i] = tmp_times['val'].iloc[i] - precdefault
-            
+def get_wracc(d, tmp_times):        
     algnames = d['alg'].unique()
-    tmporig = d.loc[d['gen'] == 'na',].copy()
-    tmporig['alg'] = tmporig['alg'] + 'c'
-    d = pd.concat([d, tmporig])
-    
     for i in algnames:
         orig_acc = d[(d['alg'] == i) & (d['gen'] =='na')]['tes']
+        if len(orig_acc) == 0:
+            orig_acc = d[(d['alg'] == i[:-1]) & (d['gen'] =='na')]['tes']
+        
         orig_nle = d[(d['alg'] == i) & (d['gen'] =='na')]['nle']
-        d = d[~((d['alg'] == i) & (d['gen'] =='na'))]
+        if len(orig_nle) == 0:
+            orig_nle = d[(d['alg'] == i[:-1]) & (d['gen'] =='na')]['nle']
+        
         d.loc[d['alg'] == i,'ora'] = [orig_acc]*d.loc[d['alg'] == i].shape[0]
         d.loc[d['alg'] == i,'orn'] = [orig_nle]*d.loc[d['alg'] == i].shape[0]
-     
-    metnames = d['met'].unique()
+    
     for i in algnames:
-        for j in metnames:
-            tmpfid = tmp_times[tmp_times['alg'] == j + i + 'fid']['val']
-            if len(tmpfid) == 0:
-                tmpfid = tmp_times[tmp_times['alg'] == j + i[:-1] + 'fid']['val']
-            orig_fid = tmpfid.iloc[0]
-            d.loc[d['alg'] == i,'orf'] = [orig_fid]*d.loc[d['alg'] == i].shape[0]
+         d = d[~((d['alg'] == i) & (d['gen'] =='na'))]
            
     return d.drop(columns = 'new')
 
@@ -81,28 +55,13 @@ def get_acc_increase(d, tmp_times):
 #### calculate accuracy increase with respect to naive prediction
 #### for a single experiment, separately for each metamodel
 
-def correct_ext(d, tmp_times):
-    for i in ['ripper', 'irep']:
-        d = d[~((d['alg'] == i) & (d['gen'] =='na'))]
-        for j in ['rf', 'xgb']:
-            tmp_times = tmp_times[~(tmp_times['alg'] == j + i + 'fid')]
-    
-    for i in ['ripperext', 'irepext']:
-        d.loc[d['alg'] == i,'alg'] = i[:-3]
-        for j in ['rf', 'xgb']:
-            tmp_times.loc[tmp_times['alg'] == j + i + 'fid', 'alg'] = j + i[:-3] + 'fid'
-    
-    return d, tmp_times
-
-
 def get_result(fname):
     tmp_times = pd.read_csv(WHERE + fname.split(".")[0] + "_times" + '.csv',\
                             delimiter = ",", header = None)
     tmp_times.columns = ['alg', 'val']
     tmp = pd.read_csv(WHERE + fname, delimiter = ",", header = None)
-    tmp.columns = ['alg', 'gen', 'met', 'tra', 'new', 'tes', 'nle', 'tme', 'fid']
-    tmp, tmp_times = correct_ext(tmp, tmp_times)
-    tmp = get_acc_increase(tmp, tmp_times)
+    tmp.columns = ['alg', 'gen', 'met', 'tra', 'new', 'tes', 'nle', 'tme']
+    tmp = get_wracc(tmp, tmp_times)
             
     extra = fname.split(".")[0].split("_")
     tmp['dat'] = [extra[0]]*tmp.shape[0]
@@ -142,7 +101,7 @@ def draw_big_heatmap(clname, clnameo, mlt = 100, pal = 'normal', npts = 100, ylb
     a = res.copy()   
     a['npt'] = pd.to_numeric(a['npt'])
     a = a[a['npt'].isin([npts])]
-    a = a[a['alg'].isin(('ripper','irep'))]     
+    a = a[a['alg'].isin(('bicv','primcv'))]     
     a = a[['alg', 'gen', 'met', 'npt', clname, clnameo]].groupby(['alg', 'gen', 'met', 'npt']).mean()
     a.to_csv(WHERE + 'a.csv')
     a = pd.read_csv(WHERE + 'a.csv', delimiter = ",")
@@ -157,8 +116,8 @@ def draw_big_heatmap(clname, clnameo, mlt = 100, pal = 'normal', npts = 100, ylb
     os.remove(WHERE + "tmp1.csv")
     a = pd.concat([tmp1, a.drop(columns = [clnameo])])
     
-    # a = a.replace('dtcv2', 'dtcv')
-    # a = a.replace('dtcomp2', 'dtcomp')
+    a = a.replace('bicv', 'BI')
+    a = a.replace('primcv', 'PRIM')
     a = a.replace('cmmrf', 'cmm')
     a = a.replace('kdebw', 'kde')
     a = a.replace('kdebwm', 'kdem')
@@ -188,35 +147,52 @@ def draw_big_heatmap(clname, clnameo, mlt = 100, pal = 'normal', npts = 100, ylb
     fg.set_axis_labels("", "")
     fg.set_titles(col_template="{col_name}", row_template="{row_name}")
     fg.tight_layout()
-    fg.savefig("results/rules_" + clname + str(npts) + ".pdf")
+    fg.savefig("results/sd_" + clname + str(npts) + ".pdf")
     
 draw_big_heatmap('tes', 'ora', npts = 100)
 draw_big_heatmap('tes', 'ora', npts = 400, ylbl = False)
-draw_big_heatmap('fid', 'orf', npts = 100)
-draw_big_heatmap('fid', 'orf', npts = 400, ylbl = False)
 draw_big_heatmap('nle', 'orn', npts = 100, mlt = 1, pal = 'inverse')
 draw_big_heatmap('nle', 'orn', npts = 400, mlt = 1, pal = 'inverse', ylbl = False)
 
 
 
+
 # win-draw-loss
 a = res.copy()
-a = a[a['alg'].isin(('ripper','irep'))]   
 a['dif'] = np.sign(a['tes'] - a['ora'])
+# a['dif'] = np.sign(a['nle'] - a['orn'])
 a = a[['alg', 'gen', 'met', 'npt', 'dif']]
 a = a.groupby(['alg', 'gen', 'met', 'npt']).dif.value_counts().unstack()
 a.to_csv(WHERE + 'a.csv')
 a = pd.read_csv(WHERE + 'a.csv', delimiter = ",")
 os.remove(WHERE + "a.csv")
 
+a = a[a['alg'].isin(('bicv', 'primcv'))]    
 a = a[a['gen'] == 'kdebw']
-a = a[a['npt'].isin((100,400))]
+# a = a[a['npt'].isin((100,400))]
 
 a = a.fillna(0)
 a['wdl'] = a['1.0'].astype(int).astype(str) + "/" + a['0.0'].astype(int).astype(str)\
     + "/" + a['-1.0'].astype(int).astype(str)
 a = a[['alg', 'met', 'npt', 'wdl']]
-
+a = a.replace('bicvp', 'BI')
+a = a.replace('primcvp', 'PRIM')
 a = a.pivot(index = ['met','npt'], columns=['alg'], values=['wdl'])
-a.to_csv('results\\rules_pivot.csv')
+a.to_csv('results\\sd_pivot.csv')
 
+#### not tight WRAcc bound
+
+res = []
+k = 0
+for i in filenames:
+    k = k + 1
+    sys.stdout.write('\r' + "Loading" + "." + str(k))
+    try:
+        if "times" in i:
+            tmp = pd.read_csv(WHERE + i, delimiter = ",", header = None)
+            wraccmax = tmp.iloc[0,1]*(1 - tmp.iloc[0,1])
+            res.append(wraccmax)
+    except:
+        print("error at " + i)
+
+np.mean(res)
