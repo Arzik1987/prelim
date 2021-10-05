@@ -139,6 +139,7 @@ registrybi/
 registryprim/
 registryill/
 registrysd/
+registryfid/
 trials/
 densityforest.py
 results/

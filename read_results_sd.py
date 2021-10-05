@@ -125,6 +125,8 @@ def draw_big_heatmap(clname, clnameo, mlt = 100, pal = 'normal', npts = 100, ylb
     a = a.replace('randu', 'unif')
     a = a.replace('rerx', 're-rx')
     a = a.replace('No', 'NO')
+    a = a.replace('rf', 'RF')
+    a = a.replace('xgb', 'BT')
     
     a[clname] = np.round(a[clname]*mlt, 1)
     if clname == 'nle':
@@ -135,10 +137,10 @@ def draw_big_heatmap(clname, clnameo, mlt = 100, pal = 'normal', npts = 100, ylb
     else:
         rdgn = sns.diverging_palette(h_neg = 10, h_pos = 130, s = 99, l = 55, sep = 3, as_cmap = True)
     
-    asp = 0.4/1.2
+    asp = 0.4/1.15
     if ylbl == False:
-        asp = 0.33/1.2
-    fg = sns.FacetGrid(a, row = 'npt', col = 'alg', margin_titles=False, despine=False, height=4.2, aspect=asp)
+        asp = 0.33/1.15
+    fg = sns.FacetGrid(a, row = 'npt', col = 'alg', margin_titles=False, despine=False, height=4.0, aspect=asp)
     fg.map_dataframe(draw_heatmap_c, 'met', 'gen', clname, cbar = False, cmap = rdgn, annot = True, fmt='g')
     if ylbl == False:
         fg.set(yticklabels=[])

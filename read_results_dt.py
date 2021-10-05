@@ -33,13 +33,10 @@ _, _, filenames = next(os.walk(WHERE))
 #### calculate accuracy increase with respect to naive prediction
 #### for a single experiment
 
-def get_acc_increase(d, tmp_times):
+def get_acc_increase(d, tmp_times, tmp_fid):
     precdefault = tmp_times[tmp_times['alg'].isin(['testprec'])]['val'].iloc[0]
     d['tes'] = d['tes'] - precdefault
-    # d['fid'] = pd.to_numeric(d['fid'], errors = 'coerce') - precdefault
-    # for i in range(0,len(tmp_times)):
-    #     if 'fid' in tmp_times['alg'].iloc[i]:
-    #         tmp_times['val'].iloc[i] = tmp_times['val'].iloc[i] - precdefault
+    d['fid'] = pd.to_numeric(d['fid'], errors = 'coerce')
             
     algnames = d['alg'].unique()
     for i in algnames:
@@ -52,8 +49,10 @@ def get_acc_increase(d, tmp_times):
     metnames = d['met'].unique()
     for i in algnames:
         for j in metnames:
-            orig_fid = tmp_times[tmp_times['alg'] == j + i + 'fid']['val'].iloc[0]
-            d.loc[d['alg'] == i,'orf'] = [orig_fid]*d.loc[d['alg'] == i].shape[0]
+            def_fid = tmp_fid[tmp_fid['alg'] == j + 'fid']['val'].iloc[0]
+            orig_fid = tmp_times[tmp_times['alg'] == j + i + 'fid']['val'].iloc[0] - def_fid
+            d.loc[(d['alg'] == i) & (d['met'] == j),'orf'] = [orig_fid]*d.loc[(d['alg'] == i) & (d['met'] == j)].shape[0]
+            d.loc[(d['alg'] == i) & (d['met'] == j),'fid'] = d.loc[(d['alg'] == i) & (d['met'] == j),'fid'] - def_fid
            
     return d.drop(columns = 'new')
 
@@ -65,9 +64,11 @@ def get_result(fname):
     tmp_times = pd.read_csv(WHERE + fname.split(".")[0] + "_times" + '.csv',\
                             delimiter = ",", header = None)
     tmp_times.columns = ['alg', 'val']
+    tmp_fid = pd.read_csv('registryfid/' + fname, delimiter = ",", header = None)
+    tmp_fid.columns = ['alg', 'val']
     tmp = pd.read_csv(WHERE + fname, delimiter = ",", header = None)
     tmp.columns = ['alg', 'gen', 'met', 'tra', 'new', 'tes', 'nle', 'tme', 'fid']
-    tmp = get_acc_increase(tmp, tmp_times)
+    tmp = get_acc_increase(tmp, tmp_times, tmp_fid)
             
     extra = fname.split(".")[0].split("_")
     tmp['dat'] = [extra[0]]*tmp.shape[0]
@@ -83,7 +84,7 @@ for i in filenames:
     k = k + 1
     sys.stdout.write('\r' + "Loading" + "." + str(k))
     try:
-        if not "times" in i and not "zeros" in i:
+        if not "times" in i and not "zeros" in i and not '200'in i and not '800' in i:
             res.append(get_result(i))
     except:
         print("error at " + i)
@@ -133,10 +134,12 @@ def draw_big_heatmap(clname, clnameo, mlt = 100, pal = 'normal', npts = 100, ylb
     a = a.replace('randu', 'unif')
     a = a.replace('rerx', 're-rx')
     a = a.replace('No', 'NO')
+    a = a.replace('rf', 'RF')
+    a = a.replace('xgb', 'BT')
     
     a[clname] = np.round(a[clname]*mlt, 1)
     if clname == 'nle':
-        a[clname][a['alg'] == 'dt'] = np.round(a[clname][a['alg'] == 'dt'], 0)
+        a[clname][a['alg'] == 'DT'] = np.round(a[clname][a['alg'] == 'DT'], 0)
     
     if pal == 'inverse':
         rdgn = sns.diverging_palette(h_neg = 130, h_pos = 10, s = 99, l = 55, sep = 3, as_cmap = True)
@@ -158,17 +161,17 @@ def draw_big_heatmap(clname, clnameo, mlt = 100, pal = 'normal', npts = 100, ylb
     fg.savefig("results/dt_" + clname + str(npts) + ".pdf")
     
 draw_big_heatmap('tes', 'ora', npts = 100)
-draw_big_heatmap('tes', 'ora', npts = 200)
+# draw_big_heatmap('tes', 'ora', npts = 200)
 draw_big_heatmap('tes', 'ora', npts = 400)
-draw_big_heatmap('tes', 'ora', npts = 800)
+# draw_big_heatmap('tes', 'ora', npts = 800)
 draw_big_heatmap('fid', 'orf', npts = 100, ylbl = False)
-draw_big_heatmap('fid', 'orf', npts = 200, ylbl = False)
+# draw_big_heatmap('fid', 'orf', npts = 200, ylbl = False)
 draw_big_heatmap('fid', 'orf', npts = 400, ylbl = False)
-draw_big_heatmap('fid', 'orf', npts = 800, ylbl = False)
+# draw_big_heatmap('fid', 'orf', npts = 800, ylbl = False)
 draw_big_heatmap('nle', 'orn', npts = 100, mlt = 1, pal = 'inverse', ylbl = False)
-draw_big_heatmap('nle', 'orn', npts = 200, mlt = 1, pal = 'inverse', ylbl = False)
+# draw_big_heatmap('nle', 'orn', npts = 200, mlt = 1, pal = 'inverse', ylbl = False)
 draw_big_heatmap('nle', 'orn', npts = 400, mlt = 1, pal = 'inverse', ylbl = False)
-draw_big_heatmap('nle', 'orn', npts = 800, mlt = 1, pal = 'inverse', ylbl = False)
+# draw_big_heatmap('nle', 'orn', npts = 800, mlt = 1, pal = 'inverse', ylbl = False)
 
 
 
