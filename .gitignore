@@ -129,7 +129,9 @@ dmypy.json
 .pyre/
 
 
-data/
+data1/
+data/*
+!data/get_data.py
 src/data/
 src/data/
 registry/
