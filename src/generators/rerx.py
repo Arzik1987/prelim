@@ -1,9 +1,11 @@
 import numpy as np
 
+
 class Gen_rerx:
-    
-    def __init__(self, rho = 0.2):
+
+    def __init__(self, rho=0.2):
         self.rho_ = rho
+        self.X_ = None
 
     def fit(self, X, y, metamodel):
         ypred = metamodel.predict(X)
@@ -15,7 +17,6 @@ class Gen_rerx:
 
     def my_name(self):
         return "rerx"
-
 
 
 # =============================================================================
