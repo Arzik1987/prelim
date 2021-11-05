@@ -3,33 +3,39 @@ from imblearn.over_sampling import ADASYN
 import warnings
 from src.generators.rand import Gen_randu
 
+
 class Gen_adasyn:
 
     def __init__(self):
         self.X_ = None
         self.mname_ = "adasyn"
 
-    def fit(self, X, y = None):
+    def fit(self, X, y=None, metamodel=None):
         self.X_ = X.copy()
         return self
 
-    def sample(self, n_samples = 1):
+    def sample(self, n_samples=1):
         parss = 'not majority'
         if self.X_.shape[0] > n_samples:
             warnings.warn("The required sample size is smaller that the number of observations in train")
             parss = 'all'
-        y = np.concatenate((np.ones(self.X_.shape[0]), np.zeros(n_samples)))
-        X = np.concatenate((self.X_ ,Gen_randu().fit(self.X_).sample(n_samples = n_samples)))
+
+        y = np.ones(self.X_.shape[0]), np.zeros(n_samples)
+        y = np.concatenate(y)
+
+        X = np.concatenate((self.X_, Gen_randu().fit(self.X_).sample(n_samples = n_samples)))
         Xnew = None
         parknn = min(5, n_samples, self.X_.shape[0])
-        try:
-            Xnew, y = ADASYN(sampling_strategy = parss, n_neighbors = parknn, random_state = 2020).fit_resample(X, y)
-        except:
-            while type(Xnew) is not np.ndarray and parknn <= n_samples and parknn <= self.X_.shape[0]:
-                try:
-                    Xnew, y = ADASYN(sampling_strategy = parss, n_neighbors = parknn, random_state = 2020).fit_resample(X, y)
-                except:
-                    parknn = parknn*2
+
+        # TODO Inspect
+        while type(Xnew) is not np.ndarray and parknn <= n_samples and parknn <= self.X_.shape[0]:
+            try:
+                Xnew, y = ADASYN(sampling_strategy = parss, n_neighbors = parknn, random_state = 2020).fit_resample(X, y)
+            except ValueError as ve:
+                parknn = parknn * 2
+            except RuntimeError as re:
+                print("Adasyn not successful - Running SMOTE instead")
+
         print(parknn)
         if type(Xnew) is not np.ndarray:
             from imblearn.over_sampling import SMOTE
