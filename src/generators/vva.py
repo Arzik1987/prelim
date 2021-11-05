@@ -1,14 +1,19 @@
-import sys
 import numpy as np
-from sklearn.neighbors import NearestNeighbors
 from itertools import cycle
+
 
 class Gen_vva:
     
-    def __init__(self, rho = 0.2):
+    def __init__(self, rho=0.2):
         self.rho_ = rho
+        self.generate_ = None
+        self.nn_ = None
+        self.ordinds_ = None
+        self.Xbound_ = None
+        self.dim_ = None
+        self.trainn_ = None
 
-    def fit(self, X, metamodel):
+    def fit(self, X, metamodel, y=None):
         self.generate_ = True
         self.dim_ = X.shape[1]
         self.trainn_ = X.shape[0]
@@ -24,43 +29,46 @@ class Gen_vva:
         Xtrain = np.delete(Xtrain, inds, axis=0)
         y = np.delete(y, inds)
         nrest = int(np.ceil(X.shape[0]*self.rho_ - len(inds)))
-        if(nrest > 0):
+        if nrest > 0:
+
+            # TODO Enable this part by parameter?
             # commented part is more fair to duplicated scores, but can result in not enough boundary points
             # thr = np.sort(abs(y))[nrest]
             # if thr == max(abs(y)):
             #     thr = thr - 1e-8
             # inds = np.where(abs(y) <= thr)[0]
+
             inds = np.argsort(abs(y))[:nrest]
             Xbound = np.concatenate((Xbound, Xtrain[inds,:].copy()), axis = 0)
             ybound = np.concatenate((ybound, y[inds].copy()))
             
-        self.find_neighbours_(Xbound, ybound)
+        self._find_neighbours(Xbound, ybound)
         return self
     
-    def find_neighbours_(self, X, y):
-        Xpos = X[y > 0,:]
-        Xneg = X[y < 0,:]
-        nnpos, distpos = self.nearest_neighbours_(Xpos, Xneg)
-        nnneg, distneg = self.nearest_neighbours_(Xneg, Xpos)
+    def _find_neighbours(self, X, y):
+        Xpos = X[y > 0, :]
+        Xneg = X[y < 0, :]
+        nnpos, distpos = self._nearest_neighbours(Xpos, Xneg)
+        nnneg, distneg = self._nearest_neighbours(Xneg, Xpos)
         self.Xbound_ = np.concatenate((Xpos, Xneg), axis = 0)
         self.nn_ = np.concatenate((nnpos + len(nnpos), nnneg))
         self.ordinds_ = np.argsort(np.concatenate((distpos, distneg)))
     
-    def nearest_neighbours_(self, X1, X2): # https://stackoverflow.com/questions/15363419/finding-nearest-items-across-two-lists-arrays-in-python/15366296
+    def _nearest_neighbours(self, X1, X2): # https://stackoverflow.com/questions/15363419/finding-nearest-items-across-two-lists-arrays-in-python/15366296
         X1, X2 = map(np.asarray, (X1, X2))
         nearest_neighbour = np.empty((len(X1),), dtype=np.intp)
         dist = np.empty((len(X1),), dtype=np.float32)
         for j, xj in enumerate(X1):
-            idx = np.argmin(np.sum((X2 - xj)**2, axis = 1))
+            idx = np.argmin(np.sum((X2 - xj)**2, axis=1))
             nearest_neighbour[j] = idx
             dist[j] = np.sqrt(np.sum((X2[idx] - xj)**2)) 
 
         return nearest_neighbour, dist
 
-    def sample(self, r): # r is from 0 to 2.5
-        if r < 0 or  r > 2.5:
-            sys.exit("the boundaries for r defined in the paper are from 0 to 2.5")
-        if r == 0 or self.generate_ == False:
+    def sample(self, r):  # r is from 0 to 2.5
+        if r < 0 or r > 2.5:
+            raise ValueError("the boundaries for r defined in the paper are from 0 to 2.5")
+        if r == 0 or self.generate_ is False:
             return np.empty((0, self.dim_))
         
         ngen = int(np.ceil(self.trainn_*r)) 
@@ -71,8 +79,8 @@ class Gen_vva:
         while k < ngen:
             indx = next(pool)
             indnn = self.nn_[indx]
-            theta = thetas[k,:]
-            newpts.append(self.Xbound_[indx,:]*theta + self.Xbound_[indnn,:]*(1 - theta))
+            theta = thetas[k, :]
+            newpts.append(self.Xbound_[indx, :]*theta + self.Xbound_[indnn, :]*(1 - theta))
             k = k + 1
         
         return np.vstack(newpts)
