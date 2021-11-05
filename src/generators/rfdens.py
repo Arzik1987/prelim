@@ -1,15 +1,16 @@
-
 import numpy as np
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import GridSearchCV
 from sklearn.tree import _tree
-
 # see https://stackoverflow.com/questions/20224526/how-to-extract-the-decision-rules-from-scikit-learn-decision-tree
+
 
 class Gen_rfdens:
     
-    def __init__(self, seed = 2020):
+    def __init__(self, seed=2020):
         self.seed_ = seed
+        self.boxes_ = None
+        self.nsamples_ = None
 
     def _get_rules_tree(self, tree, box):
         tree_ = tree.tree_
@@ -36,12 +37,14 @@ class Gen_rfdens:
             
         return boxes, nsamples
 
-    def fit(self, X, y):
+    def fit(self, X, y, metamodel=None):
         self.boxes_ = []
         self.nsamples_ = []
         params = {"max_features": [2, "sqrt", None]}
-        model = GridSearchCV(RandomForestClassifier(random_state = self.seed_), params, cv = 5).fit(X, y).best_estimator_
-        box = np.vstack((X.min(axis = 0), X.max(axis = 0)))
+        cv_rf = GridSearchCV(RandomForestClassifier(random_state=self.seed_), params, cv=5)
+        cv_rf.fit(X, y)
+        model = cv_rf.best_estimator_
+        box = np.vstack((X.min(axis=0), X.max(axis=0)))
     
         for i in model.estimators_:
             tmpb, tmpn = self._get_rules_tree(i, box)
@@ -50,20 +53,20 @@ class Gen_rfdens:
             
         self.nsamples_ = np.array(self.nsamples_)
 
-    def sample(self, n_samples = 1):
+    def sample(self, n_samples=1):
         niter = int(np.ceil(n_samples/sum(self.nsamples_)))
         X = []
         
         for _ in range(0, niter):
             for i in range(0, len(self.nsamples_)):
                 box = self.boxes_[i]
-                sidelen = box[1,:] - box[0,:]
-                X.append(np.random.random((self.nsamples_[i], len(sidelen)))*sidelen + box[0,:])
+                sidelen = box[1, :] - box[0, :]
+                X.append(np.random.random((self.nsamples_[i], len(sidelen)))*sidelen + box[0, :])
         
         X = np.concatenate(X)
         xdim = X.shape[0]
-        X = X[np.random.RandomState(self.seed_).choice(np.arange(xdim), size = xdim, replace = False),:].copy()
-        return X[0:n_samples,:] 
+        X = X[np.random.RandomState(self.seed_).choice(np.arange(xdim), size=xdim, replace=False), :].copy()
+        return X[0:n_samples, :]
 
     def my_name(self):
         return "cmmrf"
