@@ -5,11 +5,14 @@ from sklearn.model_selection import cross_val_score
 
 
 class Meta_nb:
+
     def __init__(self):
-        return None
+        self.model_ = None
+        self.cvscore_ = None
 
     def fit(self, X, y):
-        self.model_ = CalibratedClassifierCV(base_estimator = GaussianNB()).fit(X, y)
+        self.model_ = CalibratedClassifierCV(base_estimator=GaussianNB())
+        self.model_.fit(X, y)
         self.cvscore_ = np.nanmean(cross_val_score(self.model_, X, y))
         return self
 
@@ -25,8 +28,7 @@ class Meta_nb:
     def my_name(self):
         return "nb"
     
-   
-    
+
 # =============================================================================
 # # TEST 
 # 
