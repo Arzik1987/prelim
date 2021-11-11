@@ -17,7 +17,7 @@ class Gen_adasyn:
     def sample(self, n_samples=1):
         parss = 'not majority'
         if self.X_.shape[0] > n_samples:
-            warnings.warn("The required sample size is smaller that the number of observations in train")
+            warnings.warn("The required sample size is smaller than the number of observations in train")
             parss = 'all'
 
         y = np.ones(self.X_.shape[0]), np.zeros(n_samples)
