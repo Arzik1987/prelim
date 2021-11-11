@@ -1,6 +1,3 @@
-import numpy as np
-
-
 class Gen_rerx:
 
     def __init__(self, rho=0.2):
@@ -12,7 +9,7 @@ class Gen_rerx:
         self.X_ = X[y == ypred]
         return self
 
-    def sample(self):
+    def sample(self, n_samples=1):
         return self.X_
 
     def my_name(self):
