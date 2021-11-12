@@ -35,11 +35,12 @@ from src.subgroup_discovery.PRIM import PRIM
 # Other
 from src.utils.data_splitter import DataSplitter
 from src.utils.data_loader import load_data
-from src.utils.helpers import opt_param, n_leaves, get_bi_param
+from src.utils.helpers import opt_param, n_leaves, get_bi_param, get_new_test
 from sklearn.model_selection import GridSearchCV
 from sklearn.preprocessing import StandardScaler
 import numpy as np
-from multiprocessing import Pool, cpu_count
+from multiprocessing import cpu_count
+from joblib import Parallel, delayed
 from itertools import product
 import time
 import copy
@@ -90,7 +91,7 @@ def experiment(splitn, dname, dsize):
     ds.configure(NSETS, dsize)                                         
     X, y = ds.get_train(splitn)       
     if y.sum() == 0:    # only one class is in the dataset
-        fileres = open("registrydt/%s_%s_%s_zeros.csv" % (dname, splitn, dsize), "a")
+        fileres = open("registry/%s_%s_%s_zeros.csv" % (dname, splitn, dsize), "a")
         fileres.close()
         return                                    
     Xtest, ytest = ds.get_test(splitn) 
@@ -376,9 +377,40 @@ def experiment(splitn, dname, dsize):
                 sctest = k.score(Xtest, ytest)
                 fileres.write(names +",%s,%s,%s,%s,%s,%s,na\n" % (i.my_name(), j.my_name(), sctrain, sctest, k.get_nrestr(), (end-start))) 
     
+    # semi-supervised learning testing
+    Xtest, ytest, Xgen = get_new_test(Xtest, ytest, dsize)
+    for j in [metarf, metaxgb]: 
+        ypredtest = j.predict(Xtest)
+        
+        ynew = np.concatenate([j.predict(Xgen), y])
+        Xnew = np.concatenate([Xgen, X])
+        
+        for k, names in zip([dt, dtc, dtval, ripper, irep], ['dt', 'dtc', 'dtval', 'ripper', 'irep']):
+            start = time.time()
+            k.fit(Xnew, ynew)
+            end = time.time()                                     
+            sctrain = k.score(X, y)
+            sctest = k.score(Xtest, ytest)
+            fidel = np.count_nonzero(k.predict(Xtest) == ypredtest)/len(ypredtest)
+            if names in ['ripper', 'irep']:
+                nlr = len(k.ruleset_)
+            else:
+                nlr = n_leaves(k)
+            fileres.write(names +",%s,%s,%s,%s,%s,%s,%s\n" % (i.my_name(), j.my_name(), sctrain, sctest, nlr, (end-start), fidel)) 
+                
+        ynew = j.predict_proba(Xnew)
+        for k, names in zip([primcv, bicv], ['primcv', 'bicv']):
+            start = time.time()
+            k.fit(Xnew, ynew)
+            end = time.time()                                     
+            sctrain = k.score(X, y)
+            sctest = k.score(Xtest, ytest)
+            fileres.write(names +",%s,%s,%s,%s,%s,%s,na\n" % (i.my_name(), j.my_name(), sctrain, sctest, k.get_nrestr(), (end-start))) 
+
     fileres.close() 
     filetme.close()    
         
+    
 NSETS = 25      # number of experiments with each dataset
 SPLITNS = list(range(0, NSETS))         # list of experiment numbers for each dataset
 DNAMES = ['anuran', 'avila', 'bankruptcy', 'ccpp', 'cc', 'clean2', 'dry',
@@ -388,12 +420,11 @@ DNAMES = ['anuran', 'avila', 'bankruptcy', 'ccpp', 'cc', 'clean2', 'dry',
           'sylva', 'turbine', 'wine']       #  datasets' names
 DSIZES = [100, 400]         # datasets' sizes used in experiments
 
+
 # run experiments on all available cores
 def exp_parallel():
-    pool = Pool(cpu_count())
-    pool.starmap_async(experiment, product(SPLITNS, DNAMES, DSIZES))
-    pool.close()
-    pool.join()
+    args = product(SPLITNS, DNAMES, DSIZES)
+    Parallel(n_jobs = cpu_count(), verbose = 100)(delayed(experiment)(*a) for a in args)
 
 if __name__ == "__main__":
     exp_parallel()
