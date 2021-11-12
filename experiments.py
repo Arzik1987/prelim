@@ -52,7 +52,7 @@ if not os.path.exists(dirnme):
 # =============================================================================
 # Experiment description
 
-def experiment_dt(splitn, dname, dsize):  
+def experiment(splitn, dname, dsize):  
     # Generators                                                                            
     gengmmbic = Gen_gmmbic() 
     genkde = Gen_kdebw()
@@ -116,8 +116,8 @@ def experiment_dt(splitn, dname, dsize):
     
     # accuracy of the naive (= default class) classifier on train and test
     defprec = 1 if y.mean() >= 0.5 else 0
-    filetme.write("testprec,%s\n" % ytest.mean() if defprec == 1 else 1 - ytest.mean()) 
-    filetme.write("trainprec,%s\n" % y.mean() if defprec == 1 else 1 - y.mean())
+    filetme.write("testprec,%s\n" % (ytest.mean() if defprec == 1 else 1 - ytest.mean())) 
+    filetme.write("trainprec,%s\n" % (y.mean() if defprec == 1 else 1 - y.mean()))
     ydeftest = np.ones(len(ytest))*defprec  # for fidelity of naive model
       
     # WB models, no HPO                          
@@ -206,11 +206,11 @@ def experiment_dt(splitn, dname, dsize):
         filetme.write(j.my_name() + "acc,%s\n" % j.fit_score()) 
         
         # fidelity of the naive classifier
+        ypredtest = j.predict(Xtest)
         fidel = np.count_nonzero(ypredtest == ydeftest)/len(ypredtest)
         filetme.write(j.my_name() + "fid,%s\n" % (fidel))
         
         # fidelity of white-box models trained from original data
-        ypredtest = j.predict(Xtest)
         for k, names in zip([dt, dtc, dtvalold, ripper, irep], ['dt', 'dtc', 'dtval', 'ripper', 'irep']):
             fidel = np.count_nonzero(k.predict(Xtest) == ypredtest)/len(ypredtest)
             filetme.write(j.my_name() + names + "fid,%s\n" % (fidel))
@@ -224,23 +224,27 @@ def experiment_dt(splitn, dname, dsize):
         ynew = j.predict(Xnew)   
                                  
         ypredtest = j.predict(Xtest)
-        for k, names in zip([dt, dtc, dtva, ripper, irep], ['dt', 'dtc', 'dtval', 'ripper', 'irep']):
+        for k, names in zip([dt, dtc, dtval, ripper, irep], ['dt', 'dtc', 'dtval', 'ripper', 'irep']):
             start = time.time()
             k.fit(Xnew, ynew)
             end = time.time()                                     
             sctrain = k.score(X, y)
             sctest = k.score(Xtest, ytest)
             fidel = np.count_nonzero(k.predict(Xtest) == ypredtest)/len(ypredtest)
-            fileres.write(names +"rerx,%s,%s,%s,%s,%s,%s\n" % (j.my_name(), sctrain, sctest, n_leaves(k), (end-start), fidel)) 
+            if names in ['ripper', 'irep']:
+                nlr = len(k.ruleset_)
+            else:
+                nlr = n_leaves(k)
+            fileres.write(names +",rerx,%s,%s,%s,%s,%s,%s\n" % (j.my_name(), sctrain, sctest, nlr, (end-start), fidel)) 
         
         ynew = j.predict_proba(Xnew) 
-        for k, names in zip([primsv, bicv],['primsv', 'bicv']):
+        for k, names in zip([primcv, bicv],['primcv', 'bicv']):
             start = time.time()
             k.fit(Xnew, ynew)
             end = time.time()                                     
             sctrain = k.score(X, y)
             sctest = k.score(Xtest, ytest)
-            fileres.write(names +"rerx,%s,%s,%s,%s,%s,na\n" % (j.my_name(), sctrain, sctest, n_leaves(k), (end-start))) 
+            fileres.write(names +",rerx,%s,%s,%s,%s,%s,na\n" % (j.my_name(), sctrain, sctest, k.get_nrestr(), (end-start))) 
 
     # vva generator
     # consider it separately since it requires white-box model and metamodel
@@ -258,11 +262,11 @@ def experiment_dt(splitn, dname, dsize):
         
         ypredtest = j.predict(Xtest)
         # optimize the number of generated points for each white-box model separately
-        for k, names in zip([dt, dtc, dtval, ripper, irep, primsv, bicv],\
-                            ['dt', 'dtc', 'dtval', 'ripper', 'irep', 'primsv', 'bicv']):
+        for k, names in zip([dt, dtc, dtval, ripper, irep, primcv, bicv],\
+                            ['dt', 'dtc', 'dtval', 'ripper', 'irep', 'primcv', 'bicv']):
             start = time.time()      
-            if names in ['primsv', 'bicv']:
-                k.fit(Xstrain, j.predict_proba(Xstrain))
+            if names in ['primcv', 'bicv']:
+                k.fit(Xtrain, j.predict_proba(Xtrain))
             else:
                 k.fit(Xtrain, ytrain)
             sctest0 = k.score(Xval, yval)
@@ -274,7 +278,7 @@ def experiment_dt(splitn, dname, dsize):
                     ynew = j.predict(Xnew) 
                     Xnew = np.concatenate([Xnew, Xtrain])
                     ynew = np.concatenate([ynew, ytrain])
-                    if names in ['primsv', 'bicv']:
+                    if names in ['primcv', 'bicv']:
                         k.fit(Xnew, j.predict_proba(Xnew))
                     else:
                         k.fit(Xnew, ynew)
@@ -303,16 +307,22 @@ def experiment_dt(splitn, dname, dsize):
                                         
             # train white-box model with vva
             start = time.time()
-            if names in ['primsv', 'bicv']:
+            if names in ['primcv', 'bicv']:
                 k.fit(Xnew, j.predict_proba(Xnew))
             else:
                 k.fit(Xnew, ynew)
             end = time.time()                                     
             sctrain = k.score(X, y)
             sctest = k.score(Xtest, ytest)
-            fidel = 'na' if names in ['primsv', 'bicv'] else\
+            fidel = 'na' if names in ['primcv', 'bicv'] else\
                 np.count_nonzero(k.predict(Xtest) == ypredtest)/len(ypredtest)
-            fileres.write(names + ",vva,%s,%s,%s,%s,%s,%s\n" % (j.my_name(), sctrain, sctest, n_leaves(k), (end-start), fidel)) 
+            if names in ['primcv', 'bicv']:
+                nlr = k.get_nrestr()
+            elif names in ['ripper', 'irep']:
+                nlr = len(k.ruleset_)
+            else:
+                nlr = n_leaves(k)
+            fileres.write(names + ",vva,%s,%s,%s,%s,%s,%s\n" % (j.my_name(), sctrain, sctest, nlr, (end-start), fidel)) 
     
     # All remaining generators
     for i in [gengmmbic, genkde, genmunge, genrandu, genrandn, gendummy,\
@@ -381,7 +391,7 @@ DSIZES = [100, 400]         # datasets' sizes used in experiments
 # run experiments on all available cores
 def exp_parallel():
     pool = Pool(cpu_count())
-    pool.starmap_async(experiment_dt, product(SPLITNS, DNAMES, DSIZES))
+    pool.starmap_async(experiment, product(SPLITNS, DNAMES, DSIZES))
     pool.close()
     pool.join()
 
