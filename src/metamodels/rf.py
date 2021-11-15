@@ -4,14 +4,19 @@ from sklearn.model_selection import GridSearchCV
 
 
 class Meta_rf:
-    def __init__(self, params = {"max_features": [2, "sqrt", None]}, cv = 5, seed = 2020):
+
+    def __init__(self, params=None, cv=5, seed=2020):
+        if params is None:
+            params = {"max_features": [2, "sqrt", None]}
         self.params_ = params
         self.cv_ = cv
         self.seed_ = seed
+        self.model_ = None
+        self.cvscore_ = None
 
     def fit(self, X, y):
-        tmp = GridSearchCV(RandomForestClassifier(random_state = self.seed_),
-                                   self.params_, cv = self.cv_).fit(X, y)
+        tmp = GridSearchCV(RandomForestClassifier(random_state=self.seed_), self.params_, cv=self.cv_)
+        tmp.fit(X, y)
         self.model_ = tmp.best_estimator_
         self.cvscore_ = tmp.best_score_
         return self

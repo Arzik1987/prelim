@@ -1,20 +1,23 @@
 import numpy as np
 import warnings
 
+
 class Gen_perfect:
+
     def __init__(self):
-        return None
+        self.data_ = None
         
-    def fit(self, X, y = None):
+    def fit(self, X, y=None, metamodel=None):
         self.data_ = X.copy()
         return self
 
     def sample(self, n_samples=1):
         res = self.data_.copy()
         if n_samples >= self.data_.shape[0]:
+            # TODO is this desired behavior or do we want to abort?
             warnings.warn("Too many points are requested. Returning the complete stored set")
         else:
-            res = res[np.random.choice(res.shape[0], n_samples, replace = False), :]
+            res = res[np.random.choice(res.shape[0], n_samples, replace=False), :]
         return res
 
     def my_name(self):

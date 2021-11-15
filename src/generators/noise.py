@@ -1,16 +1,17 @@
 import numpy as np
 
+
 class Gen_noise:
 
-    def __init__(self, scale = 0.3):
+    def __init__(self, scale=0.3):
         self.scale_ = scale
 
-    def fit(self, X, y = None):
+    def fit(self, X, y=None, metamodel=None):
         self.data_ = X.copy()
         self.data_ = self.data_.astype(float)
         return self
 
-    def sample(self, n_samples = 1):
+    def sample(self, n_samples=1):
         mod_data = self.data_.copy()
         for col in range(0,mod_data.shape[1]):
             mindist = min(np.diff(np.unique(mod_data[:,col])))*self.scale_

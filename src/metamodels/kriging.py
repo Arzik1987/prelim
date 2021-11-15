@@ -3,13 +3,14 @@ from sklearn.gaussian_process import GaussianProcessClassifier
 from sklearn.gaussian_process.kernels import RBF
 
 
-
 class Meta_kriging:
-    def __init__(self, seed = 2020):
+    def __init__(self, seed=2020):
         self.seed_ = seed
+        self.model_ = None
 
     def fit(self, X, y):
-        self.model_ = GaussianProcessClassifier(kernel = 1.0 * RBF(1.0), random_state = self.seed_).fit(X, y)
+        self.model_ = GaussianProcessClassifier(kernel=1.0 * RBF(1.0), random_state=self.seed_)
+        self.model_.fit(X, y)
         return self
 
     def predict(self, X):

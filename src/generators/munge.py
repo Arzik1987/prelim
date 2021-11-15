@@ -1,4 +1,3 @@
-
 import sys
 import numpy as np
 from sklearn.neighbors import NearestNeighbors
@@ -6,22 +5,24 @@ from sklearn.neighbors import NearestNeighbors
 
 class Gen_munge:
     
-    def __init__(self, local_var = 5, p_swap = 0.5, seed = 2020):
+    def __init__(self, local_var=5, p_swap=0.5, seed=2020):
         if p_swap < 0.01:
             sys.exit("p_swap parameter is too small")
         self.p_swap_ = p_swap
         self.local_var_ = local_var
         self.seed_ = seed
+        self.data_ = None
+        self.index_ = None
 
-    def fit(self, X, y = None):
+    def fit(self, X, y=None, metamodel=None):
         self.data_ = X.copy()
-        self.index_ = NearestNeighbors(n_neighbors = 1).fit(self.data_).kneighbors()[1]
+        self.index_ = NearestNeighbors(n_neighbors=1).fit(self.data_).kneighbors()[1]
         return self
     
-    def sample_once_(self):
+    def _sample_once(self):
         dtemp = self.data_.copy()
         for j in range(0, dtemp.shape[0]):
-            nn = self.data_[self.index_[j],:].flatten()
+            nn = self.data_[self.index_[j], :].flatten()
             for k in range(0,dtemp.shape[1]):
                 swap = np.random.uniform(0, 1, 1)
                 if swap <= self.p_swap_:
@@ -34,19 +35,19 @@ class Gen_munge:
         dlist = []
 
         for i in range(0, reps):
-            dlist.append(self.sample_once_())
-        new_data = np.unique(np.concatenate(dlist, axis = 0), axis = 0)
+            dlist.append(self._sample_once())
+        new_data = np.unique(np.concatenate(dlist, axis=0), axis=0)
         
         # if the number of generated points is still lower than the required, generate more
         while new_data.shape[0] < n_samples:
-            new_data = np.unique(np.concatenate([new_data, self.sample_once_()], axis = 0), axis = 0)
-        inds = np.random.RandomState(self.seed_).choice(np.arange(new_data.shape[0]), size = new_data.shape[0], replace = False)
+            new_data = np.unique(np.concatenate([new_data, self._sample_once()], axis=0), axis=0)
+        inds = np.random.RandomState(self.seed_).choice(np.arange(new_data.shape[0]),
+                                                        size=new_data.shape[0], replace=False)
         
-        return new_data[inds,:][:n_samples,:]
+        return new_data[inds, :][:n_samples, :]
 
     def my_name(self):
         return "munge"
-
 
 
 # =============================================================================
