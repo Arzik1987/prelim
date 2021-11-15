@@ -136,8 +136,10 @@ dmypy.json
 .pyre/
 
 
-data/
 src/data/
+data1/
+data/*
+!data/get_data.py
 registry/
 registrydt/
 registryrules/
@@ -150,3 +152,4 @@ trials/
 densityforest.py
 results/
 PRIM_full.py
+PRIM_fast.R
