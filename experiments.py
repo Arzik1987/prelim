@@ -44,14 +44,16 @@ from joblib import Parallel, delayed
 from itertools import product
 import time
 import copy
+import logging
+import traceback
 
 # Directory for storing the results
 dirnme = 'registry'
 if not os.path.exists(dirnme):
     os.makedirs(dirnme)
-    
-# =============================================================================
-# Experiment description
+
+
+# ==============================    Experiment description      ===================================
 
 def experiment(splitn, dname, dsize):  
     # Generators                                                                            
@@ -407,10 +409,32 @@ def experiment(splitn, dname, dsize):
             sctest = k.score(Xtest, ytest)
             fileres.write(names +",%s,%s,%s,%s,%s,%s,na\n" % (i.my_name(), j.my_name(), sctrain, sctest, k.get_nrestr(), (end-start))) 
 
-    fileres.close() 
-    filetme.close()    
-        
-    
+    fileres.close()
+    filetme.close()
+
+
+# ==============================            Logging             ===================================
+
+
+def non_interrupting_experiment(splitn, dname, dsize):
+    logger = logging.getLogger("error")
+
+    succesful = False
+    stacktrace = None
+    try:
+        experiment(splitn, dname, dsize)
+        succesful = True
+    except Exception as e:
+        logger.log(logging.ERROR, f"Error occured in Experiment with: splits={splitn}, dataset=${dname}, Size={dsize})")
+        logger.log(logging.ERROR, traceback.format_exc())
+        stacktrace = traceback.format_exc()
+
+    return succesful, splitn, dname, dsize, stacktrace
+
+
+# ==============================    Configuration & Execution      ===================================
+
+
 NSETS = 25      # number of experiments with each dataset
 SPLITNS = list(range(0, NSETS))         # list of experiment numbers for each dataset
 DNAMES = ['anuran', 'avila', 'bankruptcy', 'ccpp', 'cc', 'clean2', 'dry',
@@ -424,7 +448,9 @@ DSIZES = [100, 400]         # datasets' sizes used in experiments
 # run experiments on all available cores
 def exp_parallel():
     args = product(SPLITNS, DNAMES, DSIZES)
-    Parallel(n_jobs = cpu_count(), verbose = 100)(delayed(experiment)(*a) for a in args)
+    result_list = Parallel(n_jobs=cpu_count(), verbose=100)(delayed(non_interrupting_experiment)(*a) for a in args)
+    print(np.asarray(result_list))
+
 
 if __name__ == "__main__":
     exp_parallel()
