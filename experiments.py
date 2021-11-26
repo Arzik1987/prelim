@@ -56,6 +56,7 @@ if not os.path.exists(dirnme):
 # ==============================    Experiment description      ===================================
 
 def experiment(splitn, dname, dsize):  
+    s_t = time.time()
     # Generators                                                                            
     gengmmbic = Gen_gmmbic() 
     genkde = Gen_kdebw()
@@ -410,6 +411,8 @@ def experiment(splitn, dname, dsize):
             fileres.write(names +",%s,%s,%s,%s,%s,%s,na\n" % (i.my_name(), j.my_name(), sctrain, sctest, k.get_nrestr(), (end-start))) 
 
     fileres.close()
+    e_t = time.time()
+    filetme.write('overall,%s\n' %(e_t-s_t))
     filetme.close()
 
 

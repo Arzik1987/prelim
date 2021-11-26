@@ -13,13 +13,12 @@ class Gen_vva:
         self.dim_ = None
         self.trainn_ = None
 
-    def fit(self, X, y=None, metamodel):
+    def fit(self, X, metamodel, y=None):
         self.generate_ = True
         self.dim_ = X.shape[1]
         self.trainn_ = X.shape[0]
         Xtrain = X.copy()
-        y = metamodel.predict_proba(Xtrain)[:, int(np.where(metamodel.classes_ == 1)[0])] - 0.5
-        print(y)
+        y = metamodel.predict_proba(Xtrain) - 0.5
         if sum(y < 0) == 0 or sum(y > 0) == 0:
             self.generate_ = False
             return self
@@ -93,5 +92,30 @@ class Gen_vva:
         return self.generate_
 
 
+# =============================================================================
+# # TEST 
+# 
+# mean = [0, 0]
+# cov = [[1, 0], [0, 1]]
+# x = np.random.multivariate_normal(mean, cov, 100)
+# mean = [3,3]
+# x = np.vstack((x,np.random.multivariate_normal(mean, cov, 100)))
+# y = np.hstack((np.zeros(100), np.ones(100))).astype(int)
+# 
+# from src.metamodels.rf import Meta_rf
+# metamodel = Meta_rf()
+# metamodel.fit(x, y)
+# ypred = metamodel.predict_proba(x)
+# 
+# import matplotlib.pyplot as plt
+# plt.scatter(x[:,0], x[:,1], c = ypred)
+# 
+# vva = Gen_vva(rho = 0.2)
+# vva.fit(x, metamodel) # uncomment predict_proba in the generator or replace with our metamodel
+# df = vva.sample(r = 1)
+# df = np.vstack([x, df])
+# ypred = metamodel.predict_proba(df)
+# plt.scatter(df[:,0], df[:,1], c= ypred)
+# =============================================================================
 
 

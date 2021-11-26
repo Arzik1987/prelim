@@ -13,3 +13,4 @@ imblearn==0.0
 scikit_learn==1.0.1
 odfpy==1.4.1
 xlrd==2.0.1
+joblib==1.0.1
