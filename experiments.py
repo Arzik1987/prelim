@@ -154,7 +154,7 @@ def experiment(splitn, dname, dsize):
     end = time.time()
     sctrain = dtval.score(X, y)
     sctest = dtval.score(Xtest, ytest) 
-    fileres.write("dtval,na,na,%s,nan,%s,%s,%s,na\n" % (sctrain, sctest, n_leaves(dtval), (end-start)))
+    fileres.write("dtval,na,na,%s,%s,%s,%s,na\n" % (sctrain, sctest, n_leaves(dtval), (end-start)))
   
     # for the following fidelity estimation
     dtvalold = copy.deepcopy(dtval) 
