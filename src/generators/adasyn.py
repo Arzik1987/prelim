@@ -31,12 +31,9 @@ class Gen_adasyn:
         while type(Xnew) is not np.ndarray and parknn <= n_samples and parknn <= self.X_.shape[0]:
             try:
                 Xnew, y = ADASYN(sampling_strategy = parss, n_neighbors = parknn, random_state = 2020).fit_resample(X, y)
-            except ValueError as ve:
+            except (ValueError, RuntimeError):
                 parknn = parknn * 2
-            except RuntimeError as re:
-                print("Adasyn not successful - Running SMOTE instead")
 
-        print(parknn)
         if type(Xnew) is not np.ndarray:
             from imblearn.over_sampling import SMOTE
             parknn = min(5, n_samples, self.X_.shape[0])
