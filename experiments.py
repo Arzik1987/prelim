@@ -399,7 +399,7 @@ def experiment(splitn, dname, dsize):
                 nlr = len(k.ruleset_)
             else:
                 nlr = n_leaves(k)
-            fileres.write(names +",%s,%s,%s,%s,%s,%s,%s\n" % (i.my_name(), j.my_name(), sctrain, sctest, nlr, (end-start), fidel)) 
+            fileres.write(names +",ssl,%s,%s,%s,%s,%s,%s\n" % (j.my_name(), sctrain, sctest, nlr, (end-start), fidel)) 
                 
         ynew = j.predict_proba(Xnew)
         for k, names in zip([primcv, bicv], ['primcv', 'bicv']):
@@ -408,7 +408,7 @@ def experiment(splitn, dname, dsize):
             end = time.time()                                     
             sctrain = k.score(X, y)
             sctest = k.score(Xtest, ytest)
-            fileres.write(names +",%s,%s,%s,%s,%s,%s,na\n" % (i.my_name(), j.my_name(), sctrain, sctest, k.get_nrestr(), (end-start))) 
+            fileres.write(names +",ssl,%s,%s,%s,%s,%s,na\n" % (j.my_name(), sctrain, sctest, k.get_nrestr(), (end-start))) 
 
     fileres.close()
     e_t = time.time()

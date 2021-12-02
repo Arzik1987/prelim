@@ -11,22 +11,6 @@ if os.path.exists(WHERE + "res.csv"):
 
 _, _, filenames = next(os.walk(WHERE))
 
-# #### delete after correction of the code for experiments.py
-
-# k = 0
-# for fname in filenames:
-#     k = k + 1
-#     sys.stdout.write('\r' + "Loading" + "." + str(k))
-#     if not 'meta' in fname:
-#         with open(WHERE + fname) as file:
-#             lines = file.readlines()
-        
-#         lines = [line.replace('nan,','') if 'dtval,na,na' in line else line for line in lines] 
-#         lines = [line.replace('rerx',',rerx') for line in lines] 
-#         lines = [line.replace(',,',',') for line in lines] 
-        
-#         with open(WHERE + fname, 'w') as file:
-#             lines = file.writelines(lines)
 
 #### Helper functions for postprocessing
 
@@ -37,7 +21,7 @@ def qual_change(d, meta):
     precdefault = meta[meta['alg'].isin(['testprec'])]['val'].iloc[0]
     for i in range(0, d.shape[0]):
         if d.iloc[i][0] not in ['primcv', 'bicv']:
-            d['tes'] = d['tes'] - precdefault
+            d['tes'][i] = d['tes'][i] - precdefault
     d['fid'] = pd.to_numeric(d['fid'], errors = 'coerce')
             
     algnames = d['alg'].unique()
@@ -87,14 +71,13 @@ nf = str(len(filenames))
 for i in filenames:
     k = k + 1
     sys.stdout.write('\r' + 'loading' + '.' + str(k) + '/' + nf)
-    if not 'meta' in i:
+    if not 'meta' in i and not 'zeros' in i:
             res.append(get_result(i))
 
 
 res = pd.concat(res)
 res.loc[res['gen'] == 'adasyns','gen'] = 'adasyn'
 for names in ['tra', 'tes', 'nle', 'tme', 'fid', 'ora', 'orn', 'orf', 'itr', 'npt']:
-    print(names)
     res[names] = pd.to_numeric(res[names])
 res.to_csv(WHERE + 'res.csv')
 # res = pd.read_csv(WHERE + 'res.csv', delimiter = ",")
@@ -124,12 +107,21 @@ def change_names(a):
     a = a.replace('dtval', 'DTcv')
     a = a.replace('dtc', 'DTcomp')
     a = a.replace('dt', 'DT')
-    a = a.replace('cmmrf', 'cmm')
-    a = a.replace('kdebw', 'kde')
-    a = a.replace('kdebwm', 'kdem')
-    a = a.replace('randn', 'norm')
-    a = a.replace('randu', 'unif')
-    a = a.replace('rerx', 're-rx')
+    a = a.replace('adasyn', 'ADASYN')
+    a = a.replace('cmmrf', 'CMM')
+    a = a.replace('dummy', 'DUMMY')
+    a = a.replace('gmm', 'GMM')
+    a = a.replace('gmmal', 'GMMAL')
+    a = a.replace('kdebw', 'KDE')
+    a = a.replace('kdeb', 'KDEB')
+    a = a.replace('kdebwm', 'KDEM')
+    a = a.replace('munge', 'MUNGE')
+    a = a.replace('randn', 'NORM')
+    a = a.replace('randu', 'UNIF')
+    a = a.replace('rerx', 'RE-RX')
+    a = a.replace('smote', 'SMOTE')
+    a = a.replace('ssl', 'SSL')
+    a = a.replace('vva', 'VVA')
     a = a.replace('rf', 'RF')
     a = a.replace('xgb', 'BT')
     a = a.replace('bicv', 'BI')
@@ -140,7 +132,7 @@ def change_names(a):
     
 def separate_baseline(a, clname, clnameo):
     tmp1 = a.drop(columns = [clname])
-    tmp1['gen'] = 'NO'
+    tmp1['gen'] = ' NO'
     tmp1 = tmp1.rename(columns={clnameo: clname})
     tmp1 = tmp1.groupby(['alg', 'gen', 'met', 'npt']).max() # the choice of aggregate function (mean, min, median) should have no effect
     tmp1.to_csv(WHERE + 'tmp1.csv')
@@ -154,7 +146,7 @@ def draw_heatmap(clname, clnameo, mlt = 100, pal = 'normal', npts = 100, ylbl = 
    
     def draw_heatmap_c(*args, **kwargs):
         data = kwargs.pop('data')
-        center = data[data['gen'] == 'NO'][args[2]].iloc[0]
+        center = data[data['gen'] == ' NO'][args[2]].iloc[0]
         d = data.pivot(index=args[1], columns=args[0], values=args[2])
         sns.heatmap(d, center = center, **kwargs)
     
@@ -182,7 +174,7 @@ def draw_heatmap(clname, clnameo, mlt = 100, pal = 'normal', npts = 100, ylbl = 
     fg.set_axis_labels("", "")
     fg.set_titles(col_template="{col_name}", row_template="{row_name}")
     fg.tight_layout()
-    fg.savefig("results/" + mod + clname + str(npts) + ".pdf")
+    fg.savefig("results/" + mod + "_" + clname + str(npts) + ".pdf")
   
     
 draw_heatmap('tes', 'ora', npts = 100)
@@ -193,15 +185,15 @@ draw_heatmap('nle', 'orn', npts = 100, mlt = 1, pal = 'inverse', ylbl = False)
 draw_heatmap('nle', 'orn', npts = 400, mlt = 1, pal = 'inverse', ylbl = False)
 
 draw_heatmap('tes', 'ora', npts = 100, mod = 'rules')
-draw_heatmap('tes', 'ora', npts = 400, mod = 'rules')
-draw_heatmap('fid', 'orf', npts = 100, ylbl = False, mod = 'rules')
+draw_heatmap('tes', 'ora', npts = 400, ylbl = False, mod = 'rules')
+draw_heatmap('fid', 'orf', npts = 100, mod = 'rules')
 draw_heatmap('fid', 'orf', npts = 400, ylbl = False, mod = 'rules')
-draw_heatmap('nle', 'orn', npts = 100, mlt = 1, pal = 'inverse', ylbl = False, mod = 'rules')
+draw_heatmap('nle', 'orn', npts = 100, mlt = 1, pal = 'inverse', mod = 'rules')
 draw_heatmap('nle', 'orn', npts = 400, mlt = 1, pal = 'inverse', ylbl = False, mod = 'rules')
 
 draw_heatmap('tes', 'ora', npts = 100, mod = 'sd')
-draw_heatmap('tes', 'ora', npts = 400, mod = 'sd')
-draw_heatmap('nle', 'orn', npts = 100, mlt = 1, pal = 'inverse', ylbl = False, mod = 'sd')
+draw_heatmap('tes', 'ora', npts = 400, ylbl = False, mod = 'sd')
+draw_heatmap('nle', 'orn', npts = 100, mlt = 1, pal = 'inverse', mod = 'sd')
 draw_heatmap('nle', 'orn', npts = 400, mlt = 1, pal = 'inverse', ylbl = False, mod = 'sd')
 
 
