@@ -8,31 +8,32 @@ from statsmodels.nonparametric.bandwidths import bw_silverman, bw_scott
 # to choose bandwidth via CV, see, for instance, 
 # https://scikit-learn.org/stable/auto_examples/neighbors/plot_digits_kde_sampling.html#sphx-glr-auto-examples-neighbors-plot-digits-kde-sampling-py
 
-class Gen_kdebw:          
 
-    def __init__(self, method = 'silverman'):
+class Gen_kdebw:
+
+    def __init__(self, method='silverman'):
         if method == 'silverman':
             self.bw_method_ = bw_silverman
         elif method == 'scott':
             self.bw_method_ = bw_scott
         else:
-            sys.exit("The method must be either scott or silverman")
+            raise ValueError("The method must be either scott or silverman")
+        self.model_ = None
 
-    def fit(self, X, y = None):
+    def fit(self, X, y=None, metamodel=None):
         bw = self.bw_method_(X)
         if bw.max()/bw.min() > 10:
-            warnings.warn("Bandwidths for different dimensions differ by more than order of magnitude. Consider using z-score scaling")
+            warnings.warn("Bandwidths for different dimensions differ by more than order of magnitude. "
+                          "Consider using z-score scaling")
         bw = bw.mean()
-        self.model_ = KernelDensity(bandwidth = bw).fit(X)
+        self.model_ = KernelDensity(bandwidth=bw).fit(X)
         return self
 
-    def sample(self, n_samples = 1):
+    def sample(self, n_samples=1):
         return self.model_.sample(n_samples)
     
     def my_name(self):
         return "kdebw"
-
-
 
 # =============================================================================
 # # TEST 
@@ -58,7 +59,7 @@ class Gen_kdebw:
 # 
 # =============================================================================
 
-class Gen_kdebwhl:          
+class Gen_kdebwhl:
 
     def __init__(self, method = 'silverman'):
         if method == 'silverman':
@@ -67,14 +68,17 @@ class Gen_kdebwhl:
             self.bw_method_ = bw_scott
         else:
             sys.exit("The method must be either scott or silverman")
+        self.model_ = None
+        self.limits_ = None
 
-    def fit(self, X, y = None):
+    def fit(self, X, y=None, metamodel=None):
         bw = self.bw_method_(X)
         if bw.max()/bw.min() > 10:
-            warnings.warn("Bandwidths for different dimensions differ by more than order of magnitude. Consider using z-score scaling")
+            warnings.warn("Bandwidths for different dimensions differ by more than order of magnitude. "
+                          "Consider using z-score scaling")
         bw = bw.mean()
-        self.model_ = KernelDensity(bandwidth = bw).fit(X)
-        self.limits_ = (X.min(axis = 0), X.max(axis = 0))
+        self.model_ = KernelDensity(bandwidth=bw).fit(X)
+        self.limits_ = (X.min(axis=0), X.max(axis=0))
         return self
 
     def sample(self, n_samples = 1):

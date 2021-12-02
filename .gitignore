@@ -6,6 +6,13 @@ __pycache__/
 # C extensions
 *.so
 
+
+# MacOS
+.DS_store
+
+# intelliJ IDEA
+.idea
+
 # Distribution / packaging
 .Python
 build/
@@ -129,19 +136,10 @@ dmypy.json
 .pyre/
 
 
-data1/
 data/*
 !data/get_data.py
 registry/
-registrydt/
-registryrules/
-registrybi/
-registryprim/
 registryill/
-registrysd/
-registryfid/
-trials/
-densityforest.py
 results/
 PRIM_full.py
-PRIM_fast.R
+densityforest.py

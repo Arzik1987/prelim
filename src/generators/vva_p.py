@@ -18,7 +18,7 @@ class Gen_vva:
         self.dim_ = X.shape[1]
         self.trainn_ = X.shape[0]
         Xtrain = X.copy()
-        y = metamodel.predict_proba(Xtrain) - 0.5
+        y = metamodel.predict_proba(Xtrain)[:, int(np.where(metamodel.classes_ == 1)[0])] - 0.5
         if sum(y < 0) == 0 or sum(y > 0) == 0:
             self.generate_ = False
             return self

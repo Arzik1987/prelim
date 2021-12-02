@@ -156,18 +156,22 @@ def load_data(dname):
     return X, y
 
 
-res = []
-for i in ['anuran', 'avila', 'bankruptcy', 'ccpp', 'cc', 'clean2', 'dry',
-       'ees', 'electricity', 'gas', 'gt', 'higgs21', 'higgs7', 'htru', 'jm1',
-       'ml', 'nomao', 'occupancy', 'parkinson', 'pendata', 'ring',
-       'saac2', 'seizure', 'sensorless', 'seoul', 'shuttle', 'stocks',
-       'sylva', 'turbine', 'wine']:
-    print(i)
-    X, y = load_data(i)
-    res.append([i, X.shape[0], X.shape[1], np.round(sum(y)/len(y), 2)])
-
-res = pd.DataFrame(res, columns=['name','n','m', 'pos'])
-res.to_csv('datasets.csv')
+# =============================================================================
+# # Test load_data() and create a table listing datasets' properties
+#
+# res = []
+# for i in ['anuran', 'avila', 'bankruptcy', 'ccpp', 'cc', 'clean2', 'dry',
+#        'ees', 'electricity', 'gas', 'gt', 'higgs21', 'higgs7', 'htru', 'jm1',
+#        'ml', 'nomao', 'occupancy', 'parkinson', 'pendata', 'ring',
+#        'saac2', 'seizure', 'sensorless', 'seoul', 'shuttle', 'stocks',
+#        'sylva', 'turbine', 'wine']:
+#     print(i)
+#     X, y = load_data(i)
+#     res.append([i, X.shape[0], X.shape[1], np.round(sum(y)/len(y), 2)])
+# 
+# res = pd.DataFrame(res, columns=['name','n','m', 'pos'])
+# res.to_csv('datasets.csv')
+# =============================================================================
     
 
 

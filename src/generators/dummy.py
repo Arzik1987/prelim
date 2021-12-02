@@ -1,19 +1,16 @@
-
 class Gen_dummy:
     def __init__(self):
         self.X_ = None
 
-    def fit(self, X, y = None):
+    def fit(self, X, y=None, metamodel=None):
         self.X_ = X.copy()
         return self
 
-    def sample(self, n_samples = 1):
+    def sample(self, n_samples=1):
         return self.X_.copy()
     
     def my_name(self):
         return "dummy"
-
-
 
 # =============================================================================
 # # This generator always returns the same dataset

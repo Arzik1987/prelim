@@ -5,13 +5,20 @@ from sklearn.svm import SVC
 
 
 class Meta_svm:
-    def __init__(self, params = {"C": [0.1, 1, 10, 100], "gamma": [0.001, 0.01, 0.1, 1]}, cv = 5, seed = 2020):
+    def __init__(self, params=None, cv=5, seed=2020):
+        if params is None:
+            self.params = {
+                "C": [0.1, 1, 10, 100],
+                "gamma": [0.001, 0.01, 0.1, 1]
+            }
         self.params_ = params
+        self.model_ = None
         self.cv_ = cv
         self.seed_ = seed
 
     def fit(self, X, y):
-        self.model_ = CalibratedClassifierCV(GridSearchCV(SVC(random_state = self.seed_), self.params_, cv = self.cv_)).fit(X, y)
+        self.model_ = CalibratedClassifierCV(GridSearchCV(SVC(random_state=self.seed_), self.params_, cv=self.cv_))
+        self.model_.fit(X, y)
         return self
 
     def predict(self, X):
