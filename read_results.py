@@ -1,11 +1,11 @@
 import os
 import pandas as pd
 import seaborn as sns
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 import numpy as np
 import sys
 
-WHERE = 'registry/' 
+WHERE = 'C:/Projects/2022_1_nosync_PRELIM/registry/' 
 if os.path.exists(WHERE + "res.csv"):
     os.remove(WHERE + "res.csv")
 
@@ -140,6 +140,18 @@ def separate_baseline(a, clname, clnameo):
     os.remove(WHERE + "tmp1.csv")
     return tmp1
 
+def my_diverging_palette(r_neg, r_pos, g_neg, g_pos, b_neg, b_pos, sep=1, n=6,  # noqa
+                      center="light", as_cmap=False):
+
+    palfunc = dict(dark=sns.dark_palette, light=sns.light_palette)[center]
+    n_half = int(128 - (sep // 2))
+    neg = palfunc((r_neg/255, g_neg/255, b_neg/255), n_half, reverse=True, input="rgb")
+    pos = palfunc((r_pos/255, g_pos/255, b_pos/255), n_half, input="rgb")
+    midpoint = dict(light=[(.95, .95, .95)], dark=[(.133, .133, .133)])[center]
+    mid = midpoint * sep
+    pal = sns.blend_palette(np.concatenate([neg, mid, pos]), n, as_cmap=as_cmap)
+    return pal
+
 #### Heatmap drawing:
 
 def draw_heatmap(clname, clnameo, mlt = 100, pal = 'normal', npts = 100, ylbl = True, mod = 'dt'):
@@ -159,15 +171,15 @@ def draw_heatmap(clname, clnameo, mlt = 100, pal = 'normal', npts = 100, ylbl = 
         a[clname][a['alg'] == 'DT'] = np.round(a[clname][a['alg'] == 'DT'], 0)
     
     if pal == 'inverse':
-        rdgn = sns.diverging_palette(h_neg = 130, h_pos = 10, s = 99, l = 55, sep = 3, as_cmap = True)
+        dvgp = my_diverging_palette(r_neg = 0, r_pos = 255, g_neg = 91, g_pos = 213, b_neg = 183, b_pos = 0, sep = 3, as_cmap = True)
     else:
-        rdgn = sns.diverging_palette(h_neg = 10, h_pos = 130, s = 99, l = 55, sep = 3, as_cmap = True)
+        dvgp = my_diverging_palette(r_neg = 255, r_pos = 0, g_neg = 213, g_pos = 91, b_neg = 0, b_pos = 183, sep = 3, as_cmap = True)
     
     asp = 0.4/1.2
     if ylbl == False:
         asp = 0.33/1.2
     fg = sns.FacetGrid(a, row = 'npt', col = 'alg', margin_titles=False, despine=False, height=4.2, aspect=asp)
-    fg.map_dataframe(draw_heatmap_c, 'met', 'gen', clname, cbar = False, cmap = rdgn, annot = True, fmt='g')
+    fg.map_dataframe(draw_heatmap_c, 'met', 'gen', clname, cbar = False, cmap = dvgp, annot = True, fmt='g')
     if ylbl == False:
         fg.set(yticklabels=[])
     
@@ -176,7 +188,8 @@ def draw_heatmap(clname, clnameo, mlt = 100, pal = 'normal', npts = 100, ylbl = 
     fg.tight_layout()
     fg.savefig("results/" + mod + "_" + clname + str(npts) + ".pdf")
   
-    
+# os.mkdir("results/")  
+  
 draw_heatmap('tes', 'ora', npts = 100)
 draw_heatmap('tes', 'ora', npts = 400)
 draw_heatmap('fid', 'orf', npts = 100, ylbl = False)
