@@ -9,7 +9,7 @@ class Gen_gmm:
         if params is None:
             self.params_ = {
                 "covariance_type": ["full", "tied", "diag", "spherical"],
-                "n_components": list(range(1,31))
+                "n_components": list(range(1,30))
             }
         else:
             self.params_ = params
@@ -34,7 +34,7 @@ class Gen_gmmbic:
         if params is None:
             self.params_ = {
                 "covariance_type": ["full", "tied", "diag", "spherical"],
-                "n_components": list(range(1,31))
+                "n_components": list(range(1,30))
             }
         else:
             self.params_ = params
@@ -66,7 +66,7 @@ class Gen_gmmbical:
 
     def __init__(self, params: dict = None, cv=None):
         if params is None:
-            self.params_ = {"n_components": list(range(1,31))}
+            self.params_ = {"n_components": list(range(1,30))}
         else:
             self.params_ = params
 

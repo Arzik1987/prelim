@@ -11,6 +11,8 @@ os.environ.update(
 # Black-box models
 from src.metamodels.rf import Meta_rf
 from src.metamodels.xgb import Meta_xgb
+from src.metamodels.xgbb import Meta_xgb_bal
+from src.metamodels.rfb import Meta_rf_bal
 
 # Generators
 from src.generators.gmm import Gen_gmmbic, Gen_gmmbical
@@ -38,6 +40,7 @@ from src.utils.data_loader import load_data
 from src.utils.helpers import opt_param, n_leaves, get_bi_param, get_new_test
 from sklearn.model_selection import GridSearchCV
 from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import balanced_accuracy_score, accuracy_score
 import numpy as np
 from multiprocessing import cpu_count
 from joblib import Parallel, delayed
@@ -76,13 +79,19 @@ def experiment(splitn, dname, dsize):
     # Black-box models
     metarf = Meta_rf()
     metaxgb = Meta_xgb()
+    metarfb = Meta_rf_bal()
+    metaxgbb = Meta_xgb_bal()
     
     # White-box models
     dt = DecisionTreeClassifier(min_samples_split = 10)
+    dtb = DecisionTreeClassifier(min_samples_split = 10, class_weight = 'balanced')
     # one could restrict depth instead. Results will be worse, but 
     # ranking of generator's will not generally change (still kde is the best)
     dtc = DecisionTreeClassifier(max_leaf_nodes = 8)    
     dtval = DecisionTreeClassifier()
+    dtcb = DecisionTreeClassifier(max_leaf_nodes = 8, class_weight = 'balanced') 
+    dtvalb = DecisionTreeClassifier(class_weight = 'balanced')
+    # classification rules
     ripper = lw.RIPPER(max_rules = 8)
     irep = lw.IREP(max_rules = 8)
     
@@ -113,25 +122,27 @@ def experiment(splitn, dname, dsize):
     yr = np.tile(y, tms)
     
     # Here we write results
-    # structure: (1) model (2) gen (3) met (4) sctr (5) sctest (6) nleaves/rules (7) time (8) fidelity
+    # structure: (1) model (2) gen (3) met (4) sctr (5) sctest (6) nleaves/rules (7) time (8) fidelity (9) balanced accuracy
     fileres = open(dirnme + '/%s_%s_%s.csv' % (dname, splitn, dsize), 'a')
     # structure: (1) variable (2) value
     filetme = open(dirnme + '/%s_%s_%s_meta.csv' % (dname, splitn, dsize), 'a')
     
     # accuracy of the naive (= default class) classifier on train and test
+    # note that balanced accuracy for such classifier is always 0.5
     defprec = 1 if y.mean() >= 0.5 else 0
     filetme.write("testprec,%s\n" % (ytest.mean() if defprec == 1 else 1 - ytest.mean())) 
     filetme.write("trainprec,%s\n" % (y.mean() if defprec == 1 else 1 - y.mean()))
     ydeftest = np.ones(len(ytest))*defprec  # for fidelity of naive model
       
     # WB models, no HPO                          
-    for k, names in zip([dt, dtc],['dt', 'dtc']):
+    for k, names in zip([dt, dtc, dtb, dtcb],['dt', 'dtc', 'dtb', 'dtcb']):
         start = time.time()
         k.fit(X, y)
         end = time.time()                                                  
         sctrain = k.score(X, y)
         sctest = k.score(Xtest, ytest)
-        fileres.write(names + ',na,na,%s,%s,%s,%s,na\n' % (sctrain, sctest, n_leaves(k), (end-start))) 
+        bacctest = balanced_accuracy_score(ytest, k.predict(Xtest))
+        fileres.write(names + ',na,na,%s,%s,%s,%s,na,%s\n' % (sctrain, sctest, n_leaves(k), (end-start), bacctest)) 
         
     for k, names in zip([ripper, irep],['ripper', 'irep']):
         start = time.time()
@@ -139,13 +150,15 @@ def experiment(splitn, dname, dsize):
         end = time.time()                                                  
         sctrain = k.score(Xr, yr)
         sctest = k.score(Xtest, ytest)
-        fileres.write(names + ',na,na,%s,%s,%s,%s,na\n' % (sctrain, sctest, len(k.ruleset_), (end-start))) 
+        bacctest = balanced_accuracy_score(ytest, k.predict(Xtest))
+        fileres.write(names + ',na,na,%s,%s,%s,%s,na,%s\n' % (sctrain, sctest, len(k.ruleset_), (end-start), bacctest)) 
     del Xr, yr
     
     # WB models, HPO - optimize the number of leaves using grid search 
-    # decision tree
     par_vals = [2**number for number in [1,2,3,4,5,6,7]]
     parameters = {'max_leaf_nodes': par_vals}   
+    
+    # decision tree
     start = time.time()                          
     tmp = GridSearchCV(dtval, parameters, refit = False).fit(X, y).cv_results_ 
     tmp = opt_param(tmp, len(par_vals))
@@ -154,12 +167,27 @@ def experiment(splitn, dname, dsize):
     end = time.time()
     sctrain = dtval.score(X, y)
     sctest = dtval.score(Xtest, ytest) 
-    fileres.write("dtval,na,na,%s,%s,%s,%s,na\n" % (sctrain, sctest, n_leaves(dtval), (end-start)))
+    bacctest = balanced_accuracy_score(ytest, dtval.predict(Xtest))
+    fileres.write("dtval,na,na,%s,%s,%s,%s,na,%s\n" % (sctrain, sctest, n_leaves(dtval), (end-start), bacctest))
+    
+    # balanced decision tree
+    start = time.time()                          
+    tmp = GridSearchCV(dtvalb, parameters, refit = False, scoring = 'balanced_accuracy').fit(X, y).cv_results_ 
+    tmp = opt_param(tmp, len(par_vals))
+    dtvalb = DecisionTreeClassifier(max_leaf_nodes = par_vals[np.argmax(tmp)], class_weight='balanced')                                            
+    dtvalb.fit(X, y)
+    end = time.time()
+    sctrain = dtvalb.score(X, y)
+    sctest = dtvalb.score(Xtest, ytest) 
+    bacctest = balanced_accuracy_score(ytest, dtvalb.predict(Xtest))
+    fileres.write("dtvalb,na,na,%s,%s,%s,%s,na,%s\n" % (sctrain, sctest, n_leaves(dtvalb), (end-start), bacctest))
   
     # for the following fidelity estimation
     dtvalold = copy.deepcopy(dtval) 
+    dtvalbold = copy.deepcopy(dtvalb) 
     # restricting the number of leaves in the following attempts
     dtval = DecisionTreeClassifier(max_leaf_nodes = max(n_leaves(dtval),2)) 
+    dtvalb = DecisionTreeClassifier(max_leaf_nodes = max(n_leaves(dtvalb),2), class_weight='balanced')
     
     # BI 
     parsbi = get_bi_param(5, X.shape[1]) # hyperparameters for BI with HPO
@@ -172,7 +200,7 @@ def experiment(splitn, dname, dsize):
     end = time.time()
     sctrain = bicv.score(X, y)
     sctest = bicv.score(Xtest, ytest)     
-    fileres.write("bicv,na,na,%s,%s,%s,%s,na\n" % (sctrain, sctest, bicv.get_nrestr(), (end-start))) 
+    fileres.write("bicv,na,na,%s,%s,%s,%s,na,na\n" % (sctrain, sctest, bicv.get_nrestr(), (end-start))) 
     # limiting the number of restricted dimensions in the following attempts
     bicv = BI(depth = bicv.get_nrestr())
     
@@ -187,7 +215,7 @@ def experiment(splitn, dname, dsize):
     end = time.time()
     sctrain = primcv.score(X, y)
     sctest = primcv.score(Xtest, ytest)     
-    fileres.write("primcv,na,na,%s,%s,%s,%s,na\n" % (sctrain, sctest, primcv.get_nrestr(), (end-start))) 
+    fileres.write("primcv,na,na,%s,%s,%s,%s,na,na\n" % (sctrain, sctest, primcv.get_nrestr(), (end-start))) 
 
     ################
     #### PRELIM ####
@@ -202,57 +230,70 @@ def experiment(splitn, dname, dsize):
         filetme.write(i.my_name() + "time,%s\n" % (end-start)) 
         
     # Fitting black-box models
-    for j in [metarf, metaxgb]: 
+    for j in [metarf, metaxgb, metarfb, metaxgbb]: 
         start = time.time()
         j.fit(X, y)
         end = time.time()
         filetme.write(j.my_name() + "time,%s\n" % (end-start)) 
-        filetme.write(j.my_name() + "acc,%s\n" % j.fit_score()) 
+        filetme.write(j.my_name() + "acccv,%s\n" % j.fit_score()) 
         
         # fidelity of the naive classifier
         ypredtest = j.predict(Xtest)
         fidel = np.count_nonzero(ypredtest == ydeftest)/len(ypredtest)
         filetme.write(j.my_name() + "fid,%s\n" % (fidel))
+        # out-of-sample accuracy and balanced accuracy
+        filetme.write(j.my_name() + "acc,%s\n" % accuracy_score(ytest, ypredtest))
+        filetme.write(j.my_name() + "bacc,%s\n" % balanced_accuracy_score(ytest, ypredtest))
         
-        # fidelity of white-box models trained from original data
-        for k, names in zip([dt, dtc, dtvalold, ripper, irep], ['dt', 'dtc', 'dtval', 'ripper', 'irep']):
+        # fidelity of white-box models trained from original data 
+        if j in [metarf, metaxgb]:
+            smodels = zip([dt, dtc, dtvalold, ripper, irep], ['dt', 'dtc', 'dtval', 'ripper', 'irep'])
+        if j in [metarfb, metaxgbb]:
+            smodels = zip([dtb, dtcb, dtvalbold], ['dtb', 'dtcb', 'dtvalb'])
+        for k, names in smodels:   
             fidel = np.count_nonzero(k.predict(Xtest) == ypredtest)/len(ypredtest)
             filetme.write(j.my_name() + names + "fid,%s\n" % (fidel))
 
-        
     # re-rx generator
     # consider it separately since it requires a metamodel as input
-    for j in [metarf, metaxgb]: 
+    for j in [metarf, metaxgb, metarfb, metaxgbb]: 
         genrerx.fit(X, y, j)
-        Xnew = genrerx.sample()  
-        ynew = j.predict(Xnew)   
-                                 
         ypredtest = j.predict(Xtest)
-        for k, names in zip([dt, dtc, dtval, ripper, irep], ['dt', 'dtc', 'dtval', 'ripper', 'irep']):
+        Xnew = genrerx.sample()  
+        ynew = j.predict(Xnew)
+        
+        if j in [metarf, metaxgb]:
+            smodels = zip([dt, dtc, dtval, ripper, irep], ['dt', 'dtc', 'dtval', 'ripper', 'irep'])
+        if j in [metarfb, metaxgbb]:
+            smodels = zip([dtb, dtcb, dtvalb], ['dtb', 'dtcb', 'dtvalb'])
+            
+        for k, names in smodels:
             start = time.time()
             k.fit(Xnew, ynew)
             end = time.time()                                     
             sctrain = k.score(X, y)
             sctest = k.score(Xtest, ytest)
+            bacctest = balanced_accuracy_score(ytest, k.predict(Xtest))
             fidel = np.count_nonzero(k.predict(Xtest) == ypredtest)/len(ypredtest)
             if names in ['ripper', 'irep']:
                 nlr = len(k.ruleset_)
             else:
                 nlr = n_leaves(k)
-            fileres.write(names +",rerx,%s,%s,%s,%s,%s,%s\n" % (j.my_name(), sctrain, sctest, nlr, (end-start), fidel)) 
+            fileres.write(names +",rerx,%s,%s,%s,%s,%s,%s,%s\n" % (j.my_name(), sctrain, sctest, nlr, (end-start), fidel, bacctest)) 
         
-        ynew = j.predict_proba(Xnew) 
-        for k, names in zip([primcv, bicv],['primcv', 'bicv']):
-            start = time.time()
-            k.fit(Xnew, ynew)
-            end = time.time()                                     
-            sctrain = k.score(X, y)
-            sctest = k.score(Xtest, ytest)
-            fileres.write(names +",rerx,%s,%s,%s,%s,%s,na\n" % (j.my_name(), sctrain, sctest, k.get_nrestr(), (end-start))) 
+        if j in [metarf, metaxgb]:
+            ynew = j.predict_proba(Xnew) 
+            for k, names in zip([primcv, bicv],['primcv', 'bicv']):
+                start = time.time()
+                k.fit(Xnew, ynew)
+                end = time.time()                                     
+                sctrain = k.score(X, y)
+                sctest = k.score(Xtest, ytest)
+                fileres.write(names +",rerx,%s,%s,%s,%s,%s,na,na\n" % (j.my_name(), sctrain, sctest, k.get_nrestr(), (end-start))) 
 
     # vva generator
     # consider it separately since it requires white-box model and metamodel
-    for j in [metarf, metaxgb]:
+    for j in [metarf, metaxgb, metarfb, metaxgbb]:
         # split train data into train and validation
         ntrain = int(np.ceil(X.shape[0]*2/3))
         Xtrain = X[:ntrain,:].copy()
@@ -263,11 +304,16 @@ def experiment(splitn, dname, dsize):
         genvva.fit(Xtrain, j)
         end = time.time()
         filetme.write(j.my_name() + 'vva,%s\n' % (end-start))
-        
         ypredtest = j.predict(Xtest)
+        
+        if j in [metarf, metaxgb]:
+            smodels = zip([dt, dtc, dtval, ripper, irep, primcv, bicv],\
+                          ['dt', 'dtc', 'dtval', 'ripper', 'irep', 'primcv', 'bicv'])
+        if j in [metarfb, metaxgbb]:
+            smodels = zip([dtb, dtcb, dtvalb], ['dtb', 'dtcb', 'dtvalb'])
+        
         # optimize the number of generated points for each white-box model separately
-        for k, names in zip([dt, dtc, dtval, ripper, irep, primcv, bicv],\
-                            ['dt', 'dtc', 'dtval', 'ripper', 'irep', 'primcv', 'bicv']):
+        for k, names in smodels:
             start = time.time()      
             if names in ['primcv', 'bicv']:
                 k.fit(Xtrain, j.predict_proba(Xtrain))
@@ -318,22 +364,28 @@ def experiment(splitn, dname, dsize):
             end = time.time()                                     
             sctrain = k.score(X, y)
             sctest = k.score(Xtest, ytest)
+            
             fidel = 'na' if names in ['primcv', 'bicv'] else\
                 np.count_nonzero(k.predict(Xtest) == ypredtest)/len(ypredtest)
             if names in ['primcv', 'bicv']:
                 nlr = k.get_nrestr()
-            elif names in ['ripper', 'irep']:
-                nlr = len(k.ruleset_)
+                fidel = 'na'
+                bacctest = 'na'
             else:
-                nlr = n_leaves(k)
-            fileres.write(names + ",vva,%s,%s,%s,%s,%s,%s\n" % (j.my_name(), sctrain, sctest, nlr, (end-start), fidel)) 
-    
+                fidel = np.count_nonzero(k.predict(Xtest) == ypredtest)/len(ypredtest)
+                bacctest = balanced_accuracy_score(ytest, k.predict(Xtest))
+                if names in ['ripper', 'irep']:
+                    nlr = len(k.ruleset_)
+                else:
+                    nlr = n_leaves(k)
+            fileres.write(names + ",vva,%s,%s,%s,%s,%s,%s,%s\n" % (j.my_name(), sctrain, sctest, nlr, (end-start), fidel, bacctest)) 
+
     # All remaining generators
     for i in [gengmmbic, genkde, genmunge, genrandu, genrandn, gendummy,\
               gengmmbical, gensmote, genadasyn, genrfdens, genkdem, genkdeb]:
         
         start = time.time()
-        Xgen = i.sample(100000 - dsize)  
+        Xgen = i.sample(100000)  
         end = time.time()
         filetme.write(i.my_name() + "gen,%s\n" % (end-start))
         
@@ -343,10 +395,24 @@ def experiment(splitn, dname, dsize):
             start = time.time()
             Xnew = Xgen.copy()  
             ynew = j.predict(Xnew)
-            Xnew = np.concatenate([X, Xnew])
-            ynew = np.concatenate([y, ynew])
             end = time.time()
             filetme.write(i.my_name() + j.my_name() + ",%s\n" % (end-start))  
+            
+            for k, names in zip([dt, dtc, dtval], ['dtp', 'dtcp', 'dtvalp']):
+                start = time.time()
+                k.fit(Xnew, ynew)
+                end = time.time()                                     
+                sctrain = k.score(X, y)
+                sctest = k.score(Xtest, ytest)
+                bacctest = balanced_accuracy_score(ytest, k.predict(Xtest))
+                fidel = np.count_nonzero(k.predict(Xtest) == ypredtest)/len(ypredtest)
+                fileres.write(names +",%s,%s,%s,%s,%s,%s,%s,%s\n" % (i.my_name(), j.my_name(), sctrain, sctest, n_leaves(k), (end-start), fidel, bacctest)) 
+
+            # with using original data as part of new
+            Xnew = Xnew[dsize:100000,:]
+            ynew = ynew[dsize:100000]
+            Xnew = np.concatenate([X, Xnew])
+            ynew = np.concatenate([y, ynew])            
              
             for k, names in zip([dt, dtc, dtval], ['dt', 'dtc', 'dtval']):
                 start = time.time()
@@ -354,8 +420,9 @@ def experiment(splitn, dname, dsize):
                 end = time.time()                                     
                 sctrain = k.score(X, y)
                 sctest = k.score(Xtest, ytest)
+                bacctest = balanced_accuracy_score(ytest, k.predict(Xtest))
                 fidel = np.count_nonzero(k.predict(Xtest) == ypredtest)/len(ypredtest)
-                fileres.write(names +",%s,%s,%s,%s,%s,%s,%s\n" % (i.my_name(), j.my_name(), sctrain, sctest, n_leaves(k), (end-start), fidel)) 
+                fileres.write(names +",%s,%s,%s,%s,%s,%s,%s,%s\n" % (i.my_name(), j.my_name(), sctrain, sctest, n_leaves(k), (end-start), fidel, bacctest)) 
     
             # smaller data for rules
             Xnew = Xnew[:10000,:]
@@ -367,8 +434,9 @@ def experiment(splitn, dname, dsize):
                 end = time.time()                                     
                 sctrain = k.score(X, y)
                 sctest = k.score(Xtest, ytest)
+                bacctest = balanced_accuracy_score(ytest, k.predict(Xtest))
                 fidel = np.count_nonzero(k.predict(Xtest) == ypredtest)/len(ypredtest)
-                fileres.write(names +",%s,%s,%s,%s,%s,%s,%s\n" % (i.my_name(), j.my_name(), sctrain, sctest, len(k.ruleset_), (end-start), fidel)) 
+                fileres.write(names +",%s,%s,%s,%s,%s,%s,%s,%s\n" % (i.my_name(), j.my_name(), sctrain, sctest, len(k.ruleset_), (end-start), fidel, bacctest)) 
             
             # probabilities for subgroup discovery
             ynew = j.predict_proba(Xnew)
@@ -378,37 +446,65 @@ def experiment(splitn, dname, dsize):
                 end = time.time()                                     
                 sctrain = k.score(X, y)
                 sctest = k.score(Xtest, ytest)
-                fileres.write(names +",%s,%s,%s,%s,%s,%s,na\n" % (i.my_name(), j.my_name(), sctrain, sctest, k.get_nrestr(), (end-start))) 
-    
+                fileres.write(names +",%s,%s,%s,%s,%s,%s,na,na\n" % (i.my_name(), j.my_name(), sctrain, sctest, k.get_nrestr(), (end-start))) 
+                
+        for j in [metarfb, metaxgbb]:
+            ypredtest = j.predict(Xtest)
+            
+            start = time.time()
+            Xnew = Xgen[dsize:100000,:].copy()  
+            ynew = j.predict(Xnew)
+            Xnew = np.concatenate([X, Xnew])
+            ynew = np.concatenate([y, ynew]) 
+            end = time.time()
+            filetme.write(i.my_name() + j.my_name() + ",%s\n" % (end-start))  
+            
+            for k, names in zip([dtb, dtcb, dtvalb], ['dtb', 'dtcb', 'dtvalb']):
+                start = time.time()
+                k.fit(Xnew, ynew)
+                end = time.time()                                     
+                sctrain = k.score(X, y)
+                sctest = k.score(Xtest, ytest)
+                bacctest = balanced_accuracy_score(ytest, k.predict(Xtest))
+                fidel = np.count_nonzero(k.predict(Xtest) == ypredtest)/len(ypredtest)
+                fileres.write(names +",%s,%s,%s,%s,%s,%s,%s,%s\n" % (i.my_name(), j.my_name(), sctrain, sctest, n_leaves(k), (end-start), fidel, bacctest)) 
+   
     # semi-supervised learning testing
     Xtest, ytest, Xgen = get_new_test(Xtest, ytest, dsize)
-    for j in [metarf, metaxgb]: 
+    for j in [metarf, metaxgb, metarfb, metaxgbb]: 
         ypredtest = j.predict(Xtest)
         
         ynew = np.concatenate([j.predict(Xgen), y])
         Xnew = np.concatenate([Xgen, X])
         
-        for k, names in zip([dt, dtc, dtval, ripper, irep], ['dt', 'dtc', 'dtval', 'ripper', 'irep']):
+        if j in [metarf, metaxgb]:
+            smodels = zip([dt, dtc, dtval, ripper, irep], ['dt', 'dtc', 'dtval', 'ripper', 'irep'])
+        if j in [metarfb, metaxgbb]:
+            smodels = zip([dtb, dtcb, dtvalb], ['dtb', 'dtcb', 'dtvalb'])
+        
+        for k, names in smodels:
             start = time.time()
             k.fit(Xnew, ynew)
             end = time.time()                                     
             sctrain = k.score(X, y)
             sctest = k.score(Xtest, ytest)
+            bacctest = balanced_accuracy_score(ytest, k.predict(Xtest))
             fidel = np.count_nonzero(k.predict(Xtest) == ypredtest)/len(ypredtest)
             if names in ['ripper', 'irep']:
                 nlr = len(k.ruleset_)
             else:
                 nlr = n_leaves(k)
-            fileres.write(names +",ssl,%s,%s,%s,%s,%s,%s\n" % (j.my_name(), sctrain, sctest, nlr, (end-start), fidel)) 
+            fileres.write(names +",ssl,%s,%s,%s,%s,%s,%s,%s\n" % (j.my_name(), sctrain, sctest, nlr, (end-start), fidel, bacctest)) 
                 
-        ynew = j.predict_proba(Xnew)
-        for k, names in zip([primcv, bicv], ['primcv', 'bicv']):
-            start = time.time()
-            k.fit(Xnew, ynew)
-            end = time.time()                                     
-            sctrain = k.score(X, y)
-            sctest = k.score(Xtest, ytest)
-            fileres.write(names +",ssl,%s,%s,%s,%s,%s,na\n" % (j.my_name(), sctrain, sctest, k.get_nrestr(), (end-start))) 
+        if j in [metarf, metaxgb]:
+            ynew = j.predict_proba(Xnew)
+            for k, names in zip([primcv, bicv], ['primcv', 'bicv']):
+                start = time.time()
+                k.fit(Xnew, ynew)
+                end = time.time()                                     
+                sctrain = k.score(X, y)
+                sctest = k.score(Xtest, ytest)
+                fileres.write(names +",ssl,%s,%s,%s,%s,%s,na,na\n" % (j.my_name(), sctrain, sctest, k.get_nrestr(), (end-start))) 
 
     fileres.close()
     e_t = time.time()
@@ -419,7 +515,7 @@ def experiment(splitn, dname, dsize):
 # ==============================            Logging             ===================================
 
 
-def non_interrupting_experiment(splitn, dname, dsize):
+def non_interrupting_experiment(dname, dsize, splitn):
     logger = logging.getLogger("error")
 
     succesful = False
@@ -440,17 +536,17 @@ def non_interrupting_experiment(splitn, dname, dsize):
 
 NSETS = 25      # number of experiments with each dataset
 SPLITNS = list(range(0, NSETS))         # list of experiment numbers for each dataset
-DNAMES = ['anuran', 'avila', 'bankruptcy', 'ccpp', 'cc', 'clean2', 'dry',
-          'ees', 'electricity', 'gas', 'gt', 'higgs21', 'higgs7', 'htru', 'jm1',
-          'ml', 'nomao', 'occupancy', 'parkinson', 'pendata', 'ring',
-          'saac2', 'seizure', 'sensorless', 'seoul', 'shuttle', 'stocks',
+DNAMES = ['clean2', 'seizure', 'gas', 'nomao', 'bankruptcy', 'anuran', 'avila', 
+          'ccpp', 'cc', 'dry', 'ees', 'electricity', 'gt', 'higgs21', 'higgs7', 
+          'htru', 'jm1', 'ml', 'occupancy', 'parkinson', 'pendata', 'ring',
+          'saac2', 'sensorless', 'seoul', 'shuttle', 'stocks',
           'sylva', 'turbine', 'wine']       #  datasets' names
-DSIZES = [100, 400]         # datasets' sizes used in experiments
+DSIZES = [400,100]         # datasets' sizes used in experiments
 
 
 # run experiments on all available cores
 def exp_parallel():
-    args = product(SPLITNS, DNAMES, DSIZES)
+    args = product(DNAMES, DSIZES, SPLITNS)
     result_list = Parallel(n_jobs=cpu_count(), verbose=100)(delayed(non_interrupting_experiment)(*a) for a in args)
     print(np.asarray(result_list))
 
