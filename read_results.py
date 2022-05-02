@@ -1,7 +1,6 @@
 import os
 import pandas as pd
 import seaborn as sns
-# import matplotlib.pyplot as plt
 import numpy as np
 import sys
 
@@ -18,33 +17,48 @@ def qual_change(d, meta):
     # calculates accuracy and fidelity increase with respect to naive prediction
     # for a single experiment
     
+    # make 'baseline' rows for 'p' models
+    dtmp = d[d['alg'].isin(['dt', 'dtc', 'dtval']) & (d['gen'] =='na')].copy()
+    dtmp['alg'] = dtmp['alg'] + 'p'
+    d = d.append(dtmp)
+    
+    # make sure numeric columns are numeric
+    d['fid'] = pd.to_numeric(d['fid'], errors = 'coerce')
+    d['bac'] = pd.to_numeric(d['bac'], errors = 'coerce')
+    
+    # (balanced) accuracy increase compared to the baseline  
     precdefault = meta[meta['alg'].isin(['testprec'])]['val'].iloc[0]
     for i in range(0, d.shape[0]):
         if d.iloc[i][0] not in ['primcv', 'bicv']:
-            d['tes'][i] = d['tes'][i] - precdefault
-    d['fid'] = pd.to_numeric(d['fid'], errors = 'coerce')
+            d['tes'].iloc[i] = d['tes'].iloc[i] - precdefault
+            d['bac'].iloc[i] = d['bac'].iloc[i] - 0.5 # balanced accuracy of the naive model is 0.5
             
+    # add baseline values as separate columns
     algnames = d['alg'].unique()
     for i in algnames:
         orig_acc = d[(d['alg'] == i) & (d['gen'] =='na')]['tes']
         orig_nle = d[(d['alg'] == i) & (d['gen'] =='na')]['nle']
+        orig_bac = d[(d['alg'] == i) & (d['gen'] =='na')]['bac']
         d = d[~((d['alg'] == i) & (d['gen'] =='na'))]
         d.loc[d['alg'] == i,'ora'] = [orig_acc]*d.loc[d['alg'] == i].shape[0]
         d.loc[d['alg'] == i,'orn'] = [orig_nle]*d.loc[d['alg'] == i].shape[0]
-     
-    metnames = d['met'].unique()
-    for i in algnames:
-        for j in metnames:
-            if i not in ['primcv', 'bicv']:
-                def_fid = meta[meta['alg'] == j + 'fid']['val'].iloc[0]
-                orig_fid = meta[meta['alg'] == j + i + 'fid']['val'].iloc[0] - def_fid
-                d.loc[(d['alg'] == i) & (d['met'] == j),'orf'] = [orig_fid]*d.loc[(d['alg'] == i) & (d['met'] == j)].shape[0]
-                d.loc[(d['alg'] == i) & (d['met'] == j),'fid'] = d.loc[(d['alg'] == i) & (d['met'] == j),'fid'] - def_fid
+        d.loc[d['alg'] == i,'orb'] = [orig_bac]*d.loc[d['alg'] == i].shape[0]
+        
+    # fidelity increase compared to the baseline
+    algmet = d[['alg', 'met']].drop_duplicates()
+    for i, j in zip(algmet['alg'], algmet['met']): 
+        if i not in ['primcv', 'bicv']:
+            def_fid = meta[meta['alg'] == j + 'fid']['val'].iloc[0]
+            if i in ['dtp', 'dtcp', 'dtvalp']:
+                orig_fid = meta[meta['alg'] == j + i[0:-1] + 'fid']['val'].iloc[0] - def_fid
             else:
-                d.loc[(d['alg'] == i) & (d['met'] == j),'orf'] = [np.nan]*d.loc[(d['alg'] == i) & (d['met'] == j)].shape[0]
+                orig_fid = meta[meta['alg'] == j + i + 'fid']['val'].iloc[0] - def_fid
+            d.loc[(d['alg'] == i) & (d['met'] == j),'orf'] = [orig_fid]*d.loc[(d['alg'] == i) & (d['met'] == j)].shape[0]
+            d.loc[(d['alg'] == i) & (d['met'] == j),'fid'] = d.loc[(d['alg'] == i) & (d['met'] == j),'fid'] - def_fid
+        else:
+            d.loc[(d['alg'] == i) & (d['met'] == j),'orf'] = [np.nan]*d.loc[(d['alg'] == i) & (d['met'] == j)].shape[0]
 
     return d.copy()
-
 
 def get_result(fname):
     # processes the results from a single experiment
@@ -53,7 +67,7 @@ def get_result(fname):
     meta.columns = ['alg', 'val']
     
     d = pd.read_csv(WHERE + fname, delimiter = ",", header = None)
-    d.columns = ['alg', 'gen', 'met', 'tra', 'tes', 'nle', 'tme', 'fid']
+    d.columns = ['alg', 'gen', 'met', 'tra', 'tes', 'nle', 'tme', 'fid', 'bac']
     d = qual_change(d, meta)
             
     extra = fname.split(".")[0].split("_")
@@ -62,8 +76,7 @@ def get_result(fname):
     d['npt'] = [extra[2]]*d.shape[0]
     return d
 
-
-#### Postprocessing: read and process data from all experiments with decision trees
+#### Postprocessing: read and process data from all experiments
 
 res = []
 k = 0
@@ -74,10 +87,9 @@ for i in filenames:
     if not 'meta' in i and not 'zeros' in i:
             res.append(get_result(i))
 
-
 res = pd.concat(res)
 res.loc[res['gen'] == 'adasyns','gen'] = 'adasyn'
-for names in ['tra', 'tes', 'nle', 'tme', 'fid', 'ora', 'orn', 'orf', 'itr', 'npt']:
+for names in ['tra','tes','ora','bac','orb','nle','orn','tme','fid','orf','itr','npt']:
     res[names] = pd.to_numeric(res[names])
 res.to_csv(WHERE + 'res.csv')
 # res = pd.read_csv(WHERE + 'res.csv', delimiter = ",")
@@ -90,6 +102,10 @@ def res_aggregate(mod, npts, clname, clnameo):
     a = a[a['npt'].isin([npts])]
     if mod == 'dt':
         nms = ('dt','dtc', 'dtval')
+    elif mod == 'dtp':
+        nms = ('dtp','dtcp', 'dtvalp')
+    elif mod == 'dtb':
+        nms = ('dtb','dtcb', 'dtvalb')
     elif mod == 'rules':
         nms = ('ripper','irep')
     elif mod == 'sd':
@@ -107,6 +123,12 @@ def change_names(a):
     a = a.replace('dtval', 'DTcv')
     a = a.replace('dtc', 'DTcomp')
     a = a.replace('dt', 'DT')
+    a = a.replace('dtvalp', 'DTcv')
+    a = a.replace('dtcp', 'DTcomp')
+    a = a.replace('dtp', 'DT')
+    a = a.replace('dtvalb', 'DTcv')
+    a = a.replace('dtcb', 'DTcomp')
+    a = a.replace('dtb', 'DT')
     a = a.replace('adasyn', 'ADASYN')
     a = a.replace('cmmrf', 'CMM')
     a = a.replace('dummy', 'DUMMY')
@@ -124,6 +146,8 @@ def change_names(a):
     a = a.replace('vva', 'VVA')
     a = a.replace('rf', 'RF')
     a = a.replace('xgb', 'BT')
+    a = a.replace('rfb', 'RF')
+    a = a.replace('xgbb', 'BT')
     a = a.replace('bicv', 'BI')
     a = a.replace('primcv', 'PRIM')
     a = a.replace('irep', 'IREP')
@@ -153,8 +177,7 @@ def my_diverging_palette(r_neg, r_pos, g_neg, g_pos, b_neg, b_pos, sep=1, n=6,  
     return pal
 
 #### Heatmap drawing:
-
-def draw_heatmap(clname, clnameo, mlt = 100, pal = 'normal', npts = 100, ylbl = True, mod = 'dt'):
+def draw_heatmap(clname, clnameo, mlt = 100, pal = 'normal', npts = 100, ylbl = True, mod = 'dt', ytext = "", fsz = 13):
    
     def draw_heatmap_c(*args, **kwargs):
         data = kwargs.pop('data')
@@ -175,33 +198,40 @@ def draw_heatmap(clname, clnameo, mlt = 100, pal = 'normal', npts = 100, ylbl = 
     else:
         dvgp = my_diverging_palette(r_neg = 255, r_pos = 0, g_neg = 213, g_pos = 91, b_neg = 0, b_pos = 183, sep = 3, as_cmap = True)
     
-    asp = 0.4/1.2
+    asp = 0.42/1.2
     if ylbl == False:
         asp = 0.33/1.2
+        
     fg = sns.FacetGrid(a, row = 'npt', col = 'alg', margin_titles=False, despine=False, height=4.2, aspect=asp)
     fg.map_dataframe(draw_heatmap_c, 'met', 'gen', clname, cbar = False, cmap = dvgp, annot = True, fmt='g')
     if ylbl == False:
         fg.set(yticklabels=[])
     
-    fg.set_axis_labels("", "")
+    fg.set_axis_labels("", ytext, fontsize = fsz)
     fg.set_titles(col_template="{col_name}", row_template="{row_name}")
     fg.tight_layout()
     fg.savefig("results/" + mod + "_" + clname + str(npts) + ".pdf")
   
 # os.mkdir("results/")  
   
-draw_heatmap('tes', 'ora', npts = 100)
-draw_heatmap('tes', 'ora', npts = 400)
-draw_heatmap('fid', 'orf', npts = 100, ylbl = False)
+draw_heatmap('tes', 'ora', npts = 100, ytext = 'Relative accuracy increase', fsz = 13)
+draw_heatmap('tes', 'ora', npts = 400, ylbl = False)
+draw_heatmap('fid', 'orf', npts = 100, ytext = 'Relative fidelity increase')
 draw_heatmap('fid', 'orf', npts = 400, ylbl = False)
-draw_heatmap('nle', 'orn', npts = 100, mlt = 1, pal = 'inverse', ylbl = False)
+draw_heatmap('nle', 'orn', npts = 100, mlt = 1, pal = 'inverse', ytext = 'Number of leaves')
 draw_heatmap('nle', 'orn', npts = 400, mlt = 1, pal = 'inverse', ylbl = False)
 
+draw_heatmap('tes', 'ora', npts = 100, ytext = 'Relative accuracy increase', mod = 'dtp')
+draw_heatmap('tes', 'ora', npts = 400, ylbl = False, mod = 'dtp')
+
+draw_heatmap('bac', 'orb', npts = 100, ytext = 'Relative BA increase', mod = 'dtb')
+draw_heatmap('bac', 'orb', npts = 400, ylbl = False, mod = 'dtb')
+
 draw_heatmap('tes', 'ora', npts = 100, mod = 'rules')
-draw_heatmap('tes', 'ora', npts = 400, ylbl = False, mod = 'rules')
-draw_heatmap('fid', 'orf', npts = 100, mod = 'rules')
+draw_heatmap('tes', 'ora', npts = 400, mod = 'rules')
+draw_heatmap('fid', 'orf', npts = 100, ylbl = False, mod = 'rules')
 draw_heatmap('fid', 'orf', npts = 400, ylbl = False, mod = 'rules')
-draw_heatmap('nle', 'orn', npts = 100, mlt = 1, pal = 'inverse', mod = 'rules')
+draw_heatmap('nle', 'orn', npts = 100, ylbl = False, mlt = 1, pal = 'inverse', mod = 'rules')
 draw_heatmap('nle', 'orn', npts = 400, mlt = 1, pal = 'inverse', ylbl = False, mod = 'rules')
 
 draw_heatmap('tes', 'ora', npts = 100, mod = 'sd')
@@ -211,15 +241,16 @@ draw_heatmap('nle', 'orn', npts = 400, mlt = 1, pal = 'inverse', ylbl = False, m
 
 
 #### BB-model accuracy increase over the naive model
-
 def bb_qual_change(meta):
     precdefault = meta[meta['alg'].isin(['testprec'])]['val'].iloc[0]
     data = []
     for i in range(0,len(meta)):
-        if 'acc' in meta['alg'].iloc[i]:
-            meta['val'].iloc[i] = meta['val'].iloc[i] - precdefault
-            meta['alg'].iloc[i] = meta['alg'].iloc[i][:-3]
-            data.append(pd.DataFrame([meta.iloc[i]]))
+        if 'acc' in meta['alg'].iloc[i] and not 'acccv' in meta['alg'].iloc[i]\
+            and not 'rfb' in meta['alg'].iloc[i] and not 'xgbb' in meta['alg'].iloc[i]:
+            tmp = meta.copy()
+            tmp['val'].iloc[i] = tmp['val'].iloc[i] - precdefault
+            tmp['alg'].iloc[i] = tmp['alg'].iloc[i][:-3]
+            data.append(pd.DataFrame([tmp.iloc[i]]))
             
     return pd.concat(data)
 
@@ -251,6 +282,8 @@ res_bb = pd.read_csv('results/res_bb.csv', delimiter = ',')
 os.remove('results/res_bb.csv')
 res_bb = change_names(res_bb)
 res_bb.columns = ['BB', 'N', 'BBacc']
+
+
 
 #### Win-draw-loss tables
 

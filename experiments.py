@@ -141,8 +141,8 @@ def experiment(splitn, dname, dsize):
         end = time.time()                                                  
         sctrain = k.score(X, y)
         sctest = k.score(Xtest, ytest)
-        bacctest = balanced_accuracy_score(ytest, k.predict(Xtest))
-        fileres.write(names + ',na,na,%s,%s,%s,%s,na,%s\n' % (sctrain, sctest, n_leaves(k), (end-start), bacctest)) 
+        bactest = balanced_accuracy_score(ytest, k.predict(Xtest))
+        fileres.write(names + ',na,na,%s,%s,%s,%s,na,%s\n' % (sctrain, sctest, n_leaves(k), (end-start), bactest)) 
         
     for k, names in zip([ripper, irep],['ripper', 'irep']):
         start = time.time()
@@ -150,8 +150,8 @@ def experiment(splitn, dname, dsize):
         end = time.time()                                                  
         sctrain = k.score(Xr, yr)
         sctest = k.score(Xtest, ytest)
-        bacctest = balanced_accuracy_score(ytest, k.predict(Xtest))
-        fileres.write(names + ',na,na,%s,%s,%s,%s,na,%s\n' % (sctrain, sctest, len(k.ruleset_), (end-start), bacctest)) 
+        bactest = balanced_accuracy_score(ytest, k.predict(Xtest))
+        fileres.write(names + ',na,na,%s,%s,%s,%s,na,%s\n' % (sctrain, sctest, len(k.ruleset_), (end-start), bactest)) 
     del Xr, yr
     
     # WB models, HPO - optimize the number of leaves using grid search 
@@ -167,8 +167,8 @@ def experiment(splitn, dname, dsize):
     end = time.time()
     sctrain = dtval.score(X, y)
     sctest = dtval.score(Xtest, ytest) 
-    bacctest = balanced_accuracy_score(ytest, dtval.predict(Xtest))
-    fileres.write("dtval,na,na,%s,%s,%s,%s,na,%s\n" % (sctrain, sctest, n_leaves(dtval), (end-start), bacctest))
+    bactest = balanced_accuracy_score(ytest, dtval.predict(Xtest))
+    fileres.write("dtval,na,na,%s,%s,%s,%s,na,%s\n" % (sctrain, sctest, n_leaves(dtval), (end-start), bactest))
     
     # balanced decision tree
     start = time.time()                          
@@ -179,8 +179,8 @@ def experiment(splitn, dname, dsize):
     end = time.time()
     sctrain = dtvalb.score(X, y)
     sctest = dtvalb.score(Xtest, ytest) 
-    bacctest = balanced_accuracy_score(ytest, dtvalb.predict(Xtest))
-    fileres.write("dtvalb,na,na,%s,%s,%s,%s,na,%s\n" % (sctrain, sctest, n_leaves(dtvalb), (end-start), bacctest))
+    bactest = balanced_accuracy_score(ytest, dtvalb.predict(Xtest))
+    fileres.write("dtvalb,na,na,%s,%s,%s,%s,na,%s\n" % (sctrain, sctest, n_leaves(dtvalb), (end-start), bactest))
   
     # for the following fidelity estimation
     dtvalold = copy.deepcopy(dtval) 
@@ -243,7 +243,7 @@ def experiment(splitn, dname, dsize):
         filetme.write(j.my_name() + "fid,%s\n" % (fidel))
         # out-of-sample accuracy and balanced accuracy
         filetme.write(j.my_name() + "acc,%s\n" % accuracy_score(ytest, ypredtest))
-        filetme.write(j.my_name() + "bacc,%s\n" % balanced_accuracy_score(ytest, ypredtest))
+        filetme.write(j.my_name() + "bac,%s\n" % balanced_accuracy_score(ytest, ypredtest))
         
         # fidelity of white-box models trained from original data 
         if j in [metarf, metaxgb]:
@@ -273,13 +273,13 @@ def experiment(splitn, dname, dsize):
             end = time.time()                                     
             sctrain = k.score(X, y)
             sctest = k.score(Xtest, ytest)
-            bacctest = balanced_accuracy_score(ytest, k.predict(Xtest))
+            bactest = balanced_accuracy_score(ytest, k.predict(Xtest))
             fidel = np.count_nonzero(k.predict(Xtest) == ypredtest)/len(ypredtest)
             if names in ['ripper', 'irep']:
                 nlr = len(k.ruleset_)
             else:
                 nlr = n_leaves(k)
-            fileres.write(names +",rerx,%s,%s,%s,%s,%s,%s,%s\n" % (j.my_name(), sctrain, sctest, nlr, (end-start), fidel, bacctest)) 
+            fileres.write(names +",rerx,%s,%s,%s,%s,%s,%s,%s\n" % (j.my_name(), sctrain, sctest, nlr, (end-start), fidel, bactest)) 
         
         if j in [metarf, metaxgb]:
             ynew = j.predict_proba(Xnew) 
@@ -370,15 +370,15 @@ def experiment(splitn, dname, dsize):
             if names in ['primcv', 'bicv']:
                 nlr = k.get_nrestr()
                 fidel = 'na'
-                bacctest = 'na'
+                bactest = 'na'
             else:
                 fidel = np.count_nonzero(k.predict(Xtest) == ypredtest)/len(ypredtest)
-                bacctest = balanced_accuracy_score(ytest, k.predict(Xtest))
+                bactest = balanced_accuracy_score(ytest, k.predict(Xtest))
                 if names in ['ripper', 'irep']:
                     nlr = len(k.ruleset_)
                 else:
                     nlr = n_leaves(k)
-            fileres.write(names + ",vva,%s,%s,%s,%s,%s,%s,%s\n" % (j.my_name(), sctrain, sctest, nlr, (end-start), fidel, bacctest)) 
+            fileres.write(names + ",vva,%s,%s,%s,%s,%s,%s,%s\n" % (j.my_name(), sctrain, sctest, nlr, (end-start), fidel, bactest)) 
 
     # All remaining generators
     for i in [gengmmbic, genkde, genmunge, genrandu, genrandn, gendummy,\
@@ -404,13 +404,13 @@ def experiment(splitn, dname, dsize):
                 end = time.time()                                     
                 sctrain = k.score(X, y)
                 sctest = k.score(Xtest, ytest)
-                bacctest = balanced_accuracy_score(ytest, k.predict(Xtest))
+                bactest = balanced_accuracy_score(ytest, k.predict(Xtest))
                 fidel = np.count_nonzero(k.predict(Xtest) == ypredtest)/len(ypredtest)
-                fileres.write(names +",%s,%s,%s,%s,%s,%s,%s,%s\n" % (i.my_name(), j.my_name(), sctrain, sctest, n_leaves(k), (end-start), fidel, bacctest)) 
+                fileres.write(names +",%s,%s,%s,%s,%s,%s,%s,%s\n" % (i.my_name(), j.my_name(), sctrain, sctest, n_leaves(k), (end-start), fidel, bactest)) 
 
             # with using original data as part of new
-            Xnew = Xnew[dsize:100000,:]
-            ynew = ynew[dsize:100000]
+            Xnew = Xnew[:100000 - dsize,:]
+            ynew = ynew[:100000 - dsize]
             Xnew = np.concatenate([X, Xnew])
             ynew = np.concatenate([y, ynew])            
              
@@ -420,9 +420,9 @@ def experiment(splitn, dname, dsize):
                 end = time.time()                                     
                 sctrain = k.score(X, y)
                 sctest = k.score(Xtest, ytest)
-                bacctest = balanced_accuracy_score(ytest, k.predict(Xtest))
+                bactest = balanced_accuracy_score(ytest, k.predict(Xtest))
                 fidel = np.count_nonzero(k.predict(Xtest) == ypredtest)/len(ypredtest)
-                fileres.write(names +",%s,%s,%s,%s,%s,%s,%s,%s\n" % (i.my_name(), j.my_name(), sctrain, sctest, n_leaves(k), (end-start), fidel, bacctest)) 
+                fileres.write(names +",%s,%s,%s,%s,%s,%s,%s,%s\n" % (i.my_name(), j.my_name(), sctrain, sctest, n_leaves(k), (end-start), fidel, bactest)) 
     
             # smaller data for rules
             Xnew = Xnew[:10000,:]
@@ -434,9 +434,9 @@ def experiment(splitn, dname, dsize):
                 end = time.time()                                     
                 sctrain = k.score(X, y)
                 sctest = k.score(Xtest, ytest)
-                bacctest = balanced_accuracy_score(ytest, k.predict(Xtest))
+                bactest = balanced_accuracy_score(ytest, k.predict(Xtest))
                 fidel = np.count_nonzero(k.predict(Xtest) == ypredtest)/len(ypredtest)
-                fileres.write(names +",%s,%s,%s,%s,%s,%s,%s,%s\n" % (i.my_name(), j.my_name(), sctrain, sctest, len(k.ruleset_), (end-start), fidel, bacctest)) 
+                fileres.write(names +",%s,%s,%s,%s,%s,%s,%s,%s\n" % (i.my_name(), j.my_name(), sctrain, sctest, len(k.ruleset_), (end-start), fidel, bactest)) 
             
             # probabilities for subgroup discovery
             ynew = j.predict_proba(Xnew)
@@ -452,7 +452,7 @@ def experiment(splitn, dname, dsize):
             ypredtest = j.predict(Xtest)
             
             start = time.time()
-            Xnew = Xgen[dsize:100000,:].copy()  
+            Xnew = Xgen[:100000 - dsize,:].copy()  
             ynew = j.predict(Xnew)
             Xnew = np.concatenate([X, Xnew])
             ynew = np.concatenate([y, ynew]) 
@@ -465,9 +465,9 @@ def experiment(splitn, dname, dsize):
                 end = time.time()                                     
                 sctrain = k.score(X, y)
                 sctest = k.score(Xtest, ytest)
-                bacctest = balanced_accuracy_score(ytest, k.predict(Xtest))
+                bactest = balanced_accuracy_score(ytest, k.predict(Xtest))
                 fidel = np.count_nonzero(k.predict(Xtest) == ypredtest)/len(ypredtest)
-                fileres.write(names +",%s,%s,%s,%s,%s,%s,%s,%s\n" % (i.my_name(), j.my_name(), sctrain, sctest, n_leaves(k), (end-start), fidel, bacctest)) 
+                fileres.write(names +",%s,%s,%s,%s,%s,%s,%s,%s\n" % (i.my_name(), j.my_name(), sctrain, sctest, n_leaves(k), (end-start), fidel, bactest)) 
    
     # semi-supervised learning testing
     Xtest, ytest, Xgen = get_new_test(Xtest, ytest, dsize)
@@ -488,13 +488,13 @@ def experiment(splitn, dname, dsize):
             end = time.time()                                     
             sctrain = k.score(X, y)
             sctest = k.score(Xtest, ytest)
-            bacctest = balanced_accuracy_score(ytest, k.predict(Xtest))
+            bactest = balanced_accuracy_score(ytest, k.predict(Xtest))
             fidel = np.count_nonzero(k.predict(Xtest) == ypredtest)/len(ypredtest)
             if names in ['ripper', 'irep']:
                 nlr = len(k.ruleset_)
             else:
                 nlr = n_leaves(k)
-            fileres.write(names +",ssl,%s,%s,%s,%s,%s,%s,%s\n" % (j.my_name(), sctrain, sctest, nlr, (end-start), fidel, bacctest)) 
+            fileres.write(names +",ssl,%s,%s,%s,%s,%s,%s,%s\n" % (j.my_name(), sctrain, sctest, nlr, (end-start), fidel, bactest)) 
                 
         if j in [metarf, metaxgb]:
             ynew = j.predict_proba(Xnew)
