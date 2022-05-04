@@ -136,10 +136,6 @@ dmypy.json
 .pyre/
 
 
-data/*
-!data/get_data.py
-registry/
-registryill/
-results/
-PRIM_full.py
-densityforest.py
+# custom
+requirements_old.txt
+

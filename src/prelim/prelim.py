@@ -26,46 +26,46 @@ def prelim(X, y, bb_model, wb_model, gen_name, new_size, proba = False, verbose 
                   Set "proba = False" or use another bb_model')    
     # Load proper generator      
     if gen_name == 'adasyn':
-        from src.generators.adasyn import Gen_adasyn
+        from .generators.adasyn import Gen_adasyn
         gen = Gen_adasyn()
     if gen_name == 'cmm':
-        from src.generators.rfdens import Gen_rfdens
+        from .generators.rfdens import Gen_rfdens
         gen = Gen_rfdens()
     if gen_name == 'dummy':
-        from src.generators.dummy import Gen_dummy
+        from .generators.dummy import Gen_dummy
         gen = Gen_dummy()          
     if gen_name == 'gmm':
-        from src.generators.gmm import Gen_gmmbic
+        from .generators.gmm import Gen_gmmbic
         gen = Gen_gmmbic()
     elif gen_name == 'gmmal':
-        from src.generators.gmm import Gen_gmmbical
+        from .generators.gmm import Gen_gmmbical
         gen = Gen_gmmbical()
     if gen_name == 'kde':
-        from src.generators.kde import Gen_kdebw
+        from .generators.kde import Gen_kdebw
         gen = Gen_kdebw() 
     if gen_name == 'kdeb':
-        from src.generators.kdeb import Gen_kdeb
+        from .generators.kdeb import Gen_kdeb
         gen = Gen_kdeb() 
     if gen_name == 'kdem':
-        from src.generators.kdem import Gen_kdebwm
+        from .generators.kdem import Gen_kdebwm
         gen = Gen_kdebwm()   
     if gen_name == 'munge':
-        from src.generators.munge import Gen_munge
+        from .generators.munge import Gen_munge
         gen = Gen_munge()                
     if gen_name == 'norm':
-        from src.generators.rand import Gen_randn
+        from .generators.rand import Gen_randn
         gen = Gen_randn()  
     if gen_name == 'rerx':
-        from src.generators.rerx import Gen_rerx
+        from .generators.rerx import Gen_rerx
         gen = Gen_rerx()  
     if gen_name == 'smote':
-        from src.generators.smote import Gen_smote
+        from .generators.smote import Gen_smote
         gen = Gen_smote()  
     if gen_name == 'unif':
-        from src.generators.rand import Gen_randu
+        from .generators.rand import Gen_randu
         gen = Gen_randu()
     if gen_name == 'vva':
-        from src.generators.vva_p import Gen_vva
+        from .generators.vva_p import Gen_vva
         gen = Gen_vva()
 
     #### vva generator

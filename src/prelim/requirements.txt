@@ -1,0 +1,6 @@
+auto_mix_prep==0.2.0
+imbalanced_learn==0.8.0
+imblearn==0.0
+numpy==1.20.1
+scikit_learn==1.0.1
+statsmodels==0.12.2
