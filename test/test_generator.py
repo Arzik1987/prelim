@@ -1,21 +1,21 @@
 import numpy as np
 import scipy.stats as stats
-from src.generators.munge import Gen_munge
-from src.generators.adasyn import Gen_adasyn
-from src.generators.dummy import Gen_dummy
-from src.generators.kde import Gen_kdebw, Gen_kdebwhl
-from src.generators.kdeb import Gen_kdeb
-from src.generators.kdem import Gen_kdebwm
+from src.prelim.generators.munge import Gen_munge
+from src.prelim.generators.adasyn import Gen_adasyn
+from src.prelim.generators.dummy import Gen_dummy
+from src.prelim.generators.kde import Gen_kdebw, Gen_kdebwhl
+from src.prelim.generators.kdeb import Gen_kdeb
+from src.prelim.generators.kdem import Gen_kdebwm
 
 from test.dummy_metamodel import DummyMeta
 
 import pytest
 
-from src.generators.noise import Gen_noise
-from src.generators.perfect import Gen_perfect
-from src.generators.rerx import Gen_rerx
-from src.generators.rfdens import Gen_rfdens
-from src.generators.smote import Gen_smote
+from src.prelim.generators.noise import Gen_noise
+from src.prelim.generators.perfect import Gen_perfect
+from src.prelim.generators.rerx import Gen_rerx
+from src.prelim.generators.rfdens import Gen_rfdens
+from src.prelim.generators.smote import Gen_smote
 
 
 def test_adasyn():
