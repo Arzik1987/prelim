@@ -1,7 +1,7 @@
 import numpy as np
 from imblearn.over_sampling import SMOTE
 import warnings
-from src.generators.rand import Gen_randu
+from .rand import Gen_randu
 
 
 class Gen_smote:
