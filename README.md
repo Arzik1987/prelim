@@ -10,7 +10,13 @@ Use the following commands to set up the environment
 ```
 conda create -n yourenv pip
 conda activate yourenv
-pip install -r reuirements.txt 
+pip install -r requirements.txt 
 ```
+
+
+### Testing the package contents
+To run the generator tests, call <code>pytest</code> in the command line from the project root directoy.
+
+
 
 
