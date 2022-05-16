@@ -33,7 +33,8 @@ import numpy as np
 # generating a small synthetic dataset (training)
 npt = 50
 cov = [[1, 0], [0, 1]]
-X = np.vstack((np.random.multivariate_normal([0, 0], cov, npt), np.random.multivariate_normal([1, 1], cov, npt)))
+X = np.vstack((np.random.multivariate_normal([0, 0], cov, npt),\
+               np.random.multivariate_normal([1, 1], cov, npt)))
 y = np.hstack((np.zeros(npt), np.ones(npt))).astype(int)
 
 # import a comprehensible rule-based model learner (a decision tree)
@@ -59,7 +60,8 @@ from prelim.prelim import prelim
 # define a function to compare prelim to the baseline
 def small_exp(npt, cov = [[1, 0], [0, 1]], m1 = [0, 0], m2 = [1, 1]):
     # generating synthetic data for training of the size npt
-    X = np.vstack((np.random.multivariate_normal(m1, cov, npt), np.random.multivariate_normal(m2, cov, npt)))
+    X = np.vstack((np.random.multivariate_normal(m1, cov, npt),\
+                   np.random.multivariate_normal(m2, cov, npt)))
     y = np.hstack((np.zeros(npt), np.ones(npt))).astype(int)
     
     # generating a large synthetic dataset (testing)
