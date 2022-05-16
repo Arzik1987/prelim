@@ -31,8 +31,8 @@ from prelim.generators.rerx import Gen_rerx
 # White-box models
 from sklearn.tree import DecisionTreeClassifier
 import wittgenstein as lw
-from prelim.subgroup_discovery.BI import BI
-from prelim.subgroup_discovery.PRIM import PRIM
+from prelim.sd.BI import BI
+from prelim.sd.PRIM import PRIM
 
 # Other
 from utils.data_splitter import DataSplitter
