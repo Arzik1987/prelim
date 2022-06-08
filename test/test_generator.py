@@ -1,21 +1,21 @@
 import numpy as np
 import scipy.stats as stats
-from src.prelim.generators.munge import Gen_munge
-from src.prelim.generators.adasyn import Gen_adasyn
-from src.prelim.generators.dummy import Gen_dummy
-from src.prelim.generators.kde import Gen_kdebw, Gen_kdebwhl
-from src.prelim.generators.kdeb import Gen_kdeb
-from src.prelim.generators.kdem import Gen_kdebwm
+from prelim.generators.munge import Gen_munge
+from prelim.generators.adasyn import Gen_adasyn
+from prelim.generators.dummy import Gen_dummy
+from prelim.generators.kde import Gen_kdebw, Gen_kdebwhl
+from prelim.generators.kdeb import Gen_kdeb
+from prelim.generators.kdem import Gen_kdebwm
 
 from test.dummy_metamodel import DummyMeta
 
 import pytest
 
-from src.prelim.generators.noise import Gen_noise
-from src.prelim.generators.perfect import Gen_perfect
-from src.prelim.generators.rerx import Gen_rerx
-from src.prelim.generators.rfdens import Gen_rfdens
-from src.prelim.generators.smote import Gen_smote
+from prelim.generators.noise import Gen_noise
+from prelim.generators.perfect import Gen_perfect
+from prelim.generators.rerx import Gen_rerx
+from prelim.generators.rfdens import Gen_rfdens
+from prelim.generators.smote import Gen_smote
 
 
 def test_adasyn():
@@ -114,6 +114,9 @@ def test_rand_():
 
 
 def test_perfect_valid():
+
+    np.random.seed(2020)
+
     generator = Gen_perfect()
     sample_size = 100
     alpha = 0.001
@@ -136,17 +139,18 @@ def test_perfect_valid():
 
 
 def test_perfect_invalid():
+
+    np.random.seed(2020)
+
     alpha = 0.5
     sample_size = 100
     generator= Gen_perfect()
 
-    # generator distribution
+    # test distribution
     means_1 = [0, 0]
     vars_1 = [0.005, 0.005]
-    covs_1 = np.diag(vars_1)
-    sample_1 = np.random.multivariate_normal(means_1, covs_1, sample_size)
 
-    # test distribution
+    # generator distribution
     means_2 = [100, 100]
     vars_2 = [1, 1]
     covs_2 = np.diag(vars_2)
@@ -164,6 +168,9 @@ def test_perfect_invalid():
 
 
 def _valid_2d_dist(generator, sample_size, alpha, y=None, metamodel=None):
+
+    np.random.seed(2020)
+
     # distribution
     means = [0, 0]
     vars_ = [0.5, 0.5]
@@ -186,13 +193,14 @@ def _valid_2d_dist(generator, sample_size, alpha, y=None, metamodel=None):
 
 
 def _invalid_2d_dist(generator, sample_size, alpha, y=None, metamodel=None):
-    # generator distribution
-    means_1 = [0, 0]
-    vars_1 = [0.005, 0.005]
-    covs_1 = np.diag(vars_1)
-    sample_1 = np.random.multivariate_normal(means_1, covs_1, sample_size)
+
+    np.random.seed(2020)
 
     # test distribution
+    means_1 = [0, 0]
+    vars_1 = [0.005, 0.005]
+
+    # generator distribution
     means_2 = [100, 100]
     vars_2 = [1, 1]
     covs_2 = np.diag(vars_2)
