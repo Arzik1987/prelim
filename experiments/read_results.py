@@ -216,24 +216,24 @@ def draw_heatmap(clname, clnameo, mlt = 100, pal = 'normal', npts = 100, ylbl = 
 if not os.path.exists(FILEPATH + '/results/'):
     os.mkdir(FILEPATH + '/results/')  
   
-draw_heatmap('tes', 'ora', npts = 100, ytext = 'Relative accuracy increase', fsz = 13)
+draw_heatmap('tes', 'ora', npts = 100, fsz = 13)
 draw_heatmap('tes', 'ora', npts = 400, ylbl = False)
-draw_heatmap('fid', 'orf', npts = 100, ytext = 'Relative fidelity increase')
+draw_heatmap('fid', 'orf', npts = 100)
 draw_heatmap('fid', 'orf', npts = 400, ylbl = False)
-draw_heatmap('nle', 'orn', npts = 100, mlt = 1, pal = 'inverse', ytext = 'Number of leaves')
+draw_heatmap('nle', 'orn', npts = 100, mlt = 1, pal = 'inverse')
 draw_heatmap('nle', 'orn', npts = 400, mlt = 1, pal = 'inverse', ylbl = False)
 
-draw_heatmap('tes', 'ora', npts = 100, ytext = 'Relative accuracy increase', mod = 'dtp')
+draw_heatmap('tes', 'ora', npts = 100, mod = 'dtp')
 draw_heatmap('tes', 'ora', npts = 400, ylbl = False, mod = 'dtp')
 
-draw_heatmap('bac', 'orb', npts = 100, ytext = 'Relative BA increase', mod = 'dtb')
+draw_heatmap('bac', 'orb', npts = 100, mod = 'dtb')
 draw_heatmap('bac', 'orb', npts = 400, ylbl = False, mod = 'dtb')
 
 draw_heatmap('tes', 'ora', npts = 100, mod = 'rules')
-draw_heatmap('tes', 'ora', npts = 400, mod = 'rules')
-draw_heatmap('fid', 'orf', npts = 100, ylbl = False, mod = 'rules')
+draw_heatmap('tes', 'ora', npts = 400, ylbl = False, mod = 'rules')
+draw_heatmap('fid', 'orf', npts = 100, mod = 'rules')
 draw_heatmap('fid', 'orf', npts = 400, ylbl = False, mod = 'rules')
-draw_heatmap('nle', 'orn', npts = 100, ylbl = False, mlt = 1, pal = 'inverse', mod = 'rules')
+draw_heatmap('nle', 'orn', npts = 100, mlt = 1, pal = 'inverse', mod = 'rules')
 draw_heatmap('nle', 'orn', npts = 400, mlt = 1, pal = 'inverse', ylbl = False, mod = 'rules')
 
 draw_heatmap('tes', 'ora', npts = 100, mod = 'sd')

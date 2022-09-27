@@ -115,7 +115,7 @@ def load_data(dname):
     elif dname == "seoul": # seoul_bike 7
         df = pd.read_csv('data/seoul/SeoulBikeData.csv', delimiter = ",", skiprows = 1, header = None)
         y = (df.iloc[:, 1] > 800).astype(int).to_numpy()
-        X  = df.iloc[:, 2:9].to_numpy()
+        X  = df.iloc[:, 2:11].to_numpy()
     elif dname == "turbine": # turbine 9
         df = pd.concat([pd.read_csv('data/turbine/gt_2011.csv', delimiter = ","), 
                         pd.read_csv('data/turbine/gt_2012.csv', delimiter = ","),
@@ -139,7 +139,7 @@ def load_data(dname):
     elif dname == "anuran": # anuran 21
         df = pd.read_csv('data/anuran/Frogs_MFCCs.csv', delimiter = ",")
         y = (df['Family'] == 'Hylidae').astype(int).to_numpy()
-        X  = df.iloc[:, 1: 22].to_numpy()
+        X  = df.iloc[:, :22].to_numpy()
     elif dname == "ml": # ml_prove 51
         df = pd.concat([pd.read_csv('data/ml/train.csv', delimiter = ",", header = None), 
                         pd.read_csv('data/ml/test.csv', delimiter = ",", header = None),
@@ -151,7 +151,7 @@ def load_data(dname):
 
     y = y[~np.isnan(X).any(axis = 1)]
     X = X[~np.isnan(X).any(axis = 1)]
-    X = X[:, nunique(X, 0) > 19]
+    # X = X[:, nunique(X, 0) > 19]
 
     return X, y
 
