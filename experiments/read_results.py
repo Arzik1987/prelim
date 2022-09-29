@@ -121,14 +121,14 @@ def res_aggregate(mod, npts, clname, clnameo):
     return a
 
 def change_names(a):
-    a = a.replace('dtval', 'DTcv')
-    a = a.replace('dtc', 'DTcomp')
+    a = a.replace('dtval', 'DT*')
+    a = a.replace('dtc', 'DT$^{int}$')
     a = a.replace('dt', 'DT')
-    a = a.replace('dtvalp', 'DTcv')
-    a = a.replace('dtcp', 'DTcomp')
-    a = a.replace('dtp', 'DT')
-    a = a.replace('dtvalb', 'DTcv')
-    a = a.replace('dtcb', 'DTcomp')
+    a = a.replace('dtvalp', 'DT*p')
+    a = a.replace('dtcp', 'DT$^{int}$p')
+    a = a.replace('dtp', 'DTp')
+    a = a.replace('dtvalb', 'DT*')
+    a = a.replace('dtcb', 'DT$^{int}$')
     a = a.replace('dtb', 'DT')
     a = a.replace('adasyn', 'ADASYN')
     a = a.replace('cmmrf', 'CMM')
@@ -284,6 +284,7 @@ res_bb = pd.read_csv(FILEPATH + '/results/res_bb.csv', delimiter = ',')
 os.remove(FILEPATH + '/results/res_bb.csv')
 res_bb = change_names(res_bb)
 res_bb.columns = ['BB', 'N', 'BBacc']
+res_bb.BBacc = round(res_bb.BBacc,3)
 
 #### PIVOT: Win-draw-loss tables
 def get_table(a, mod = 'dt'):
@@ -313,15 +314,77 @@ def get_table(a, mod = 'dt'):
     a['N'] = pd.to_numeric(a['N'])
     return a
 
+# a = res.copy()
+# a['dif'] = np.sign(a['tes'] - a['ora'])
+# a = a[['alg', 'gen', 'met', 'npt', 'dif']]
+# a = a.groupby(['alg', 'gen', 'met', 'npt']).dif.value_counts().unstack()
+# a.to_csv(WHERE + 'a.csv')
+# a = pd.read_csv(WHERE + 'a.csv', delimiter = ',')
+# os.remove(WHERE + 'a.csv')
+# a = a[a['gen'] == 'kdebw']
+   
+# pd.merge(pd.merge(res_bb, get_table(a, 'dt')), pd.merge(get_table(a, 'rules'),\
+#     get_table(a, 'sd'))).to_csv(FILEPATH + '/results/pivot.csv', index = False)
+
+def get_table_wil(a, mod = 'dt'):
+    if mod == 'dt':
+        nms = ('dt','dtc', 'dtval')
+    elif mod == 'rules':
+        nms = ('ripper','irep')
+    elif mod == 'sd':
+        nms = ('primcv','bicv')
+    else:
+        raise ValueError('{mod} is a wrong mod value'.format(mod = repr(mod)))
+    a = a[a['alg'].isin(nms)]  
+    
+    from scipy.stats import wilcoxon
+    def my_wil(x):
+        return wilcoxon(x, alternative='greater')[1]
+    
+    a1 = a.groupby(['alg', 'met', 'npt']).dif.apply(my_wil)
+    a1.to_csv(WHERE + 'a.csv')
+    a1 = pd.read_csv(WHERE + 'a.csv', delimiter = ',')
+    os.remove(WHERE + 'a.csv')
+    
+    a2 = a.groupby(['alg', 'met', 'npt']).difs.apply(my_wil)
+    a2.to_csv(WHERE + 'a.csv')
+    a2 = pd.read_csv(WHERE + 'a.csv', delimiter = ',')
+    os.remove(WHERE + 'a.csv')
+    
+    a = pd.merge(a1, a2)
+    a['ad'] = round(a.dif,3).astype(str) + '/' + round(a.difs,3).astype(str)
+    a = a[['alg', 'met', 'npt', 'ad']]
+    a = change_names(a)
+    a = a.pivot(index = ['met','npt'], columns=['alg'], values=['ad'])
+    a.to_csv(WHERE + 'a.csv')
+    a = pd.read_csv(WHERE + 'a.csv', delimiter = ',')
+    os.remove(WHERE + 'a.csv')
+    a.iloc[0,1] = 'N'
+    a.iloc[0,0] = 'BB'
+    a.columns = a.iloc[0]
+    a = a.drop([0,1]) 
+    a['N'] = pd.to_numeric(a['N'])
+    return a
+
+
 a = res.copy()
-a['dif'] = np.sign(a['tes'] - a['ora'])
-a = a[['alg', 'gen', 'met', 'npt', 'dif']]
-a = a.groupby(['alg', 'gen', 'met', 'npt']).dif.value_counts().unstack()
+a = a[a['gen'] == 'kdebw'] 
+a = a[['alg', 'met', 'npt', 'dat', 'tes', 'ora']].groupby(['alg', 'met', 'npt', 'dat']).median()
 a.to_csv(WHERE + 'a.csv')
 a = pd.read_csv(WHERE + 'a.csv', delimiter = ',')
 os.remove(WHERE + 'a.csv')
-a = a[a['gen'] == 'kdebw']
+a['dif'] = (a['tes'] - a['ora'])
+a['difs'] = np.sign(a['tes'] - a['ora'])
+
+pd.merge(pd.merge(res_bb, get_table_wil(a, 'dt')), pd.merge(get_table_wil(a, 'rules'),\
+    get_table_wil(a, 'sd'))).to_csv(FILEPATH + '/results/pivot_wil.csv', index = False)
+
+a = a.groupby(['alg', 'met', 'npt']).difs.value_counts().unstack()
+a.to_csv(WHERE + 'a.csv')
+a = pd.read_csv(WHERE + 'a.csv', delimiter = ',')
+os.remove(WHERE + 'a.csv')
    
 pd.merge(pd.merge(res_bb, get_table(a, 'dt')), pd.merge(get_table(a, 'rules'),\
-    get_table(a, 'sd'))).to_csv(FILEPATH + '/results/pivot.csv', index = False)
-
+    get_table(a, 'sd'))).to_csv(FILEPATH + '/results/pivot_median.csv', index = False)
+    
+    
