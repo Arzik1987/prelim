@@ -284,7 +284,7 @@ res_bb = pd.read_csv(FILEPATH + '/results/res_bb.csv', delimiter = ',')
 os.remove(FILEPATH + '/results/res_bb.csv')
 res_bb = change_names(res_bb)
 res_bb.columns = ['BB', 'N', 'BBacc']
-res_bb.BBacc = round(res_bb.BBacc,3)
+res_bb.BBacc = round(res_bb.BBacc,3)*100
 
 #### PIVOT: Win-draw-loss tables
 def get_table(a, mod = 'dt'):
