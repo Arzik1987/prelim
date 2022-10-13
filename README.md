@@ -23,11 +23,12 @@ pip install git+https://github.com/Arzik1987/prelim
 ```
 
 ### Testing the package contents
-Call <code>pytest</code> in the command line from the project root directory to run the generator tests.
+Call <code>pytest</code> in the command line from the project root directory to run the generator tests. 
+To run tests, it is required to install the package locally.
 
 ### Exemplary Usage
 
-```
+```python
 import numpy as np
 
 # generating a small synthetic dataset (training)
@@ -51,7 +52,7 @@ gen_name = 'kde', new_size = 2000, proba = False, verbose = True)
 
 The following code extends this example and compares the quality of a comprehensible model learned with `prelim` with a 'baseline' comprehensible model learned directly from the train data.
 
-```
+```python
 import numpy as np
 from sklearn.tree import DecisionTreeClassifier # a comprehensible rule-based model learner
 from sklearn.ensemble import RandomForestClassifier # an auxiliary model
