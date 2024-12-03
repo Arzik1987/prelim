@@ -1,7 +1,7 @@
 import numpy as np
 import scipy.stats as stats
 from prelim.generators.munge import Gen_munge
-from prelim.generators.adasyn import Gen_adasyn
+from prelim.generators.adasyn import GenAdasyn
 from prelim.generators.dummy import Gen_dummy
 from prelim.generators.kde import Gen_kdebw, Gen_kdebwhl
 from prelim.generators.kdeb import Gen_kdeb
@@ -19,7 +19,7 @@ from prelim.generators.smote import Gen_smote
 
 
 def test_adasyn():
-    generator = Gen_adasyn()
+    generator = GenAdasyn()
     sample_size = 100
     alpha = 0.001
     assert _valid_2d_dist(generator, sample_size, alpha), "Valid 2d distribution"

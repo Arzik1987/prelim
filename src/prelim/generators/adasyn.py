@@ -1,66 +1,72 @@
 import numpy as np
-from imblearn.over_sampling import ADASYN
+from imblearn.over_sampling import ADASYN, SMOTE
 import warnings
+from .base_generator import BaseGenerator
 from .rand import Gen_randu
 
 
-class Gen_adasyn:
+class GenAdasyn(BaseGenerator):
+    """Data generator using ADASYN for oversampling."""
 
     def __init__(self):
-        self.X_ = None
-        self.mname_ = "adasyn"
+        super().__init__()
+        self.name_ = "adasyn"
 
-    def fit(self, X, y=None, metamodel=None):
+    def fit(self, X: np.ndarray, y: np.ndarray = None, metamodel=None) -> "GenAdasyn":
+        """Fit the generator to the input data.
+        Args:
+            X (np.ndarray): Input data to fit the generator on.
+            y (np.ndarray): Target labels (not used).
+            metamodel: Additional metamodel information (not used).
+        Returns:
+            GenAdasyn: The fitted generator instance.
+        """
         self.X_ = X.copy()
         return self
 
-    def sample(self, n_samples=1):
-        parss = 'not majority'
+    def sample(self, n_samples: int = 1) -> np.ndarray:
+        """Generate samples using ADASYN or fallback to SMOTE."""
+        if self.X_ is None:
+            raise ValueError("Generator must be fitted before sampling.")
+
+        sampling_strategy = 'not majority'
         if self.X_.shape[0] > n_samples:
-            warnings.warn("The required sample size is smaller than the number of observations in train")
-            parss = 'all'
+            warnings.warn(
+                "The required sample size is smaller than the number of observations in training."
+            )
+            sampling_strategy = 'all'
 
-        y = np.ones(self.X_.shape[0]), np.zeros(n_samples)
-        y = np.concatenate(y)
+        # Generate initial synthetic samples
+        y = np.concatenate((np.ones(self.X_.shape[0]), np.zeros(n_samples)))
+        X = np.concatenate((self.X_, Gen_randu().fit(self.X_).sample(n_samples=n_samples)))
 
-        X = np.concatenate((self.X_, Gen_randu().fit(self.X_).sample(n_samples = n_samples)))
-        Xnew = None
-        parknn = min(5, n_samples, self.X_.shape[0])
+        X_new = None
+        k_neighbors = min(5, n_samples, self.X_.shape[0])
 
-        # TODO Inspect
-        while type(Xnew) is not np.ndarray and parknn <= n_samples and parknn <= self.X_.shape[0]:
+        # Attempt ADASYN sampling with varying k_neighbors
+        while not isinstance(X_new, np.ndarray) and k_neighbors <= n_samples and k_neighbors <= self.X_.shape[0]:
             try:
-                Xnew, y = ADASYN(sampling_strategy = parss, n_neighbors = parknn, random_state = 2020).fit_resample(X, y)
+                X_new, y = ADASYN(
+                    sampling_strategy=sampling_strategy,
+                    n_neighbors=k_neighbors,
+                    random_state=2020
+                ).fit_resample(X, y)
             except (ValueError, RuntimeError):
-                parknn = parknn * 2
+                k_neighbors *= 2
 
-        if type(Xnew) is not np.ndarray:
-            from imblearn.over_sampling import SMOTE
-            parknn = min(5, n_samples, self.X_.shape[0])
-            Xnew, y = SMOTE(sampling_strategy = parss, k_neighbors = parknn, random_state = 2020).fit_resample(X, y)
-            self.mname_ = "adasyns"
+        # Fallback to SMOTE if ADASYN fails
+        if not isinstance(X_new, np.ndarray):
+            k_neighbors = min(5, n_samples, self.X_.shape[0])
+            X_new, y = SMOTE(
+                sampling_strategy=sampling_strategy,
+                k_neighbors=k_neighbors,
+                random_state=2020
+            ).fit_resample(X, y)
+            self.name_ = "adasyn_fallback"
         else:
-            self.mname_ = "adasyn"
-        
-        return Xnew[y == 1,:][0:n_samples,:]
-    
-    def my_name(self):
-        return self.mname_
-    
+            self.name_ = "adasyn"
 
-# =============================================================================
-# # TEST
-# 
-# from sklearn.datasets import make_classification
-# X, y = make_classification(n_samples = 100, n_features = 2, n_informative = 2,
-#                            n_redundant = 0, n_repeated = 0, n_classes = 1, 
-#                            random_state = 0)
-# import matplotlib.pyplot as plt
-# plt.scatter(X[:,0], X[:,1])
-# 
-# ada_gen = Gen_adasyn()
-# ada_gen.fit(X)
-# df = ada_gen.sample(n_samples = 201)
-# plt.scatter(df[:,0], df[:,1])
-# =============================================================================
+        return X_new[y == 1][:n_samples]
 
+    def my_name(self) -> str:
+        return self.name_

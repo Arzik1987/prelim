@@ -1,5 +1,6 @@
 from sklearn.utils.validation import check_X_y#, check_is_fitted
 import numpy as np
+import pytest
 
 def prelim(X, y, bb_model, wb_model, gen_name, new_size, proba = False, verbose = True):
     # X - np aray of feature values
