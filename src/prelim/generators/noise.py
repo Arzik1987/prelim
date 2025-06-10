@@ -12,10 +12,23 @@ class Gen_noise:
         return self
 
     def sample(self, n_samples=1):
-        mod_data = self.data_.copy()
-        for col in range(0,mod_data.shape[1]):
-            mindist = min(np.diff(np.unique(mod_data[:,col])))*self.scale_
-            mod_data[:,col] = mod_data[:,col] + np.random.uniform(-mindist, mindist, len(mod_data[:,col]))
+        if self.data_ is None:
+            raise RuntimeError("Generator must be fitted before sampling")
+
+        # randomly choose data points to perturb so that the output size matches
+        # the requested number of samples
+        mod_data = self.data_[
+            np.random.choice(self.data_.shape[0], n_samples, replace=True)
+        ].astype(float)
+
+        for col in range(mod_data.shape[1]):
+            unique_vals = np.unique(self.data_[:, col])
+            if len(unique_vals) > 1:
+                step = np.min(np.diff(np.sort(unique_vals))) * self.scale_
+            else:
+                step = self.scale_
+            mod_data[:, col] += np.random.uniform(-step, step, n_samples)
+
         return mod_data
     
     def my_name(self):
