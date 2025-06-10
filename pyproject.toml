@@ -1,3 +1,20 @@
+[tool.poetry]
+name = "prelim"
+version = "0.0.1"
+description = "PRELIM package to reproduce experiments and use method."
+authors = ["Vadim Arzamasov <vadim.arzamasov@gmail.com>", "Benjamin Jochum"]
+readme = "README.md"
+packages = [{include = "prelim", from = "src"}]
+
+[tool.poetry.dependencies]
+python = ">=3.6"
+auto_mix_prep = "0.2.0"
+imbalanced_learn = "0.8.0"
+imblearn = "0.0"
+numpy = "1.20.1"
+scikit_learn = "1.0.1"
+statsmodels = "0.12.2"
+
 [build-system]
 requires = [
     "setuptools>=42",
