@@ -149,6 +149,42 @@ def test_randn_learns_location_and_covariance_and_samples_requested_shape():
     assert generator.my_name() == "randn"
 
 
+@pytest.mark.parametrize(
+    ("generator_a", "generator_b", "sample_kwargs"),
+    [
+        (Gen_randn(seed=2020), Gen_randn(seed=2020), {"n_samples": 25}),
+        (Gen_randu(seed=2020), Gen_randu(seed=2020), {"n_samples": 25}),
+        (Gen_noise(scale=0.3, seed=2020), Gen_noise(scale=0.3, seed=2020), {"n_samples": 25}),
+        (Gen_perfect(seed=2020), Gen_perfect(seed=2020), {"n_samples": 10}),
+        (Gen_kdeb(knn=5, seed=2020), Gen_kdeb(knn=5, seed=2020), {"n_samples": 20}),
+        (Gen_kdebw(seed=2020), Gen_kdebw(seed=2020), {"n_samples": 20}),
+        (Gen_kdebwhl(seed=2020), Gen_kdebwhl(seed=2020), {"n_samples": 20}),
+        (Gen_kdebwm(seed=2020), Gen_kdebwm(seed=2020), {"n_samples": 20}),
+        (Gen_munge(local_var=1, p_swap=0.5, seed=2020), Gen_munge(local_var=1, p_swap=0.5, seed=2020), {"n_samples": 20}),
+        (Gen_rfdens(seed=2020), Gen_rfdens(seed=2020), {"n_samples": 20}),
+        (Gen_vva_proba(seed=2020), Gen_vva_proba(seed=2020), {"r": 1.0}),
+    ],
+)
+def test_seeded_generators_are_reproducible(generator_a, generator_b, sample_kwargs):
+    x = _clustered_sample()
+    y = np.concatenate((np.zeros(40, dtype=int), np.ones(40, dtype=int)))
+
+    if isinstance(generator_a, Gen_rfdens):
+        generator_a.fit(x, y)
+        generator_b.fit(x, y)
+    elif isinstance(generator_a, Gen_vva_proba):
+        generator_a.fit(x, _LinearProbabilityMeta())
+        generator_b.fit(x, _LinearProbabilityMeta())
+    else:
+        generator_a.fit(x)
+        generator_b.fit(x)
+
+    sample_a = generator_a.sample(**sample_kwargs)
+    sample_b = generator_b.sample(**sample_kwargs)
+
+    assert np.allclose(sample_a, sample_b)
+
+
 def test_kde_hard_limits_samples_within_observed_min_max():
     x = _clustered_sample()
     generator = Gen_kdebwhl().fit(x)

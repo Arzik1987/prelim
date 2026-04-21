@@ -2,13 +2,14 @@ import numpy as np
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import GridSearchCV
 from sklearn.tree import _tree
+from .base import BaseGenerator
 # see https://stackoverflow.com/questions/20224526/how-to-extract-the-decision-rules-from-scikit-learn-decision-tree
 
 
-class Gen_rfdens:
+class Gen_rfdens(BaseGenerator):
     
     def __init__(self, seed=2020):
-        self.seed_ = seed
+        super().__init__("cmmrf", seed=seed)
         self.boxes_ = None
         self.nsamples_ = None
 
@@ -37,7 +38,9 @@ class Gen_rfdens:
             
         return boxes, nsamples
 
-    def fit(self, X, y, metamodel=None):
+    def fit(self, X, y=None, metamodel=None):
+        if y is None:
+            raise ValueError("Gen_rfdens.fit requires y")
         self.boxes_ = []
         self.nsamples_ = []
         params = {"max_features": [2, "sqrt", None]}
@@ -61,36 +64,9 @@ class Gen_rfdens:
             for i in range(0, len(self.nsamples_)):
                 box = self.boxes_[i]
                 sidelen = box[1, :] - box[0, :]
-                X.append(np.random.random((self.nsamples_[i], len(sidelen)))*sidelen + box[0, :])
+                X.append(self.rng_.random_sample((self.nsamples_[i], len(sidelen))) * sidelen + box[0, :])
         
         X = np.concatenate(X)
         xdim = X.shape[0]
-        X = X[np.random.RandomState(self.seed_).choice(np.arange(xdim), size=xdim, replace=False), :].copy()
+        X = X[self.rng_.choice(np.arange(xdim), size=xdim, replace=False), :].copy()
         return X[0:n_samples, :]
-
-    def my_name(self):
-        return "cmmrf"
-    
-
-# =============================================================================
-# # TEST 
-# 
-# mean = [0, 0]
-# cov = [[1, 0], [0, 1]]
-# x = np.random.multivariate_normal(mean, cov, 500)
-# mean = [5, 5]
-# x = np.vstack((x,np.random.multivariate_normal(mean, cov, 500)))
-# x = x[((x <= [6,6]) & (x>=[-1,-1])).all(axis = 1)]
-# y = np.ones(x.shape[0])
-# y[(x <= [4,1]).all(axis = 1)] = 0
-# import matplotlib.pyplot as plt
-# plt.scatter(x[:,0], x[:,1], c = y)
-# 
-# 
-# rfdens = Gen_rfdens()
-# rfdens.fit(x, y)
-# df = rfdens.sample(n_samples = 10)
-# plt.scatter(df[:,0], df[:,1])
-# =============================================================================
-
-

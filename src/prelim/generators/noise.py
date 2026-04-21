@@ -1,9 +1,11 @@
 import numpy as np
+from .base import BaseGenerator
 
 
-class Gen_noise:
+class Gen_noise(BaseGenerator):
 
-    def __init__(self, scale=0.3):
+    def __init__(self, scale=0.3, seed=2020):
+        super().__init__("noise", seed=seed)
         self.scale_ = scale
 
     def fit(self, X, y=None, metamodel=None):
@@ -15,22 +17,5 @@ class Gen_noise:
         mod_data = self.data_.copy()
         for col in range(0,mod_data.shape[1]):
             mindist = min(np.diff(np.unique(mod_data[:,col])))*self.scale_
-            mod_data[:,col] = mod_data[:,col] + np.random.uniform(-mindist, mindist, len(mod_data[:,col]))
+            mod_data[:,col] = mod_data[:,col] + self.rng_.uniform(-mindist, mindist, len(mod_data[:,col]))
         return mod_data
-    
-    def my_name(self):
-        return "noise"
-    
-
-# =============================================================================
-# # TEST
-# 
-# x = np.array([[0,0],[0,1],[0,2],[1,0],[1,1],[1,2],[2,0],[2,1],[2,2]], dtype=float)
-# import matplotlib.pyplot as plt
-# plt.scatter(x[:,0], x[:,1])
-# 
-# ng = Gen_noise()
-# ng.fit(x)
-# df = ng.sample(n_samples = 201)
-# plt.scatter(df[:,0], df[:,1])
-# =============================================================================

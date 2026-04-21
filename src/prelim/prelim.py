@@ -1,7 +1,7 @@
 from sklearn.utils.validation import check_X_y#, check_is_fitted
 import numpy as np
 
-def prelim(X, y, bb_model, wb_model, gen_name, new_size, proba = False, verbose = True):
+def prelim(X, y, bb_model, wb_model, gen_name, new_size, proba = False, verbose = True, seed=2020):
     # X - np aray of feature values
     # y - binary class label from {0,1}
     # bb_model trained or not trained black-box model
@@ -10,6 +10,7 @@ def prelim(X, y, bb_model, wb_model, gen_name, new_size, proba = False, verbose 
     # new_size - size of the the dataset to be used for wb_model. Ignored for 'rerx', 'vva', 'dummy' generators
     # proba - if the black-box model should output class probabilities
     # verbose - if the function should print messages
+    # seed - random seed used by stochastic generators
 
     X, y = check_X_y(X, y)
     if not hasattr(bb_model, 'classes_'):
@@ -27,46 +28,46 @@ def prelim(X, y, bb_model, wb_model, gen_name, new_size, proba = False, verbose 
     # Load proper generator      
     if gen_name == 'adasyn':
         from .generators.adasyn import Gen_adasyn
-        gen = Gen_adasyn()
+        gen = Gen_adasyn(seed=seed)
     if gen_name == 'cmm':
         from .generators.rfdens import Gen_rfdens
-        gen = Gen_rfdens()
+        gen = Gen_rfdens(seed=seed)
     if gen_name == 'dummy':
         from .generators.dummy import Gen_dummy
-        gen = Gen_dummy()          
+        gen = Gen_dummy(seed=seed)
     if gen_name == 'gmm':
         from .generators.gmm import Gen_gmmbic
-        gen = Gen_gmmbic()
+        gen = Gen_gmmbic(seed=seed)
     elif gen_name == 'gmmal':
         from .generators.gmm import Gen_gmmbical
-        gen = Gen_gmmbical()
+        gen = Gen_gmmbical(seed=seed)
     if gen_name == 'kde':
         from .generators.kde import Gen_kdebw
-        gen = Gen_kdebw() 
+        gen = Gen_kdebw(seed=seed)
     if gen_name == 'kdeb':
         from .generators.kdeb import Gen_kdeb
-        gen = Gen_kdeb() 
+        gen = Gen_kdeb(seed=seed)
     if gen_name == 'kdem':
         from .generators.kdem import Gen_kdebwm
-        gen = Gen_kdebwm()   
+        gen = Gen_kdebwm(seed=seed)
     if gen_name == 'munge':
         from .generators.munge import Gen_munge
-        gen = Gen_munge()                
+        gen = Gen_munge(seed=seed)
     if gen_name == 'norm':
         from .generators.rand import Gen_randn
-        gen = Gen_randn()  
+        gen = Gen_randn(seed=seed)
     if gen_name == 'rerx':
         from .generators.rerx import Gen_rerx
-        gen = Gen_rerx()  
+        gen = Gen_rerx(seed=seed)
     if gen_name == 'smote':
         from .generators.smote import Gen_smote
-        gen = Gen_smote()  
+        gen = Gen_smote(seed=seed)
     if gen_name == 'unif':
         from .generators.rand import Gen_randu
-        gen = Gen_randu()
+        gen = Gen_randu(seed=seed)
     if gen_name == 'vva':
         from .generators.vva_p import Gen_vva
-        gen = Gen_vva()
+        gen = Gen_vva(seed=seed)
 
     #### vva generator
     if gen_name == 'vva':
@@ -157,7 +158,6 @@ def prelim(X, y, bb_model, wb_model, gen_name, new_size, proba = False, verbose 
 # wb_model = DecisionTreeClassifier(max_leaf_nodes = 8).fit(X,y)
 # print('orig_score = %s' % wb_model.score(Xtest, ytest))
 # =============================================================================
-
 
 
 

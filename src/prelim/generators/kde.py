@@ -4,14 +4,16 @@ import warnings
 import numpy as np
 from sklearn.neighbors import KernelDensity
 from statsmodels.nonparametric.bandwidths import bw_silverman, bw_scott
+from .base import BaseGenerator
 
 # to choose bandwidth via CV, see, for instance, 
 # https://scikit-learn.org/stable/auto_examples/neighbors/plot_digits_kde_sampling.html#sphx-glr-auto-examples-neighbors-plot-digits-kde-sampling-py
 
 
-class Gen_kdebw:
+class Gen_kdebw(BaseGenerator):
 
-    def __init__(self, method='silverman'):
+    def __init__(self, method='silverman', seed=2020):
+        super().__init__("kdebw", seed=seed)
         if method == 'silverman':
             self.bw_method_ = bw_silverman
         elif method == 'scott':
@@ -30,10 +32,7 @@ class Gen_kdebw:
         return self
 
     def sample(self, n_samples=1):
-        return self.model_.sample(n_samples)
-    
-    def my_name(self):
-        return "kdebw"
+        return self.model_.sample(n_samples, random_state=self.rng_)
 
 # =============================================================================
 # # TEST 
@@ -59,9 +58,10 @@ class Gen_kdebw:
 # 
 # =============================================================================
 
-class Gen_kdebwhl:
+class Gen_kdebwhl(BaseGenerator):
 
-    def __init__(self, method = 'silverman'):
+    def __init__(self, method = 'silverman', seed=2020):
+        super().__init__("kdebwhl", seed=seed)
         if method == 'silverman':
             self.bw_method_ = bw_silverman
         elif method == 'scott':
@@ -95,70 +95,6 @@ class Gen_kdebwhl:
         return sample[:n_samples]
 
     def _cleaned_sample(self, n_samples):
-        new_samples = self.model_.sample(n_samples)
+        new_samples = self.model_.sample(n_samples, random_state=self.rng_)
         new_samples = new_samples[((new_samples <= self.limits_[1]) & (new_samples >= self.limits_[0])).all(axis = 1)]
         return new_samples
-    
-    def my_name(self):
-        return "kdebwhl"
-
-
-'''
-from sklearn.model_selection import GridSearchCV
-from typing import List, Union, Tuple
-
-bw_method_silverman = 'silverman'
-bw_method_scott = 'scott'
-
-class KernelDensityCV:
-
-    def __init__(self, bandwidth_list: Union[np.ndarray, List[float]], cv=5, hard_limits=False, sampling_multiplier: int = None):
-        self.model: KernelDensity = KernelDensity()
-        self.bandwidth_list: List[float] = bandwidth_list
-        self.cv = cv
-        self.hard_limits = hard_limits
-        self._limits = ()
-        assert not (hard_limits and sampling_multiplier is None)
-        self.sampling_multiplier = sampling_multiplier
-
-    def fit(self, X: pd.DataFrame, **kwargs):
-        kde_params = {"bandwidth": self.bandwidth_list}
-        kde_cv = GridSearchCV(self.model, kde_params, cv=self.cv)
-        kde_cv.fit(X)
-        self.model = kde_cv.best_estimator_
-        self.model.fit(X)
-        if self.hard_limits:
-            self._limits = (X.min(axis=0).to_numpy(), X.max(axis=0).to_numpy())
-        return self
-
-    def sample(self, size: int) -> np.ndarray:
-        if self.hard_limits:
-            samples = _generate_w_hard_limits(self.model, size, self.sampling_multiplier, self._limits)
-        else:
-            samples = self.model.sample(size)
-        return samples
-
-
-def _generate_w_hard_limits(kde, n: int, sampling_multiplier: int, limits: Tuple) -> np.ndarray:
-    result: np.ndarray = _cleaned_sample(kde, n, limits)
-    while result.shape[0] != n:
-        additional = _cleaned_sample(kde, sampling_multiplier * n, limits)
-        p_needed = n - result.shape[0]
-        p_available = len(additional)
-        p = p_needed if p_needed <= p_available else p_available
-        result = np.append(result, additional[:p], axis=0)
-        assert result.shape[0] <= n
-    return result
-
-
-def _cleaned_sample(kde, n: int, limits: Tuple) -> np.ndarray:
-    new_samples = kde.sample(n)
-    new_samples = _in_bounds(new_samples, limits[0], limits[1])
-    return new_samples
-
-
-def _in_bounds(data: np.ndarray, minima: np.ndarray, maxima: np.ndarray) -> np.ndarray:
-    logical: np.ndarray = (data <= maxima) & (data >= minima)
-    logical = logical.all(axis=1)
-    return data[logical]
-'''

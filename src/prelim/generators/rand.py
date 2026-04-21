@@ -1,11 +1,12 @@
 import numpy as np
 from sklearn.covariance import MinCovDet
+from .base import BaseGenerator
 
 
-class Gen_randn:
+class Gen_randn(BaseGenerator):
 
     def __init__(self, seed=2020):
-        self.seed_ = seed
+        super().__init__("randn", seed=seed)
         self.covariance_ = None
         self.location_ = None
 
@@ -17,15 +18,13 @@ class Gen_randn:
         return self
 
     def sample(self, n_samples=1):
-        return np.random.multivariate_normal(self.location_, self.covariance_, n_samples)
-
-    def my_name(self):
-        return "randn"
+        return self.rng_.multivariate_normal(self.location_, self.covariance_, n_samples)
     
 
-class Gen_randu:
+class Gen_randu(BaseGenerator):
 
-    def __init__(self):
+    def __init__(self, seed=2020):
+        super().__init__("randu", seed=seed)
         self.range_ = None
         self.minimum_ = None
 
@@ -35,35 +34,4 @@ class Gen_randu:
         return self
 
     def sample(self, n_samples=1):
-        return np.random.random((n_samples, len(self.range_)))*self.range_ + self.minimum_
-    
-    def my_name(self):
-        return "randu"
-
-
-# =============================================================================
-# # TEST 
-# 
-# mean = [0, 0]
-# cov = [[1, 0], [0, 1]]
-# x = np.random.multivariate_normal(mean, cov, 500)
-# mean = [5, 5]
-# x = np.vstack((x,np.random.multivariate_normal(mean, cov, 500)))
-# import matplotlib.pyplot as plt
-# plt.scatter(x[:,0], x[:,1])
-# 
-# nr = Gen_randn()
-# nr.fit(x)
-# df = nr.sample(n_samples = 201)
-# plt.scatter(df[:,0], df[:,1])
-# 
-# ur = Gen_randu()
-# ur.fit(x)
-# df = ur.sample(n_samples = 201)
-# plt.scatter(df[:,0], df[:,1])
-# =============================================================================
-
-    
-
-
-
+        return self.rng_.random_sample((n_samples, len(self.range_))) * self.range_ + self.minimum_

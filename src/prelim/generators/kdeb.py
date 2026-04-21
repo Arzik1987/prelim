@@ -1,12 +1,13 @@
 import numpy as np
 from sklearn.neighbors import NearestNeighbors
+from .base import BaseGenerator
 
 
-class Gen_kdeb:
+class Gen_kdeb(BaseGenerator):
     
     def __init__(self, knn=10, seed=2020):
+        super().__init__("kdeb", seed=seed)
         self.knn_ = knn
-        self.seed_ = seed
         self.X_ = None
         self.dist_ = None
 
@@ -24,40 +25,10 @@ class Gen_kdeb:
     def sample(self, n_samples):
         # http://extremelearning.com.au/how-to-generate-uniformly-random-points-on-n-spheres-and-n-balls/
         d = self.X_.shape[1]
-        u = np.random.normal(0, 1, (n_samples, d + 2))  # an array of (d+2) normally distributed random variables
+        u = self.rng_.normal(0, 1, (n_samples, d + 2))
         den = np.sum(u**2, axis=1) ** 0.5
         u = u/den[:, None]
 
-        return self.X_[np.random.choice(self.X_.shape[0], n_samples),:] + u[:,0:d]
-
-    def my_name(self):
-        return "kdeb"
-
-
-# =============================================================================
-# # TEST 
-# 
-# x = np.array([[0,0]])
-# kdeb = Gen_kdeb(knn=0)
-# kdeb.fit(x)
-# df = kdeb.sample(n_samples = 1000)
-# plt.scatter(df[:,0], df[:,1])
-#
-# mean = [0, 0]
-# cov = [[1, 0], [0, 1]]
-# x = np.random.multivariate_normal(mean, cov, 50)
-# mean = [5, 5]
-# x = np.vstack((x,np.random.multivariate_normal(mean, cov, 50)))
-# import matplotlib.pyplot as plt
-# plt.scatter(x[:,0], x[:,1])
-#
-# kdeb = Gen_kdeb()
-# kdeb.fit(x)
-# df = kdeb.sample(n_samples = 1000)
-# plt.scatter(df[:,0], df[:,1])
-# =============================================================================
-
-
-
+        return self.X_[self.rng_.choice(self.X_.shape[0], n_samples),:] + u[:,0:d]
 
 

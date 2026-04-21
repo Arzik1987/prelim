@@ -1,11 +1,13 @@
 import numpy as np
 from sklearn.mixture import GaussianMixture
 from sklearn.model_selection import GridSearchCV
+from .base import BaseGenerator
 
 
-class Gen_gmm:
+class Gen_gmm(BaseGenerator):
     
-    def __init__(self, params: dict = None, cv=5):
+    def __init__(self, params: dict = None, cv=5, seed=2020):
+        super().__init__("gmmcv", seed=seed)
         if params is None:
             self.params_ = {
                 "covariance_type": ["full", "tied", "diag", "spherical"],
@@ -18,19 +20,21 @@ class Gen_gmm:
         self.cv_ = cv
 
     def fit(self, X, y=None, metamodel=None):
-        self.model_ = GridSearchCV(GaussianMixture(), self.params_, cv = self.cv_).fit(X).best_estimator_
+        self.model_ = GridSearchCV(
+            GaussianMixture(random_state=self.seed_),
+            self.params_,
+            cv=self.cv_,
+        ).fit(X).best_estimator_
         return self
 
-    def sample(self, n_samples=1, X_new=None):
+    def sample(self, n_samples=1):
         return self.model_.sample(n_samples)[0]
-    
-    def my_name(self):
-        return "gmmcv"
 
 
-class Gen_gmmbic:
+class Gen_gmmbic(BaseGenerator):
 
-    def __init__(self, params: dict = None, cv=None):
+    def __init__(self, params: dict = None, cv=None, seed=2020):
+        super().__init__("gmm", seed=seed)
         if params is None:
             self.params_ = {
                 "covariance_type": ["full", "tied", "diag", "spherical"],
@@ -45,7 +49,11 @@ class Gen_gmmbic:
         lowest_bic = np.inf
         for cv_type in self.params_['covariance_type']:
             for n_components in self.params_['n_components']:
-                gmm = GaussianMixture(n_components = n_components, covariance_type = cv_type)
+                gmm = GaussianMixture(
+                    n_components=n_components,
+                    covariance_type=cv_type,
+                    random_state=self.seed_,
+                )
                 gmm.fit(X)
                 bic = gmm.bic(X)
                 if bic < lowest_bic:
@@ -58,13 +66,10 @@ class Gen_gmmbic:
     def sample(self, n_samples = 1):
         return self.model_.sample(n_samples)[0]
 
-    def my_name(self):
-        return "gmm"
+class Gen_gmmbical(BaseGenerator):
 
-
-class Gen_gmmbical:
-
-    def __init__(self, params: dict = None, cv=None):
+    def __init__(self, params: dict = None, cv=None, seed=2020):
+        super().__init__("gmmal", seed=seed)
         if params is None:
             self.params_ = {"n_components": list(range(1,30))}
         else:
@@ -74,7 +79,11 @@ class Gen_gmmbical:
         # see https://scikit-learn.org/stable/auto_examples/mixture/plot_gmm_selection.html
         lowest_bic = np.inf
         for n_components in self.params_['n_components']:
-            gmm = GaussianMixture(n_components = n_components, covariance_type = "diag")
+            gmm = GaussianMixture(
+                n_components=n_components,
+                covariance_type="diag",
+                random_state=self.seed_,
+            )
             gmm.fit(X)
             bic = gmm.bic(X)
             if bic < lowest_bic:
@@ -86,40 +95,3 @@ class Gen_gmmbical:
 
     def sample(self, n_samples = 1):
         return self.model_.sample(n_samples)[0]
-
-    def my_name(self):
-        return "gmmal"
-
-
-# =============================================================================
-# TEST
-
-# mean = [0, 0]
-# cov = [[1, 0], [0, 1]]
-# x = np.random.multivariate_normal(mean, cov, 500)
-# mean = [5, 5]
-# x = np.vstack((x,np.random.multivariate_normal(mean, cov, 500)))
-# import matplotlib.pyplot as plt
-# plt.scatter(x[:,0], x[:,1])
-# plt.show()
-#
-# gmm = Gen_gmm()
-# gmm.fit(x)
-# df = gmm.sample(n_samples = 201)
-# plt.scatter(df[:,0], df[:,1])
-# plt.show()
-#
-# gmm = Gen_gmmbic()
-# gmm.fit(x)
-# df = gmm.sample(n_samples = 201)
-# plt.scatter(df[:,0], df[:,1])
-# plt.show()
-#
-# gmm = Gen_gmmbical()
-# gmm.fit(x)
-# df = gmm.sample(n_samples = 201)
-# plt.scatter(df[:,0], df[:,1])
-# plt.show()
-# =============================================================================
-
-
