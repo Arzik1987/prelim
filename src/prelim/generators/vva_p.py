@@ -18,7 +18,8 @@ class Gen_vva:
         self.dim_ = X.shape[1]
         self.trainn_ = X.shape[0]
         Xtrain = X.copy()
-        y = metamodel.predict_proba(Xtrain)[:, int(np.where(metamodel.classes_ == 1)[0])] - 0.5
+        class_one_ind = np.where(metamodel.classes_ == 1)[0][0]
+        y = metamodel.predict_proba(Xtrain)[:, class_one_ind] - 0.5
         if sum(y < 0) == 0 or sum(y > 0) == 0:
             self.generate_ = False
             return self
@@ -117,5 +118,4 @@ class Gen_vva:
 # ypred = metamodel.predict_proba(df)
 # plt.scatter(df[:,0], df[:,1], c= ypred)
 # =============================================================================
-
 

@@ -42,7 +42,7 @@ class Gen_gmmbic:
 
     def fit(self, X, y=None, metamodel=None):
         # see https://scikit-learn.org/stable/auto_examples/mixture/plot_gmm_selection.html
-        lowest_bic = np.infty
+        lowest_bic = np.inf
         for cv_type in self.params_['covariance_type']:
             for n_components in self.params_['n_components']:
                 gmm = GaussianMixture(n_components = n_components, covariance_type = cv_type)
@@ -72,7 +72,7 @@ class Gen_gmmbical:
 
     def fit(self, X, y=None, metamodel=None):
         # see https://scikit-learn.org/stable/auto_examples/mixture/plot_gmm_selection.html
-        lowest_bic = np.infty
+        lowest_bic = np.inf
         for n_components in self.params_['n_components']:
             gmm = GaussianMixture(n_components = n_components, covariance_type = "diag")
             gmm.fit(X)
@@ -121,6 +121,5 @@ class Gen_gmmbical:
 # plt.scatter(df[:,0], df[:,1])
 # plt.show()
 # =============================================================================
-
 
 

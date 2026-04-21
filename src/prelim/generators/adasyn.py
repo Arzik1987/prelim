@@ -34,7 +34,7 @@ class Gen_adasyn:
             except (ValueError, RuntimeError):
                 parknn = parknn * 2
 
-        if type(Xnew) is not np.ndarray:
+        if type(Xnew) is not np.ndarray or Xnew[y == 1,:].shape[0] < n_samples:
             from imblearn.over_sampling import SMOTE
             parknn = min(5, n_samples, self.X_.shape[0])
             Xnew, y = SMOTE(sampling_strategy = parss, k_neighbors = parknn, random_state = 2020).fit_resample(X, y)
@@ -63,4 +63,3 @@ class Gen_adasyn:
 # df = ada_gen.sample(n_samples = 201)
 # plt.scatter(df[:,0], df[:,1])
 # =============================================================================
-

@@ -26,7 +26,7 @@ class Gen_munge:
             for k in range(0,dtemp.shape[1]):
                 swap = np.random.uniform(0, 1, 1)
                 if swap <= self.p_swap_:
-                    dtemp[j, k] = np.random.normal(nn[k], abs(nn[k] - dtemp[j, k])/self.local_var_, 1)
+                    dtemp[j, k] = np.random.normal(nn[k], abs(nn[k] - dtemp[j, k])/self.local_var_)
         
         return dtemp
 
