@@ -1,7 +1,68 @@
-from sklearn.utils.validation import check_X_y#, check_is_fitted
-import numpy as np
+from importlib import import_module
 
-def prelim(X, y, bb_model, wb_model, gen_name, new_size, proba = False, verbose = True, seed=2020):
+import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.utils.validation import check_X_y
+
+
+def _build_generator(gen_name, seed):
+    registry = {
+        "adasyn": lambda: import_module(".generators.adasyn", __package__).Gen_adasyn(seed=seed),
+        "cmm": lambda: import_module(".generators.rfdens", __package__).Gen_rfdens(seed=seed),
+        "dummy": lambda: import_module(".generators.dummy", __package__).Gen_dummy(seed=seed),
+        "gmm": lambda: import_module(".generators.gmm", __package__).Gen_gmmbic(seed=seed),
+        "gmmal": lambda: import_module(".generators.gmm", __package__).Gen_gmmbical(seed=seed),
+        "kde": lambda: import_module(".generators.kde", __package__).Gen_kdebw(seed=seed),
+        "kdeb": lambda: import_module(".generators.kdeb", __package__).Gen_kdeb(seed=seed),
+        "kdem": lambda: import_module(".generators.kdem", __package__).Gen_kdebwm(seed=seed),
+        "munge": lambda: import_module(".generators.munge", __package__).Gen_munge(seed=seed),
+        "norm": lambda: import_module(".generators.rand", __package__).Gen_randn(seed=seed),
+        "rerx": lambda: import_module(".generators.rerx", __package__).Gen_rerx(seed=seed),
+        "smote": lambda: import_module(".generators.smote", __package__).Gen_smote(seed=seed),
+        "unif": lambda: import_module(".generators.rand", __package__).Gen_randu(seed=seed),
+        "vva": lambda: import_module(".generators.vva_p", __package__).Gen_vva(seed=seed),
+    }
+
+    try:
+        return registry[gen_name]()
+    except KeyError as exc:
+        valid_names = ", ".join(sorted(registry))
+        raise ValueError(f"Unknown gen_name '{gen_name}'. Expected one of: {valid_names}") from exc
+
+
+def _require_predict_proba(bb_model, gen_name, proba):
+    if hasattr(bb_model, "predict_proba"):
+        return
+
+    if gen_name == "vva":
+        raise ValueError("Generator 'vva' requires bb_model.predict_proba()")
+    if proba:
+        raise ValueError("proba=True requires bb_model.predict_proba()")
+
+
+def _class_one_index(bb_model):
+    if not hasattr(bb_model, "classes_"):
+        raise ValueError("bb_model must expose classes_ after fitting")
+
+    matches = np.where(bb_model.classes_ == 1)[0]
+    if len(matches) == 0:
+        raise ValueError("bb_model.classes_ must contain class label 1 for probability-based flows")
+    return int(matches[0])
+
+
+def _vva_split(X, y, seed):
+    _, counts = np.unique(y, return_counts=True)
+    stratify = y if len(counts) > 1 and np.min(counts) > 1 else None
+    return train_test_split(
+        X,
+        y,
+        train_size=2 / 3,
+        random_state=seed,
+        stratify=stratify,
+    )
+
+
+def prelim(X, y, bb_model, wb_model, gen_name, new_size, proba=False, verbose=True, seed=2020):
     # X - np aray of feature values
     # y - binary class label from {0,1}
     # bb_model trained or not trained black-box model
@@ -13,151 +74,74 @@ def prelim(X, y, bb_model, wb_model, gen_name, new_size, proba = False, verbose 
     # seed - random seed used by stochastic generators
 
     X, y = check_X_y(X, y)
-    if not hasattr(bb_model, 'classes_'):
-        if verbose == True:
-            print('fitting bb_model to data')
-        bb_model.fit(X, y)
-    
-    if not hasattr(bb_model, 'predict_proba'):
-        if gen_name in ['vva']:
-            # TODO add exceptions below
-            print('vva needs method "predict_proba()" method of bb_model')
-        if proba == True:
-            print('bb_model does not have "predict_proba()" method.\
-                  Set "proba = False" or use another bb_model')    
-    # Load proper generator      
-    if gen_name == 'adasyn':
-        from .generators.adasyn import Gen_adasyn
-        gen = Gen_adasyn(seed=seed)
-    if gen_name == 'cmm':
-        from .generators.rfdens import Gen_rfdens
-        gen = Gen_rfdens(seed=seed)
-    if gen_name == 'dummy':
-        from .generators.dummy import Gen_dummy
-        gen = Gen_dummy(seed=seed)
-    if gen_name == 'gmm':
-        from .generators.gmm import Gen_gmmbic
-        gen = Gen_gmmbic(seed=seed)
-    elif gen_name == 'gmmal':
-        from .generators.gmm import Gen_gmmbical
-        gen = Gen_gmmbical(seed=seed)
-    if gen_name == 'kde':
-        from .generators.kde import Gen_kdebw
-        gen = Gen_kdebw(seed=seed)
-    if gen_name == 'kdeb':
-        from .generators.kdeb import Gen_kdeb
-        gen = Gen_kdeb(seed=seed)
-    if gen_name == 'kdem':
-        from .generators.kdem import Gen_kdebwm
-        gen = Gen_kdebwm(seed=seed)
-    if gen_name == 'munge':
-        from .generators.munge import Gen_munge
-        gen = Gen_munge(seed=seed)
-    if gen_name == 'norm':
-        from .generators.rand import Gen_randn
-        gen = Gen_randn(seed=seed)
-    if gen_name == 'rerx':
-        from .generators.rerx import Gen_rerx
-        gen = Gen_rerx(seed=seed)
-    if gen_name == 'smote':
-        from .generators.smote import Gen_smote
-        gen = Gen_smote(seed=seed)
-    if gen_name == 'unif':
-        from .generators.rand import Gen_randu
-        gen = Gen_randu(seed=seed)
-    if gen_name == 'vva':
-        from .generators.vva_p import Gen_vva
-        gen = Gen_vva(seed=seed)
 
-    #### vva generator
-    if gen_name == 'vva':
-        ntrain = int(np.ceil(X.shape[0]*2/3))
-        Xtrain = X[:ntrain,:].copy()
-        Xval = X[ntrain:,:].copy()
-        ytrain = y[:ntrain].copy()
-        yval = y[ntrain:].copy()
-        gen.fit(Xtrain, metamodel = bb_model)
-        
-        #### optimizing the share of generated points r
-        # score for no generation
+    if gen_name != "vva" and gen_name not in {"dummy", "rerx"} and new_size < len(y):
+        raise ValueError("new_size must be at least len(y) for generators that add synthetic data")
+
+    if not hasattr(bb_model, "classes_"):
+        if verbose:
+            print("fitting bb_model to data")
+        bb_model.fit(X, y)
+
+    _require_predict_proba(bb_model, gen_name, proba)
+    gen = _build_generator(gen_name, seed)
+
+    if gen_name == "vva":
+        class_one_ind = _class_one_index(bb_model)
+        Xtrain, Xval, ytrain, yval = _vva_split(X, y, seed)
+        gen.fit(Xtrain, metamodel=bb_model)
+
         if proba:
-            wb_model.fit(Xtrain, bb_model.predict_proba(Xtrain)[:, int(np.where(bb_model.classes_ == 1)[0])])
+            wb_model.fit(Xtrain, bb_model.predict_proba(Xtrain)[:, class_one_ind])
         else:
             wb_model.fit(Xtrain, ytrain)
         sctest0 = wb_model.score(Xval, yval)
         ropt = 0
-        
-        if gen.will_generate():  # black-box model does not predict a single class
-            for r in np.linspace(0.5, 2.5, num = 5):
-                Xnew = gen.sample(r)    
+
+        if gen.will_generate():
+            for r in np.linspace(0.5, 2.5, num=5):
+                Xnew = gen.sample(r)
                 if proba:
                     Xnew = np.concatenate([Xnew, Xtrain])
-                    ynew = bb_model.predict_proba(Xnew)[:, int(np.where(bb_model.classes_ == 1)[0])]
+                    ynew = bb_model.predict_proba(Xnew)[:, class_one_ind]
                 else:
-                    ynew = bb_model.predict(Xnew) 
+                    ynew = bb_model.predict(Xnew)
                     Xnew = np.concatenate([Xnew, Xtrain])
                     ynew = np.concatenate([ynew, ytrain])
-                    
+
                 wb_model.fit(Xnew, ynew)
                 sctest = wb_model.score(Xval, yval)
                 if sctest > sctest0:
                     sctest0 = sctest
                     ropt = r
-        
-        #### generate points from fitted vva with optimal r
+
         if ropt > 0:
-            Xnew = gen.fit(X, metamodel = bb_model).sample(ropt)
+            Xnew = gen.fit(X, metamodel=bb_model).sample(ropt)
             if proba:
                 Xnew = np.concatenate([Xnew, X])
-                ynew = bb_model.predict_proba(Xnew)[:, int(np.where(bb_model.classes_ == 1)[0])]
+                ynew = bb_model.predict_proba(Xnew)[:, class_one_ind]
             else:
-                ynew = bb_model.predict(Xnew) 
+                ynew = bb_model.predict(Xnew)
                 Xnew = np.concatenate([Xnew, X])
                 ynew = np.concatenate([ynew, y])
-                
+
             wb_model.fit(Xnew, ynew)
-        else: # no points to generate
+        else:
             wb_model.fit(X, y)
-    
-    else: # not vva generator
-        gen.fit(X, y, metamodel = bb_model)
+    else:
+        gen.fit(X, y, metamodel=bb_model)
         Xnew = gen.sample(new_size - len(y))
         if proba:
-            if gen_name != 'rerx':
+            class_one_ind = _class_one_index(bb_model)
+            if gen_name != "rerx":
                 Xnew = np.concatenate([Xnew, X])
-            ynew = bb_model.predict_proba(Xnew)[:, int(np.where(bb_model.classes_ == 1)[0])]
+            ynew = bb_model.predict_proba(Xnew)[:, class_one_ind]
         else:
-            ynew = bb_model.predict(Xnew) 
-            if gen_name != 'rerx':
+            ynew = bb_model.predict(Xnew)
+            if gen_name != "rerx":
                 Xnew = np.concatenate([Xnew, X])
                 ynew = np.concatenate([ynew, y])
-                
+
         wb_model.fit(Xnew, ynew)
-      
+
     return wb_model
-                                    
-     
-# =============================================================================
-# #### test
-# 
-# npt = 50
-# cov = [[1, 0], [0, 1]]
-# X = np.vstack((np.random.multivariate_normal([0, 0], cov, npt), np.random.multivariate_normal([1, 1], cov, npt)))
-# y = np.hstack((np.zeros(npt), np.ones(npt))).astype(int)
-# 
-# Xtest = np.vstack((np.random.multivariate_normal([0, 0], cov, 100*npt), np.random.multivariate_normal([1, 1], cov, 100*npt)))
-# ytest = np.hstack((np.zeros(100*npt), np.ones(100*npt))).astype(int)
-# 
-# from sklearn.tree import DecisionTreeClassifier
-# from sklearn.ensemble import RandomForestClassifier
-# 
-# wb_model = prelim(X, y, RandomForestClassifier(), DecisionTreeClassifier(max_leaf_nodes = 8),\
-#                   'kde', new_size = 2000, proba = False, verbose = True)
-# print('prelim_kde_score = %s' % wb_model.score(Xtest, ytest))
-# 
-# wb_model = DecisionTreeClassifier(max_leaf_nodes = 8).fit(X,y)
-# print('orig_score = %s' % wb_model.score(Xtest, ytest))
-# =============================================================================
-
-
-
