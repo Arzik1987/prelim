@@ -1,7 +1,9 @@
+from sklearn.base import BaseEstimator
 from sklearn.utils.validation import check_is_fitted
 import numpy as np
 
-class DataSplitter:
+
+class DataSplitter(BaseEstimator):
     def __init__(self, seed = 2020): # set seed to None for a random seed
         self.seed_ = seed
 
@@ -9,9 +11,11 @@ class DataSplitter:
         inds = np.random.RandomState(self.seed_).choice(np.arange(len(y)), size = len(y), replace = False)
         self.y_ = y[inds].copy()
         self.X_ = X[inds,:].copy()
+        self.is_fitted_ = True
+        return self
 
     def configure(self, nparts, npoints):
-        check_is_fitted(self)
+        check_is_fitted(self, attributes = ["is_fitted_"])
         self.npoints_ = npoints
         self.startpts_ = np.linspace(0, len(self.y_)-npoints, num = nparts, endpoint = True, dtype = 'int')
 

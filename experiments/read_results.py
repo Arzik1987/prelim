@@ -1,15 +1,51 @@
+import argparse
 import os
-import pandas as pd
-import seaborn as sns
-import numpy as np
 import sys
 
-FILEPATH = os.path.dirname(os.path.abspath(__file__))
-WHERE = FILEPATH + '/registry/' 
-if os.path.exists(WHERE + 'res.csv'):
-    os.remove(WHERE + 'res.csv')
+import numpy as np
+import pandas as pd
+import seaborn as sns
 
-_, _, filenames = next(os.walk(WHERE))
+from config import read_latest_run_id, resolve_run_dir
+
+
+FILEPATH = os.path.dirname(os.path.abspath(__file__))
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(description = 'Post-process one PRELIM experiment run.')
+    parser.add_argument('--run-id', default = None, help = 'Run id under experiments/registry/runs/. Defaults to the latest run.')
+    parser.add_argument('--run-dir', default = None, help = 'Absolute or relative path to a run directory.')
+    return parser.parse_args()
+
+
+def resolve_selected_run(args):
+    if args.run_dir is not None:
+        return os.path.abspath(args.run_dir)
+    run_id = args.run_id or read_latest_run_id()
+    if run_id is None:
+        raise FileNotFoundError('No run selected and no latest run recorded.')
+    return resolve_run_dir(run_id)
+
+
+ARGS = parse_args()
+RUN_DIR = resolve_selected_run(ARGS)
+RAW_DIR = os.path.join(RUN_DIR, 'raw')
+DERIVED_DIR = os.path.join(RUN_DIR, 'derived')
+FIGURES_DIR = os.path.join(RUN_DIR, 'figures')
+TEMP_AGGREGATE_PATH = os.path.join(DERIVED_DIR, 'a.csv')
+TEMP_BASELINE_PATH = os.path.join(DERIVED_DIR, 'tmp1.csv')
+RES_PATH = os.path.join(DERIVED_DIR, 'res.csv')
+RES_BB_PATH = os.path.join(DERIVED_DIR, 'res_bb.csv')
+PIVOT_WIL_PATH = os.path.join(DERIVED_DIR, 'pivot_wil.csv')
+PIVOT_MEDIAN_PATH = os.path.join(DERIVED_DIR, 'pivot_median.csv')
+
+os.makedirs(DERIVED_DIR, exist_ok = True)
+os.makedirs(FIGURES_DIR, exist_ok = True)
+if os.path.exists(RES_PATH):
+    os.remove(RES_PATH)
+
+_, _, filenames = next(os.walk(RAW_DIR))
 
 
 #### Helper functions for postprocessing
@@ -63,11 +99,11 @@ def qual_change(d, meta):
 
 def get_result(fname):
     # processes the results from a single experiment
-    meta = pd.read_csv(WHERE + fname.split('.')[0] + '_meta' + '.csv',\
+    meta = pd.read_csv(os.path.join(RAW_DIR, fname.split('.')[0] + '_meta' + '.csv'),\
                             delimiter = ',', header = None)
     meta.columns = ['alg', 'val']
     
-    d = pd.read_csv(WHERE + fname, delimiter = ',', header = None)
+    d = pd.read_csv(os.path.join(RAW_DIR, fname), delimiter = ',', header = None)
     d.columns = ['alg', 'gen', 'met', 'tra', 'tes', 'nle', 'tme', 'fid', 'bac']
     d = qual_change(d, meta)
             
@@ -92,8 +128,8 @@ res = pd.concat(res)
 res.loc[res['gen'] == 'adasyns','gen'] = 'adasyn'
 for names in ['tra','tes','ora','bac','orb','nle','orn','tme','fid','orf','itr','npt']:
     res[names] = pd.to_numeric(res[names])
-res.to_csv(WHERE + 'res.csv')
-# res = pd.read_csv(WHERE + 'res.csv', delimiter = ',')
+res.to_csv(RES_PATH)
+# res = pd.read_csv(RES_PATH, delimiter = ',')
 
 
 #### Helper functions for drawing
@@ -115,9 +151,9 @@ def res_aggregate(mod, npts, clname, clnameo):
         raise ValueError('{mod} is a wrong mod value'.format(mod = repr(mod)))
     a = a[a['alg'].isin(nms)]     
     a = a[['alg', 'gen', 'met', 'npt', clname, clnameo]].groupby(['alg', 'gen', 'met', 'npt']).mean()
-    a.to_csv(WHERE + 'a.csv')
-    a = pd.read_csv(WHERE + 'a.csv', delimiter = ',')
-    os.remove(WHERE + 'a.csv')
+    a.to_csv(TEMP_AGGREGATE_PATH)
+    a = pd.read_csv(TEMP_AGGREGATE_PATH, delimiter = ',')
+    os.remove(TEMP_AGGREGATE_PATH)
     return a
 
 def change_names(a):
@@ -160,9 +196,9 @@ def separate_baseline(a, clname, clnameo):
     tmp1['gen'] = ' NO'
     tmp1 = tmp1.rename(columns={clnameo: clname})
     tmp1 = tmp1.groupby(['alg', 'gen', 'met', 'npt']).max() # the choice of aggregate function (mean, min, median) should have no effect
-    tmp1.to_csv(WHERE + 'tmp1.csv')
-    tmp1 = pd.read_csv(WHERE + 'tmp1.csv', delimiter = ',')
-    os.remove(WHERE + 'tmp1.csv')
+    tmp1.to_csv(TEMP_BASELINE_PATH)
+    tmp1 = pd.read_csv(TEMP_BASELINE_PATH, delimiter = ',')
+    os.remove(TEMP_BASELINE_PATH)
     return tmp1
 
 def my_diverging_palette(r_neg, r_pos, g_neg, g_pos, b_neg, b_pos, sep=1, n=6,  # noqa
@@ -211,10 +247,7 @@ def draw_heatmap(clname, clnameo, mlt = 100, pal = 'normal', npts = 100, ylbl = 
     fg.set_axis_labels('', ytext, fontsize = fsz)
     fg.set_titles(col_template='{col_name}', row_template='{row_name}')
     fg.tight_layout()
-    fg.savefig(FILEPATH + '/results/' + mod + '_' + clname + str(npts) + '.pdf')
-
-if not os.path.exists(FILEPATH + '/results/'):
-    os.mkdir(FILEPATH + '/results/')  
+    fg.savefig(os.path.join(FIGURES_DIR, mod + '_' + clname + str(npts) + '.pdf'))
   
 draw_heatmap('tes', 'ora', npts = 100, fsz = 13)
 draw_heatmap('tes', 'ora', npts = 400, ylbl = False)
@@ -257,7 +290,7 @@ def bb_qual_change(meta):
     return pd.concat(data)
 
 def bb_get_result(fname):
-    meta = pd.read_csv(WHERE + fname.split('.')[0] + '.csv',\
+    meta = pd.read_csv(os.path.join(RAW_DIR, fname.split('.')[0] + '.csv'),\
                             delimiter = ',', header = None)
     meta.columns = ['alg', 'val']
     tmp = bb_qual_change(meta)
@@ -279,9 +312,9 @@ for i in filenames:
 res_bb = pd.concat(res_bb) 
 res_bb['npt'] = pd.to_numeric(res_bb['npt'])    
 res_bb = res_bb[['alg', 'npt', 'val']].groupby(['alg', 'npt']).mean()
-res_bb.to_csv(FILEPATH + '/results/res_bb.csv')
-res_bb = pd.read_csv(FILEPATH + '/results/res_bb.csv', delimiter = ',')
-os.remove(FILEPATH + '/results/res_bb.csv')
+res_bb.to_csv(RES_BB_PATH)
+res_bb = pd.read_csv(RES_BB_PATH, delimiter = ',')
+os.remove(RES_BB_PATH)
 res_bb = change_names(res_bb)
 res_bb.columns = ['BB', 'N', 'BBacc']
 res_bb.BBacc = round(res_bb.BBacc,3)*100
@@ -304,9 +337,9 @@ def get_table(a, mod = 'dt'):
     a = a[['alg', 'met', 'npt', 'wdl']]
     a = change_names(a)
     a = a.pivot(index = ['met','npt'], columns=['alg'], values=['wdl'])
-    a.to_csv(WHERE + 'a.csv')
-    a = pd.read_csv(WHERE + 'a.csv', delimiter = ',')
-    os.remove(WHERE + 'a.csv')
+    a.to_csv(TEMP_AGGREGATE_PATH)
+    a = pd.read_csv(TEMP_AGGREGATE_PATH, delimiter = ',')
+    os.remove(TEMP_AGGREGATE_PATH)
     a.iloc[0,1] = 'N'
     a.iloc[0,0] = 'BB'
     a.columns = a.iloc[0]
@@ -342,23 +375,23 @@ def get_table_wil(a, mod = 'dt'):
         return wilcoxon(x, alternative='greater')[1]
     
     a1 = a.groupby(['alg', 'met', 'npt']).dif.apply(my_wil)
-    a1.to_csv(WHERE + 'a.csv')
-    a1 = pd.read_csv(WHERE + 'a.csv', delimiter = ',')
-    os.remove(WHERE + 'a.csv')
+    a1.to_csv(TEMP_AGGREGATE_PATH)
+    a1 = pd.read_csv(TEMP_AGGREGATE_PATH, delimiter = ',')
+    os.remove(TEMP_AGGREGATE_PATH)
     
     a2 = a.groupby(['alg', 'met', 'npt']).difs.apply(my_wil)
-    a2.to_csv(WHERE + 'a.csv')
-    a2 = pd.read_csv(WHERE + 'a.csv', delimiter = ',')
-    os.remove(WHERE + 'a.csv')
+    a2.to_csv(TEMP_AGGREGATE_PATH)
+    a2 = pd.read_csv(TEMP_AGGREGATE_PATH, delimiter = ',')
+    os.remove(TEMP_AGGREGATE_PATH)
     
     a = pd.merge(a1, a2)
     a['ad'] = round(a.dif,3).astype(str) + '/' + round(a.difs,3).astype(str)
     a = a[['alg', 'met', 'npt', 'ad']]
     a = change_names(a)
     a = a.pivot(index = ['met','npt'], columns=['alg'], values=['ad'])
-    a.to_csv(WHERE + 'a.csv')
-    a = pd.read_csv(WHERE + 'a.csv', delimiter = ',')
-    os.remove(WHERE + 'a.csv')
+    a.to_csv(TEMP_AGGREGATE_PATH)
+    a = pd.read_csv(TEMP_AGGREGATE_PATH, delimiter = ',')
+    os.remove(TEMP_AGGREGATE_PATH)
     a.iloc[0,1] = 'N'
     a.iloc[0,0] = 'BB'
     a.columns = a.iloc[0]
@@ -370,21 +403,21 @@ def get_table_wil(a, mod = 'dt'):
 a = res.copy()
 a = a[a['gen'] == 'kdebw'] 
 a = a[['alg', 'met', 'npt', 'dat', 'tes', 'ora']].groupby(['alg', 'met', 'npt', 'dat']).median()
-a.to_csv(WHERE + 'a.csv')
-a = pd.read_csv(WHERE + 'a.csv', delimiter = ',')
-os.remove(WHERE + 'a.csv')
+a.to_csv(TEMP_AGGREGATE_PATH)
+a = pd.read_csv(TEMP_AGGREGATE_PATH, delimiter = ',')
+os.remove(TEMP_AGGREGATE_PATH)
 a['dif'] = (a['tes'] - a['ora'])
 a['difs'] = np.sign(a['tes'] - a['ora'])
 
 pd.merge(pd.merge(res_bb, get_table_wil(a, 'dt')), pd.merge(get_table_wil(a, 'rules'),\
-    get_table_wil(a, 'sd'))).to_csv(FILEPATH + '/results/pivot_wil.csv', index = False)
+    get_table_wil(a, 'sd'))).to_csv(PIVOT_WIL_PATH, index = False)
 
 a = a.groupby(['alg', 'met', 'npt']).difs.value_counts().unstack()
-a.to_csv(WHERE + 'a.csv')
-a = pd.read_csv(WHERE + 'a.csv', delimiter = ',')
-os.remove(WHERE + 'a.csv')
+a.to_csv(TEMP_AGGREGATE_PATH)
+a = pd.read_csv(TEMP_AGGREGATE_PATH, delimiter = ',')
+os.remove(TEMP_AGGREGATE_PATH)
    
 pd.merge(pd.merge(res_bb, get_table(a, 'dt')), pd.merge(get_table(a, 'rules'),\
-    get_table(a, 'sd'))).to_csv(FILEPATH + '/results/pivot_median.csv', index = False)
+    get_table(a, 'sd'))).to_csv(PIVOT_MEDIAN_PATH, index = False)
     
     
