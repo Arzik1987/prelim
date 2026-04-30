@@ -13,6 +13,7 @@ import json
 import logging
 import time
 import traceback
+from dataclasses import dataclass
 from itertools import product
 
 import numpy as np
@@ -227,22 +228,50 @@ def get_standard_sd_models(primcv, bicv):
     return [('primcv', primcv), ('bicv', bicv)]
 
 
-def experiment(config, split_index, dataset_name, dataset_size):
-    if shard_is_complete(config, dataset_name, split_index, dataset_size):
-        return 'skipped'
+@dataclass
+class ExperimentState:
+    X: np.ndarray
+    y: np.ndarray
+    Xtest: np.ndarray
+    ytest: np.ndarray
+    ydeftest: np.ndarray
+    generators: list
+    genrerx: object
+    genvva: object
+    standard_metamodels: list
+    balanced_metamodels: list
+    all_metamodels: list
+    tree_models: dict
+    balanced_tree_models: dict
+    rule_models: dict
+    dtval: object
+    dtvalb: object
+    dtvalold: object
+    dtvalbold: object
+    bicv: object
+    primcv: object
 
-    paths = result_paths(config, dataset_name, split_index, dataset_size)
-    started_at = time.time()
+
+def build_model_state():
     generators, genrerx, genvva = build_generators()
     standard_metamodels, balanced_metamodels = build_metamodel_groups()
-    all_metamodels = standard_metamodels + balanced_metamodels
+    return {
+        'generators': generators,
+        'genrerx': genrerx,
+        'genvva': genvva,
+        'standard_metamodels': standard_metamodels,
+        'balanced_metamodels': balanced_metamodels,
+        'all_metamodels': standard_metamodels + balanced_metamodels,
+        'tree_models': build_tree_models(),
+        'balanced_tree_models': build_balanced_tree_models(),
+        'rule_models': build_rule_models(),
+        'dtval': DecisionTreeClassifier(),
+        'dtvalb': DecisionTreeClassifier(class_weight = 'balanced'),
+    }
 
-    tree_models = build_tree_models()
-    balanced_tree_models = build_balanced_tree_models()
-    rule_models = build_rule_models()
-    dtval = DecisionTreeClassifier()
-    dtvalb = DecisionTreeClassifier(class_weight = 'balanced')
 
+def load_experiment_split(config, split_index, dataset_name, dataset_size):
+    paths = result_paths(config, dataset_name, split_index, dataset_size)
     X, y = load_data(dataset_name)
     splitter = DataSplitter(seed = config.split_seed)
     splitter.fit(X, y)
@@ -250,7 +279,7 @@ def experiment(config, split_index, dataset_name, dataset_size):
     X, y = splitter.get_train(split_index)
     if y.sum() == 0:
         open(paths['zeros'], 'a', encoding = 'utf-8').close()
-        return 'zero-class'
+        return None
 
     Xtest, ytest = splitter.get_test(split_index)
     variable_mask = X.max(axis = 0) != X.min(axis = 0)
@@ -259,20 +288,25 @@ def experiment(config, split_index, dataset_name, dataset_size):
 
     scaler = StandardScaler()
     scaler.fit(X)
-    X = scaler.transform(X)
-    Xtest = scaler.transform(Xtest)
+    return {
+        'X': scaler.transform(X),
+        'y': y,
+        'Xtest': scaler.transform(Xtest),
+        'ytest': ytest,
+    }
 
-    tiled_repeats = int(np.ceil(config.rules_sample_size / X.shape[0]))
-    Xr = np.tile(X, [tiled_repeats, 1])
-    yr = np.tile(y, tiled_repeats)
 
-    fileres = open(paths['raw'], 'a', encoding = 'utf-8')
-    filetme = open(paths['meta'], 'a', encoding = 'utf-8')
-
+def write_default_classifier_metadata(filetme, y, ytest):
     default_prediction = 1 if y.mean() >= 0.5 else 0
     write_meta(filetme, 'testprec', ytest.mean() if default_prediction == 1 else 1 - ytest.mean())
     write_meta(filetme, 'trainprec', y.mean() if default_prediction == 1 else 1 - y.mean())
-    ydeftest = np.ones(len(ytest)) * default_prediction
+    return np.ones(len(ytest)) * default_prediction
+
+
+def fit_reference_models(config, X, y, Xtest, ytest, tree_models, balanced_tree_models, rule_models, dtval, dtvalb, fileres):
+    tiled_repeats = int(np.ceil(config.rules_sample_size / X.shape[0]))
+    Xr = np.tile(X, [tiled_repeats, 1])
+    yr = np.tile(y, tiled_repeats)
 
     for name, model in list(tree_models.items()) + list(balanced_tree_models.items()):
         score = fit_score_classifier(model, X, y, X, y, Xtest, ytest)
@@ -303,7 +337,6 @@ def experiment(config, split_index, dataset_name, dataset_size):
             'na',
             score['bactest'],
         )
-    del Xr, yr
 
     par_vals = [2 ** number for number in [1, 2, 3, 4, 5, 6, 7]]
     parameters = {'max_leaf_nodes': par_vals}
@@ -352,9 +385,8 @@ def experiment(config, split_index, dataset_name, dataset_size):
     dtvalb = DecisionTreeClassifier(max_leaf_nodes = max(n_leaves(dtvalb), 2), class_weight = 'balanced')
 
     parsbi = get_bi_param(5, X.shape[1])
-    parameters = {'depth': parsbi}
     start = time.time()
-    tmp = GridSearchCV(BI(), parameters, refit = False).fit(X, y).cv_results_
+    tmp = GridSearchCV(BI(), {'depth': parsbi}, refit = False).fit(X, y).cv_results_
     tmp = opt_param(tmp, len(parsbi))
     bicv = BI(depth = parsbi[np.argmax(tmp)])
     bicv.fit(X, y)
@@ -374,9 +406,8 @@ def experiment(config, split_index, dataset_name, dataset_size):
     bicv = BI(depth = bicv.get_nrestr())
 
     par_vals = [0.03, 0.05, 0.07, 0.1, 0.13, 0.16, 0.2]
-    parameters = {'alpha': par_vals}
     start = time.time()
-    tmp = GridSearchCV(PRIM(), parameters, refit = False).fit(X, y).cv_results_
+    tmp = GridSearchCV(PRIM(), {'alpha': par_vals}, refit = False).fit(X, y).cv_results_
     tmp = opt_param(tmp, len(par_vals))
     primcv = PRIM(alpha = par_vals[np.argmax(tmp)])
     primcv.fit(X, y)
@@ -394,49 +425,62 @@ def experiment(config, split_index, dataset_name, dataset_size):
         'na',
     )
 
-    for generator in generators:
+    return {
+        'dtval': dtval,
+        'dtvalb': dtvalb,
+        'dtvalold': dtvalold,
+        'dtvalbold': dtvalbold,
+        'bicv': bicv,
+        'primcv': primcv,
+    }
+
+
+def fit_generators_and_metamodels(state, filetme):
+    for generator in state.generators:
         start = time.time()
-        generator.fit(X, y)
+        generator.fit(state.X, state.y)
         end = time.time()
         write_meta(filetme, generator.my_name() + 'time', end - start)
 
-    for meta_model in all_metamodels:
+    for meta_model in state.all_metamodels:
         start = time.time()
-        meta_model.fit(X, y)
+        meta_model.fit(state.X, state.y)
         end = time.time()
         write_meta(filetme, meta_model.my_name() + 'time', end - start)
         write_meta(filetme, meta_model.my_name() + 'acccv', meta_model.fit_score())
 
-        ypredtest = meta_model.predict(Xtest)
-        write_meta(filetme, meta_model.my_name() + 'fid', fidelity_score(ypredtest, ydeftest))
-        write_meta(filetme, meta_model.my_name() + 'acc', accuracy_score(ytest, ypredtest))
-        write_meta(filetme, meta_model.my_name() + 'bac', balanced_accuracy_score(ytest, ypredtest))
+        ypredtest = meta_model.predict(state.Xtest)
+        write_meta(filetme, meta_model.my_name() + 'fid', fidelity_score(ypredtest, state.ydeftest))
+        write_meta(filetme, meta_model.my_name() + 'acc', accuracy_score(state.ytest, ypredtest))
+        write_meta(filetme, meta_model.my_name() + 'bac', balanced_accuracy_score(state.ytest, ypredtest))
 
         for name, model in get_supervised_models(
             meta_model,
-            tree_models,
-            balanced_tree_models,
-            rule_models,
-            dtvalold,
-            dtvalbold,
+            state.tree_models,
+            state.balanced_tree_models,
+            state.rule_models,
+            state.dtvalold,
+            state.dtvalbold,
         ):
-            write_meta(filetme, meta_model.my_name() + name + 'fid', fidelity_score(model.predict(Xtest), ypredtest))
+            write_meta(filetme, meta_model.my_name() + name + 'fid', fidelity_score(model.predict(state.Xtest), ypredtest))
 
-    for meta_model in all_metamodels:
-        genrerx.fit(X, y, meta_model)
-        ypredtest = meta_model.predict(Xtest)
-        Xnew = genrerx.sample()
+
+def evaluate_rerx(state, fileres):
+    for meta_model in state.all_metamodels:
+        state.genrerx.fit(state.X, state.y, meta_model)
+        ypredtest = meta_model.predict(state.Xtest)
+        Xnew = state.genrerx.sample()
         ynew = meta_model.predict(Xnew)
 
         for name, model in get_supervised_models(
             meta_model,
-            tree_models,
-            balanced_tree_models,
-            rule_models,
-            dtval,
-            dtvalb,
+            state.tree_models,
+            state.balanced_tree_models,
+            state.rule_models,
+            state.dtval,
+            state.dtvalb,
         ):
-            score = fit_score_classifier(model, Xnew, ynew, X, y, Xtest, ytest)
+            score = fit_score_classifier(model, Xnew, ynew, state.X, state.y, state.Xtest, state.ytest)
             write_result(
                 fileres,
                 name,
@@ -446,14 +490,14 @@ def experiment(config, split_index, dataset_name, dataset_size):
                 score['test'],
                 model_size(name, model),
                 score['elapsed'],
-                fidelity_score(model.predict(Xtest), ypredtest),
+                fidelity_score(model.predict(state.Xtest), ypredtest),
                 score['bactest'],
             )
 
         if not is_balanced_metamodel(meta_model):
             ynew = meta_model.predict_proba(Xnew)
-            for name, model in get_standard_sd_models(primcv, bicv):
-                score = fit_score_sd_model(model, Xnew, ynew, X, y, Xtest, ytest)
+            for name, model in get_standard_sd_models(state.primcv, state.bicv):
+                score = fit_score_sd_model(model, Xnew, ynew, state.X, state.y, state.Xtest, state.ytest)
                 write_result(
                     fileres,
                     name,
@@ -467,27 +511,29 @@ def experiment(config, split_index, dataset_name, dataset_size):
                     'na',
                 )
 
-    for meta_model in all_metamodels:
-        ntrain = int(np.ceil(X.shape[0] * 2 / 3))
-        Xtrain = X[:ntrain, :].copy()
-        Xval = X[ntrain:, :].copy()
-        ytrain = y[:ntrain].copy()
-        yval = y[ntrain:].copy()
+
+def evaluate_vva(config, state, fileres, filetme):
+    for meta_model in state.all_metamodels:
+        ntrain = int(np.ceil(state.X.shape[0] * 2 / 3))
+        Xtrain = state.X[:ntrain, :].copy()
+        Xval = state.X[ntrain:, :].copy()
+        ytrain = state.y[:ntrain].copy()
+        yval = state.y[ntrain:].copy()
         start = time.time()
-        genvva.fit(Xtrain, meta_model)
+        state.genvva.fit(Xtrain, meta_model)
         end = time.time()
         write_meta(filetme, meta_model.my_name() + 'vva', end - start)
-        ypredtest = meta_model.predict(Xtest)
+        ypredtest = meta_model.predict(state.Xtest)
 
         for name, model in get_vva_models(
             meta_model,
-            tree_models,
-            balanced_tree_models,
-            rule_models,
-            dtval,
-            dtvalb,
-            primcv,
-            bicv,
+            state.tree_models,
+            state.balanced_tree_models,
+            state.rule_models,
+            state.dtval,
+            state.dtvalb,
+            state.primcv,
+            state.bicv,
         ):
             start = time.time()
             if name in SD_MODEL_NAMES:
@@ -497,9 +543,9 @@ def experiment(config, split_index, dataset_name, dataset_size):
             sctest0 = model.score(Xval, yval)
             ropt = 0
 
-            if genvva.will_generate():
+            if state.genvva.will_generate():
                 for r in config.vva_grid:
-                    Xnew = genvva.sample(r)
+                    Xnew = state.genvva.sample(r)
                     ynew = meta_model.predict(Xnew)
                     Xnew = np.concatenate([Xnew, Xtrain])
                     ynew = np.concatenate([ynew, ytrain])
@@ -518,24 +564,23 @@ def experiment(config, split_index, dataset_name, dataset_size):
 
             start = time.time()
             if ropt > 0:
-                Xnew = Gen_vva().fit(X, meta_model).sample(ropt)
+                Xnew = Gen_vva().fit(state.X, meta_model).sample(ropt)
                 ynew = meta_model.predict(Xnew)
-                Xnew = np.concatenate([Xnew, X])
-                ynew = np.concatenate([ynew, y])
+                Xnew = np.concatenate([Xnew, state.X])
+                ynew = np.concatenate([ynew, state.y])
             else:
-                Xnew = X.copy()
-                ynew = y.copy()
-
+                Xnew = state.X.copy()
+                ynew = state.y.copy()
             end = time.time()
             write_meta(filetme, name + meta_model.my_name() + 'vvagen', end - start)
 
             if name in SD_MODEL_NAMES:
-                score = fit_score_sd_model(model, Xnew, meta_model.predict_proba(Xnew), X, y, Xtest, ytest)
+                score = fit_score_sd_model(model, Xnew, meta_model.predict_proba(Xnew), state.X, state.y, state.Xtest, state.ytest)
                 fidelity = 'na'
                 bactest = 'na'
             else:
-                score = fit_score_classifier(model, Xnew, ynew, X, y, Xtest, ytest)
-                fidelity = fidelity_score(model.predict(Xtest), ypredtest)
+                score = fit_score_classifier(model, Xnew, ynew, state.X, state.y, state.Xtest, state.ytest)
+                fidelity = fidelity_score(model.predict(state.Xtest), ypredtest)
                 bactest = score['bactest']
 
             write_result(
@@ -551,131 +596,142 @@ def experiment(config, split_index, dataset_name, dataset_size):
                 bactest,
             )
 
-    for generator in generators:
+
+def evaluate_standard_generator(generator, Xgen, meta_model, state, config, fileres, filetme):
+    ypredtest = meta_model.predict(state.Xtest)
+
+    start = time.time()
+    Xnew = Xgen.copy()
+    predicted_labels = meta_model.predict(Xnew)
+    end = time.time()
+    write_meta(filetme, generator.my_name() + meta_model.my_name(), end - start)
+
+    for name, model in [('dt', state.tree_models['dt']), ('dtc', state.tree_models['dtc']), ('dtval', state.dtval)]:
+        score = fit_score_classifier(model, Xnew, predicted_labels, state.X, state.y, state.Xtest, state.ytest)
+        write_result(
+            fileres,
+            GENERATED_TREE_ALIASES[name],
+            generator.my_name(),
+            meta_model.my_name(),
+            score['train'],
+            score['test'],
+            model_size(name, model),
+            score['elapsed'],
+            fidelity_score(model.predict(state.Xtest), ypredtest),
+            score['bactest'],
+        )
+
+    Xnew = Xnew[:config.generated_sample_size - len(state.y), :]
+    predicted_labels = predicted_labels[:config.generated_sample_size - len(state.y)]
+    Xnew = np.concatenate([state.X, Xnew])
+    predicted_labels = np.concatenate([state.y, predicted_labels])
+
+    for name, model in [('dt', state.tree_models['dt']), ('dtc', state.tree_models['dtc']), ('dtval', state.dtval)]:
+        score = fit_score_classifier(model, Xnew, predicted_labels, state.X, state.y, state.Xtest, state.ytest)
+        write_result(
+            fileres,
+            name,
+            generator.my_name(),
+            meta_model.my_name(),
+            score['train'],
+            score['test'],
+            model_size(name, model),
+            score['elapsed'],
+            fidelity_score(model.predict(state.Xtest), ypredtest),
+            score['bactest'],
+        )
+
+    Xnew = Xnew[:config.rules_sample_size, :]
+    predicted_labels = predicted_labels[:config.rules_sample_size]
+
+    for name, model in state.rule_models.items():
+        score = fit_score_classifier(model, Xnew, predicted_labels, state.X, state.y, state.Xtest, state.ytest)
+        write_result(
+            fileres,
+            name,
+            generator.my_name(),
+            meta_model.my_name(),
+            score['train'],
+            score['test'],
+            model_size(name, model),
+            score['elapsed'],
+            fidelity_score(model.predict(state.Xtest), ypredtest),
+            score['bactest'],
+        )
+
+    ynew = meta_model.predict_proba(Xnew)
+    for name, model in get_standard_sd_models(state.primcv, state.bicv):
+        score = fit_score_sd_model(model, Xnew, ynew, state.X, state.y, state.Xtest, state.ytest)
+        write_result(
+            fileres,
+            name,
+            generator.my_name(),
+            meta_model.my_name(),
+            score['train'],
+            score['test'],
+            model_size(name, model),
+            score['elapsed'],
+            'na',
+            'na',
+        )
+
+
+def evaluate_balanced_generator(generator, Xgen, meta_model, state, config, fileres, filetme):
+    ypredtest = meta_model.predict(state.Xtest)
+
+    start = time.time()
+    Xnew = Xgen[:config.generated_sample_size - len(state.y), :].copy()
+    ynew = meta_model.predict(Xnew)
+    Xnew = np.concatenate([state.X, Xnew])
+    ynew = np.concatenate([state.y, ynew])
+    end = time.time()
+    write_meta(filetme, generator.my_name() + meta_model.my_name(), end - start)
+
+    for name, model in list(state.balanced_tree_models.items()) + [('dtvalb', state.dtvalb)]:
+        score = fit_score_classifier(model, Xnew, ynew, state.X, state.y, state.Xtest, state.ytest)
+        write_result(
+            fileres,
+            name,
+            generator.my_name(),
+            meta_model.my_name(),
+            score['train'],
+            score['test'],
+            model_size(name, model),
+            score['elapsed'],
+            fidelity_score(model.predict(state.Xtest), ypredtest),
+            score['bactest'],
+        )
+
+
+def evaluate_sampled_generators(config, state, fileres, filetme):
+    for generator in state.generators:
         start = time.time()
         Xgen = generator.sample(config.generated_sample_size)
         end = time.time()
         write_meta(filetme, generator.my_name() + 'gen', end - start)
 
-        for meta_model in standard_metamodels:
-            ypredtest = meta_model.predict(Xtest)
+        for meta_model in state.standard_metamodels:
+            evaluate_standard_generator(generator, Xgen, meta_model, state, config, fileres, filetme)
+        for meta_model in state.balanced_metamodels:
+            evaluate_balanced_generator(generator, Xgen, meta_model, state, config, fileres, filetme)
 
-            start = time.time()
-            Xnew = Xgen.copy()
-            ynew = meta_model.predict(Xnew)
-            end = time.time()
-            write_meta(filetme, generator.my_name() + meta_model.my_name(), end - start)
 
-            for name, model in [('dt', tree_models['dt']), ('dtc', tree_models['dtc']), ('dtval', dtval)]:
-                score = fit_score_classifier(model, Xnew, ynew, X, y, Xtest, ytest)
-                write_result(
-                    fileres,
-                    GENERATED_TREE_ALIASES[name],
-                    generator.my_name(),
-                    meta_model.my_name(),
-                    score['train'],
-                    score['test'],
-                    model_size(name, model),
-                    score['elapsed'],
-                    fidelity_score(model.predict(Xtest), ypredtest),
-                    score['bactest'],
-                )
-
-            Xnew = Xnew[:config.generated_sample_size - dataset_size, :]
-            ynew = ynew[:config.generated_sample_size - dataset_size]
-            Xnew = np.concatenate([X, Xnew])
-            ynew = np.concatenate([y, ynew])
-
-            for name, model in [('dt', tree_models['dt']), ('dtc', tree_models['dtc']), ('dtval', dtval)]:
-                score = fit_score_classifier(model, Xnew, ynew, X, y, Xtest, ytest)
-                write_result(
-                    fileres,
-                    name,
-                    generator.my_name(),
-                    meta_model.my_name(),
-                    score['train'],
-                    score['test'],
-                    model_size(name, model),
-                    score['elapsed'],
-                    fidelity_score(model.predict(Xtest), ypredtest),
-                    score['bactest'],
-                )
-
-            Xnew = Xnew[:config.rules_sample_size, :]
-            ynew = ynew[:config.rules_sample_size]
-
-            for name, model in rule_models.items():
-                score = fit_score_classifier(model, Xnew, ynew, X, y, Xtest, ytest)
-                write_result(
-                    fileres,
-                    name,
-                    generator.my_name(),
-                    meta_model.my_name(),
-                    score['train'],
-                    score['test'],
-                    model_size(name, model),
-                    score['elapsed'],
-                    fidelity_score(model.predict(Xtest), ypredtest),
-                    score['bactest'],
-                )
-
-            ynew = meta_model.predict_proba(Xnew)
-            for name, model in get_standard_sd_models(primcv, bicv):
-                score = fit_score_sd_model(model, Xnew, ynew, X, y, Xtest, ytest)
-                write_result(
-                    fileres,
-                    name,
-                    generator.my_name(),
-                    meta_model.my_name(),
-                    score['train'],
-                    score['test'],
-                    model_size(name, model),
-                    score['elapsed'],
-                    'na',
-                    'na',
-                )
-
-        for meta_model in balanced_metamodels:
-            ypredtest = meta_model.predict(Xtest)
-
-            start = time.time()
-            Xnew = Xgen[:config.generated_sample_size - dataset_size, :].copy()
-            ynew = meta_model.predict(Xnew)
-            Xnew = np.concatenate([X, Xnew])
-            ynew = np.concatenate([y, ynew])
-            end = time.time()
-            write_meta(filetme, generator.my_name() + meta_model.my_name(), end - start)
-
-            for name, model in list(balanced_tree_models.items()) + [('dtvalb', dtvalb)]:
-                score = fit_score_classifier(model, Xnew, ynew, X, y, Xtest, ytest)
-                write_result(
-                    fileres,
-                    name,
-                    generator.my_name(),
-                    meta_model.my_name(),
-                    score['train'],
-                    score['test'],
-                    model_size(name, model),
-                    score['elapsed'],
-                    fidelity_score(model.predict(Xtest), ypredtest),
-                    score['bactest'],
-                )
-
-    Xtest, ytest, Xgen = get_new_test(Xtest, ytest, dataset_size, new_size = config.ssl_pool_size)
-    for meta_model in all_metamodels:
+def evaluate_ssl(config, state, fileres):
+    Xtest, ytest, Xgen = get_new_test(state.Xtest, state.ytest, len(state.y), new_size = config.ssl_pool_size)
+    for meta_model in state.all_metamodels:
         ypredtest = meta_model.predict(Xtest)
-        ynew = np.concatenate([meta_model.predict(Xgen), y])
-        Xnew = np.concatenate([Xgen, X])
+        ynew = np.concatenate([meta_model.predict(Xgen), state.y])
+        Xnew = np.concatenate([Xgen, state.X])
 
         for name, model in get_supervised_models(
             meta_model,
-            tree_models,
-            balanced_tree_models,
-            rule_models,
-            dtval,
-            dtvalb,
+            state.tree_models,
+            state.balanced_tree_models,
+            state.rule_models,
+            state.dtval,
+            state.dtvalb,
         ):
-            score = fit_score_classifier(model, Xnew, ynew, X, y, Xtest, ytest)
+            score = fit_score_classifier(model, Xnew, ynew, state.X, state.y, Xtest, ytest)
             write_result(
                 fileres,
                 name,
@@ -691,8 +747,8 @@ def experiment(config, split_index, dataset_name, dataset_size):
 
         if not is_balanced_metamodel(meta_model):
             ynew = meta_model.predict_proba(Xnew)
-            for name, model in get_standard_sd_models(primcv, bicv):
-                score = fit_score_sd_model(model, Xnew, ynew, X, y, Xtest, ytest)
+            for name, model in get_standard_sd_models(state.primcv, state.bicv):
+                score = fit_score_sd_model(model, Xnew, ynew, state.X, state.y, Xtest, ytest)
                 write_result(
                     fileres,
                     name,
@@ -706,6 +762,56 @@ def experiment(config, split_index, dataset_name, dataset_size):
                     'na',
                 )
 
+
+def experiment(config, split_index, dataset_name, dataset_size):
+    if shard_is_complete(config, dataset_name, split_index, dataset_size):
+        return 'skipped'
+
+    paths = result_paths(config, dataset_name, split_index, dataset_size)
+    dataset = load_experiment_split(config, split_index, dataset_name, dataset_size)
+    if dataset is None:
+        return 'zero-class'
+
+    started_at = time.time()
+    state_dict = build_model_state()
+    fileres = open(paths['raw'], 'a', encoding = 'utf-8')
+    filetme = open(paths['meta'], 'a', encoding = 'utf-8')
+
+    # The run is organized in phases:
+    # 1) prepare split data, 2) fit reference baselines, 3) fit generators/metamodels,
+    # 4) evaluate each PRELIM transfer strategy, 5) record aggregate timing.
+    ydeftest = write_default_classifier_metadata(filetme, dataset['y'], dataset['ytest'])
+    references = fit_reference_models(
+        config,
+        dataset['X'],
+        dataset['y'],
+        dataset['Xtest'],
+        dataset['ytest'],
+        state_dict['tree_models'],
+        state_dict['balanced_tree_models'],
+        state_dict['rule_models'],
+        state_dict['dtval'],
+        state_dict['dtvalb'],
+        fileres,
+    )
+    merged_state = dict(state_dict)
+    merged_state.update(references)
+    state = ExperimentState(
+        X = dataset['X'],
+        y = dataset['y'],
+        Xtest = dataset['Xtest'],
+        ytest = dataset['ytest'],
+        ydeftest = ydeftest,
+        **merged_state,
+    )
+
+    fit_generators_and_metamodels(state, filetme)
+    evaluate_rerx(state, fileres)
+    evaluate_vva(config, state, fileres, filetme)
+    evaluate_sampled_generators(config, state, fileres, filetme)
+    evaluate_ssl(config, state, fileres)
+
+    # Only after all phases finish do we mark the shard as completed.
     fileres.close()
     write_meta(filetme, 'overall', time.time() - started_at)
     filetme.close()
