@@ -16,8 +16,15 @@ class DataSplitter(BaseEstimator):
 
     def configure(self, nparts, npoints):
         check_is_fitted(self, attributes = ["is_fitted_"])
+        if nparts <= 0:
+            raise ValueError("nparts must be positive")
+        if npoints <= 0:
+            raise ValueError("npoints must be positive")
+        if npoints > len(self.y_):
+            raise ValueError("npoints must be at most the fitted sample size")
         self.npoints_ = npoints
         self.startpts_ = np.linspace(0, len(self.y_)-npoints, num = nparts, endpoint = True, dtype = 'int')
+        return self
 
     def get_train(self, ind):
         strpt = self.startpts_[ind]

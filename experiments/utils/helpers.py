@@ -47,9 +47,8 @@ def get_bi_param(nval, nattr):
 
 def get_new_test(Xtest, ytest, dsize, new_size = 10000):
     # cuts part of test data to be used as 'unlabelled pool' for semi-supervised tests
-    n = min(int(np.floor(len(ytest)/2)), new_size - dsize)
+    n = max(0, min(int(np.floor(len(ytest)/2)), new_size - dsize))
     ytest = ytest[n:]
     Xnew = Xtest[:n,:].copy()
     Xtest = Xtest[n:,:]
     return Xtest, ytest, Xnew 
-
