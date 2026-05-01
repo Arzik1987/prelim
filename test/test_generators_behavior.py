@@ -2,6 +2,7 @@ import numpy as np
 import pytest
 
 from prelim.generators import Gen_dummy as Gen_dummy_export
+from prelim.generators import Gen_tabgan
 from prelim.generators import Gen_vva_proba as Gen_vva_proba_export
 from prelim.generators import build_generator
 from prelim.generators.adasyn import Gen_adasyn
@@ -98,6 +99,28 @@ def test_generator_package_exports_public_surface():
     assert Gen_dummy_export is Gen_dummy
     assert Gen_vva_proba_export is Gen_vva_proba
     assert build_generator("dummy", seed=2020).my_name() == "dummy"
+
+
+def test_tabgan_generator_uses_backend_and_returns_requested_shape(monkeypatch):
+    class _FakeGANGenerator:
+        def __init__(self, **kwargs):
+            self.kwargs = kwargs
+
+        def generate_data_pipe(self, train_df, target, test_df, **kwargs):
+            rows = train_df.iloc[:3, :].copy().reset_index(drop=True)
+            rows.iloc[:, :] = np.arange(rows.size).reshape(rows.shape)
+            return rows, None
+
+    monkeypatch.setattr("prelim.generators.tabgan.GANGenerator", _FakeGANGenerator)
+
+    x = _clustered_sample()
+    generator = Gen_tabgan(generator_kwargs={"gen_x_times": 1.1}, seed=2020).fit(x)
+
+    sample = generator.sample(n_samples=5)
+
+    assert sample.shape == (5, x.shape[1])
+    assert generator.my_name() == "tabgan"
+    assert build_generator("tabgan", seed=2020).my_name() == "tabgan"
 
 
 def test_perfect_returns_subset_without_replacement_when_possible():

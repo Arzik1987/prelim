@@ -23,6 +23,7 @@ If the generator should be available through the high-level `prelim(...)` API:
 1. Add the class to `src/prelim/generators/__init__.py`.
 2. Add an entry to `build_generator(...)` in the same file.
 3. Use a short lowercase key such as `kde`, `smote`, or `vva`.
+4. If the backend is optional or heavy, add a focused test that stubs the external library instead of training the real model in CI.
 
 If the generator is only for direct imports in tests or experiments, exporting it from `__init__.py` is still preferred for discoverability.
 

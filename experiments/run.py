@@ -65,6 +65,7 @@ from prelim.generators.rand import Gen_randn, Gen_randu
 from prelim.generators.rerx import Gen_rerx
 from prelim.generators.rfdens import Gen_rfdens
 from prelim.generators.smote import Gen_smote
+from prelim.generators.tabgan import Gen_tabgan
 from prelim.generators.vva import Gen_vva
 
 
@@ -78,6 +79,7 @@ GENERATOR_FACTORIES = (
     Gen_gmmbical,
     Gen_smote,
     Gen_adasyn,
+    Gen_tabgan,
     Gen_rfdens,
     Gen_kdebwm,
     Gen_kdeb,

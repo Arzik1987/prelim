@@ -14,6 +14,7 @@ from .rand import Gen_randn, Gen_randu
 from .rerx import Gen_rerx
 from .rfdens import Gen_rfdens
 from .smote import Gen_smote
+from .tabgan import Gen_tabgan
 from .vva import Gen_vva as Gen_vva_legacy
 from .vva_p import Gen_vva as Gen_vva_proba
 
@@ -32,6 +33,7 @@ def build_generator(gen_name, seed=2020):
         "norm": (".rand", "Gen_randn"),
         "rerx": (".rerx", "Gen_rerx"),
         "smote": (".smote", "Gen_smote"),
+        "tabgan": (".tabgan", "Gen_tabgan"),
         "unif": (".rand", "Gen_randu"),
         "vva": (".vva_p", "Gen_vva"),
     }
@@ -65,6 +67,7 @@ __all__ = [
     "Gen_rerx",
     "Gen_rfdens",
     "Gen_smote",
+    "Gen_tabgan",
     "Gen_vva_legacy",
     "Gen_vva_proba",
     "build_generator",
