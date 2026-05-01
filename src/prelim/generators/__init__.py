@@ -21,6 +21,7 @@ from .rerx import Gen_rerx
 from .rfdens import Gen_rfdens
 from .smote import Gen_smote
 from .tabgan import Gen_tabgan
+from .tabddpm import Gen_tabddpm
 from .tabsyn import Gen_tabsyn
 from .tvae import Gen_tvae
 from .vva import Gen_vva as Gen_vva_legacy
@@ -48,6 +49,7 @@ def build_generator(gen_name, seed=2020):
         "rerx": (".rerx", "Gen_rerx"),
         "smote": (".smote", "Gen_smote"),
         "tabgan": (".tabgan", "Gen_tabgan"),
+        "tabddpm": (".tabddpm", "Gen_tabddpm"),
         "tabsyn": (".tabsyn", "Gen_tabsyn"),
         "tvae": (".tvae", "Gen_tvae"),
         "unif": (".rand", "Gen_randu"),
@@ -90,6 +92,7 @@ __all__ = [
     "Gen_rfdens",
     "Gen_smote",
     "Gen_tabgan",
+    "Gen_tabddpm",
     "Gen_tabsyn",
     "Gen_tvae",
     "Gen_vva_legacy",

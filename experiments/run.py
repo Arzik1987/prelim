@@ -71,6 +71,7 @@ from prelim.generators.rerx import Gen_rerx
 from prelim.generators.rfdens import Gen_rfdens
 from prelim.generators.smote import Gen_smote
 from prelim.generators.tabgan import Gen_tabgan
+from prelim.generators.tabddpm import Gen_tabddpm
 from prelim.generators.tvae import Gen_tvae
 from prelim.generators.vva import Gen_vva
 
@@ -127,7 +128,10 @@ RULE_MODEL_FACTORIES = (
 )
 
 def build_generators():
-    return [factory() for factory in GENERATOR_FACTORIES], Gen_rerx(), Gen_vva()
+    factories = list(GENERATOR_FACTORIES)
+    if os.environ.get("TABDDPM_REPO_PATH"):
+        factories.append(Gen_tabddpm)
+    return [factory() for factory in factories], Gen_rerx(), Gen_vva()
 
 
 def build_metamodel_groups():

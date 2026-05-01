@@ -11,6 +11,7 @@ from prelim.generators import Gen_forestdiffusion
 from prelim.generators import Gen_gaussiancopula
 from prelim.generators import Gen_great
 from prelim.generators import Gen_tabgan
+from prelim.generators import Gen_tabddpm
 from prelim.generators import Gen_tabsyn
 from prelim.generators import Gen_tvae
 from prelim.generators import Gen_vva_proba as Gen_vva_proba_export
@@ -280,6 +281,76 @@ def test_great_generator_uses_backend_and_returns_requested_shape(monkeypatch):
     assert generator.my_name() == "great"
     assert generator.model_.fit_shape_ == x.shape
     assert build_generator("great", seed=2020).my_name() == "great"
+
+
+def test_tabddpm_generator_runs_repo_actions_and_returns_requested_shape(monkeypatch, tmp_path):
+    repo_root = tmp_path / "tabddpm"
+    (repo_root / "scripts").mkdir(parents=True)
+    (repo_root / "scripts" / "train.py").write_text("", encoding="utf-8")
+    (repo_root / "scripts" / "sample.py").write_text("", encoding="utf-8")
+
+    calls = []
+
+    def _fake_run_action(self, action, kwargs):
+        calls.append((action, kwargs))
+        output_root = Path(kwargs["parent_dir"])
+        if action == "train":
+            output_root.mkdir(parents=True, exist_ok=True)
+            (output_root / "model.pt").write_text("ok", encoding="utf-8")
+        else:
+            np.save(output_root / "X_num_train.npy", np.arange(kwargs["num_samples"] * 2).reshape(kwargs["num_samples"], 2))
+
+    monkeypatch.setattr("prelim.generators.tabddpm.Gen_tabddpm._run_action", _fake_run_action)
+
+    x = _clustered_sample()
+    generator = Gen_tabddpm(repo_path=repo_root, seed=2020).fit(x)
+    sample = generator.sample(n_samples=5)
+
+    assert sample.shape == (5, x.shape[1])
+    assert generator.my_name() == "tabddpm"
+    assert build_generator("tabddpm", seed=2020).my_name() == "tabddpm"
+    assert [action for action, _ in calls] == ["train", "sample"]
+    assert calls[0][1]["model_params"]["num_classes"] == 2
+
+
+def test_tabddpm_generator_writes_helper_target_and_preserves_column_order(tmp_path):
+    repo_root = tmp_path / "tabddpm"
+    (repo_root / "scripts").mkdir(parents=True)
+    (repo_root / "scripts" / "train.py").write_text("", encoding="utf-8")
+    (repo_root / "scripts" / "sample.py").write_text("", encoding="utf-8")
+
+    x = np.array(
+        [
+            [0.0, "a", 10.0],
+            [1.0, "b", 20.0],
+            [2.0, "a", 30.0],
+            [3.0, "b", 40.0],
+        ],
+        dtype=object,
+    )
+    generator = Gen_tabddpm(repo_path=repo_root, keep_artifacts=True, seed=2020)
+    generator.repo_root_ = repo_root
+    generator.run_root_ = tmp_path / "run"
+    generator.data_root_ = generator.run_root_ / "data"
+    generator.output_root_ = generator.run_root_ / "output"
+    generator.data_root_.mkdir(parents=True)
+    generator.output_root_.mkdir(parents=True)
+    generator.X_ = x
+    generator.column_specs_ = generator._analyze_columns(x)
+    generator._write_dataset_artifacts()
+
+    y_train = np.load(generator.data_root_ / "y_train.npy", allow_pickle=True)
+    x_num_train = np.load(generator.data_root_ / "X_num_train.npy", allow_pickle=True)
+    x_cat_train = np.load(generator.data_root_ / "X_cat_train.npy", allow_pickle=True)
+    np.save(generator.output_root_ / "X_num_train.npy", x_num_train)
+    np.save(generator.output_root_ / "X_cat_train.npy", x_cat_train)
+
+    rebuilt = generator._load_sampled_rows()
+
+    assert set(np.unique(y_train)).issubset({0, 1})
+    assert rebuilt.shape[1] == x.shape[1]
+    assert rebuilt[0, 1] == "a"
+    assert float(rebuilt[1, 2]) == 20.0
 
 
 def test_forestdiffusion_generator_uses_backend_and_returns_requested_shape(monkeypatch):
