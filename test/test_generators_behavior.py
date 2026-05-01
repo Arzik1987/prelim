@@ -2,8 +2,11 @@ import numpy as np
 import pytest
 
 from prelim.generators import Gen_dummy as Gen_dummy_export
+from prelim.generators import Gen_bayesnet
 from prelim.generators import Gen_copulagan
 from prelim.generators import Gen_ctgan
+from prelim.generators import Gen_forestdiffusion
+from prelim.generators import Gen_gaussiancopula
 from prelim.generators import Gen_tabgan
 from prelim.generators import Gen_tvae
 from prelim.generators import Gen_vva_proba as Gen_vva_proba_export
@@ -213,6 +216,138 @@ def test_copulagan_generator_uses_backend_and_returns_requested_shape(monkeypatc
     assert generator.metadata_.detected_shape_ == x.shape
     assert generator.model_.fit_shape_ == x.shape
     assert build_generator("copulagan", seed=2020).my_name() == "copulagan"
+
+
+def test_gaussiancopula_generator_uses_backend_and_returns_requested_shape(monkeypatch):
+    class _FakeMetadata:
+        def __init__(self):
+            self.detected_shape_ = None
+
+        def detect_from_dataframe(self, data):
+            self.detected_shape_ = data.shape
+
+    class _FakeGaussianCopula:
+        def __init__(self, metadata, **kwargs):
+            self.metadata = metadata
+            self.kwargs = kwargs
+            self.fit_shape_ = None
+
+        def fit(self, data):
+            self.fit_shape_ = data.shape
+
+        def sample(self, num_rows):
+            return __import__("pandas").DataFrame(np.arange(num_rows * 2).reshape(num_rows, 2))
+
+    monkeypatch.setattr("prelim.generators.gaussiancopula.SingleTableMetadata", _FakeMetadata)
+    monkeypatch.setattr("prelim.generators.gaussiancopula.GaussianCopulaSynthesizer", _FakeGaussianCopula)
+
+    x = _clustered_sample()
+    generator = Gen_gaussiancopula(seed=2020).fit(x)
+
+    sample = generator.sample(n_samples=5)
+
+    assert sample.shape == (5, x.shape[1])
+    assert generator.my_name() == "gaussiancopula"
+    assert generator.metadata_.detected_shape_ == x.shape
+    assert generator.model_.fit_shape_ == x.shape
+    assert build_generator("gaussiancopula", seed=2020).my_name() == "gaussiancopula"
+
+
+def test_forestdiffusion_generator_uses_backend_and_returns_requested_shape(monkeypatch):
+    class _FakeForestDiffusionModel:
+        def __init__(self, X, seed, **kwargs):
+            self.fit_shape_ = X.shape
+            self.seed_ = seed
+            self.kwargs = kwargs
+
+        def generate(self, batch_size=None, n_t=None, X_covs=None):
+            return np.arange(batch_size * 2).reshape(batch_size, 2)
+
+    monkeypatch.setattr("prelim.generators.forestdiffusion.ForestDiffusionModel", _FakeForestDiffusionModel)
+
+    x = _clustered_sample()
+    generator = Gen_forestdiffusion(model_kwargs={"n_t": 5}, seed=2020).fit(x)
+
+    sample = generator.sample(n_samples=5)
+
+    assert sample.shape == (5, x.shape[1])
+    assert generator.my_name() == "forestdiffusion"
+    assert generator.model_.fit_shape_ == x.shape
+    assert generator.model_.seed_ == 2020
+    assert generator.model_.kwargs == {"n_t": 5}
+    assert build_generator("forestdiffusion", seed=2020).my_name() == "forestdiffusion"
+
+
+def test_bayesnet_generator_uses_backend_and_rebuilds_numeric_values(monkeypatch):
+    class _FakeDag:
+        def edges(self):
+            return [("x0", "x1")]
+
+    class _FakeSearch:
+        def __init__(self, data):
+            self.data = data
+
+        def estimate(self, scoring_method=None, show_progress=False, **kwargs):
+            self.scoring_method = scoring_method
+            self.show_progress = show_progress
+            self.kwargs = kwargs
+            return _FakeDag()
+
+    class _FakeBIC:
+        def __init__(self, data):
+            self.data = data
+
+    class _FakeNetwork:
+        def __init__(self, edges):
+            self.edges_ = list(edges)
+            self.nodes_ = []
+            self.fit_shape_ = None
+            self.estimator_ = None
+
+        def add_nodes_from(self, nodes):
+            self.nodes_.extend(nodes)
+
+        def fit(self, data, estimator=None):
+            self.fit_shape_ = data.shape
+            self.estimator_ = estimator
+            return self
+
+    class _FakeSampler:
+        def __init__(self, model):
+            self.model = model
+
+        def forward_sample(self, size=1, include_latents=False, seed=None, show_progress=True, partial_samples=None, n_jobs=-1):
+            return __import__("pandas").DataFrame(
+                {
+                    "x0": [0, 1, 0, 1, 0][:size],
+                    "x1": [1, 0, 1, 0, 1][:size],
+                }
+            )
+
+    monkeypatch.setattr("prelim.generators.bayesnet.HillClimbSearch", _FakeSearch)
+    monkeypatch.setattr("prelim.generators.bayesnet.BIC", _FakeBIC)
+    monkeypatch.setattr("prelim.generators.bayesnet.DiscreteBayesianNetwork", _FakeNetwork)
+    monkeypatch.setattr("prelim.generators.bayesnet.BayesianModelSampling", _FakeSampler)
+
+    x = np.array(
+        [
+            [0.0, 10.0],
+            [1.0, 20.0],
+            [0.0, 20.0],
+            [1.0, 10.0],
+        ]
+    )
+    generator = Gen_bayesnet(max_bins=4, seed=2020).fit(x)
+
+    sample = generator.sample(n_samples=5)
+
+    assert sample.shape == (5, x.shape[1])
+    assert generator.my_name() == "bayesnet"
+    assert generator.model_.fit_shape_ == x.shape
+    assert generator.model_.nodes_ == ["x0", "x1"]
+    assert set(np.unique(sample[:, 0])).issubset({0.0, 1.0})
+    assert set(np.unique(sample[:, 1])).issubset({10.0, 20.0})
+    assert build_generator("bayesnet", seed=2020).my_name() == "bayesnet"
 
 
 def test_perfect_returns_subset_without_replacement_when_possible():

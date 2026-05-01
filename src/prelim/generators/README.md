@@ -24,7 +24,8 @@ If the generator should be available through the high-level `prelim(...)` API:
 2. Add an entry to `build_generator(...)` in the same file.
 3. Use a short lowercase key such as `kde`, `smote`, or `vva`.
 4. If the backend is optional or heavy, add a focused test that stubs the external library instead of training the real model in CI.
-5. For dataframe-based tabular synthesizers such as `TabGAN`, `CTGAN`, `TVAE`, or `CopulaGAN`, convert internal NumPy arrays at the wrapper boundary and keep the public PRELIM interface NumPy-based.
+5. For dataframe-based tabular synthesizers such as `TabGAN`, `CTGAN`, `TVAE`, `CopulaGAN`, or `GaussianCopula`, convert internal NumPy arrays at the wrapper boundary and keep the public PRELIM interface NumPy-based.
+6. If a generator needs an internal representation that differs from the public API, keep that translation inside the wrapper. `ForestDiffusion` and the Bayesian-network wrapper follow this rule in opposite directions: one delegates directly to a NumPy backend, the other discretizes numeric columns internally and reconstructs numeric samples before returning them.
 
 If the generator is only for direct imports in tests or experiments, exporting it from `__init__.py` is still preferred for discoverability.
 

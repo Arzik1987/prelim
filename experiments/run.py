@@ -55,9 +55,12 @@ from metamodels.lgbmb import Meta_lgbm_bal
 from metamodels.xgb import Meta_xgb
 from metamodels.xgbb import Meta_xgb_bal
 from prelim.generators.adasyn import Gen_adasyn
+from prelim.generators.bayesnet import Gen_bayesnet
 from prelim.generators.copulagan import Gen_copulagan
 from prelim.generators.ctgan import Gen_ctgan
 from prelim.generators.dummy import Gen_dummy
+from prelim.generators.forestdiffusion import Gen_forestdiffusion
+from prelim.generators.gaussiancopula import Gen_gaussiancopula
 from prelim.generators.gmm import Gen_gmmbic, Gen_gmmbical
 from prelim.generators.kde import Gen_kdebw
 from prelim.generators.kdeb import Gen_kdeb
@@ -76,10 +79,13 @@ GENERATOR_FACTORIES = (
     Gen_gmmbic,
     Gen_kdebw,
     Gen_munge,
+    Gen_gaussiancopula,
     Gen_copulagan,
     Gen_ctgan,
+    Gen_forestdiffusion,
     Gen_randu,
     Gen_randn,
+    Gen_bayesnet,
     Gen_dummy,
     Gen_gmmbical,
     Gen_smote,
