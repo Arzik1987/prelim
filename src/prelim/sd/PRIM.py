@@ -1,1 +1,0 @@
-from .prim import PRIM

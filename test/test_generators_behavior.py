@@ -1,6 +1,9 @@
 import numpy as np
 import pytest
 
+from prelim.generators import Gen_dummy as Gen_dummy_export
+from prelim.generators import Gen_vva_proba as Gen_vva_proba_export
+from prelim.generators import build_generator
 from prelim.generators.adasyn import Gen_adasyn
 from prelim.generators.dummy import Gen_dummy
 from prelim.generators.gmm import Gen_gmm, Gen_gmmbic, Gen_gmmbical
@@ -89,6 +92,12 @@ def test_dummy_returns_full_copy_of_fitted_data():
     sample[0, 0] = -999.0
     assert generator.X_[0, 0] != -999.0
     assert generator.my_name() == "dummy"
+
+
+def test_generator_package_exports_public_surface():
+    assert Gen_dummy_export is Gen_dummy
+    assert Gen_vva_proba_export is Gen_vva_proba
+    assert build_generator("dummy", seed=2020).my_name() == "dummy"
 
 
 def test_perfect_returns_subset_without_replacement_when_possible():
@@ -242,7 +251,7 @@ def test_kdebwm_samples_requested_shape():
 
 
 def test_munge_rejects_too_small_p_swap():
-    with pytest.raises(SystemExit, match="p_swap parameter is too small"):
+    with pytest.raises(ValueError, match="p_swap parameter is too small"):
         Gen_munge(p_swap=0.001)
 
 
@@ -272,7 +281,7 @@ def test_smote_like_generators_warn_when_requested_size_is_smaller_than_train_se
         sample = generator.sample(n_samples=20)
 
     assert sample.shape == (20, x.shape[1])
-    assert generator.my_name() in {expected_name, "adasyns"}
+    assert generator.my_name() == expected_name
 
 
 @pytest.mark.parametrize(
@@ -289,7 +298,7 @@ def test_smote_like_generators_return_requested_shape_on_example_style_input(gen
     sample = generator.sample(n_samples=120)
 
     assert sample.shape == (120, x.shape[1])
-    assert generator.my_name() in {expected_name, "adasyns"}
+    assert generator.my_name() == expected_name
 
 
 def test_rerx_returns_only_correctly_predicted_rows():

@@ -1,33 +1,7 @@
-from importlib import import_module
-
 import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.utils.validation import check_X_y
-
-
-def _build_generator(gen_name, seed):
-    registry = {
-        "adasyn": lambda: import_module(".generators.adasyn", __package__).Gen_adasyn(seed=seed),
-        "cmm": lambda: import_module(".generators.rfdens", __package__).Gen_rfdens(seed=seed),
-        "dummy": lambda: import_module(".generators.dummy", __package__).Gen_dummy(seed=seed),
-        "gmm": lambda: import_module(".generators.gmm", __package__).Gen_gmmbic(seed=seed),
-        "gmmal": lambda: import_module(".generators.gmm", __package__).Gen_gmmbical(seed=seed),
-        "kde": lambda: import_module(".generators.kde", __package__).Gen_kdebw(seed=seed),
-        "kdeb": lambda: import_module(".generators.kdeb", __package__).Gen_kdeb(seed=seed),
-        "kdem": lambda: import_module(".generators.kdem", __package__).Gen_kdebwm(seed=seed),
-        "munge": lambda: import_module(".generators.munge", __package__).Gen_munge(seed=seed),
-        "norm": lambda: import_module(".generators.rand", __package__).Gen_randn(seed=seed),
-        "rerx": lambda: import_module(".generators.rerx", __package__).Gen_rerx(seed=seed),
-        "smote": lambda: import_module(".generators.smote", __package__).Gen_smote(seed=seed),
-        "unif": lambda: import_module(".generators.rand", __package__).Gen_randu(seed=seed),
-        "vva": lambda: import_module(".generators.vva_p", __package__).Gen_vva(seed=seed),
-    }
-
-    try:
-        return registry[gen_name]()
-    except KeyError as exc:
-        valid_names = ", ".join(sorted(registry))
-        raise ValueError(f"Unknown gen_name '{gen_name}'. Expected one of: {valid_names}") from exc
+from .generators import build_generator
 
 
 def _require_predict_proba(bb_model, gen_name, proba):
@@ -84,7 +58,7 @@ def prelim(X, y, bb_model, wb_model, gen_name, new_size, proba=False, verbose=Tr
         bb_model.fit(X, y)
 
     _require_predict_proba(bb_model, gen_name, proba)
-    gen = _build_generator(gen_name, seed)
+    gen = build_generator(gen_name, seed)
 
     if gen_name == "vva":
         class_one_ind = _class_one_index(bb_model)

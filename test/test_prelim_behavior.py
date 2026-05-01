@@ -3,6 +3,8 @@ import pytest
 from sklearn.linear_model import LogisticRegression
 from sklearn.tree import DecisionTreeClassifier
 
+from prelim import prelim as prelim_export
+from prelim.generators import build_generator
 from prelim.prelim import prelim
 
 
@@ -40,6 +42,11 @@ def test_prelim_rejects_unknown_generator_name():
 
     with pytest.raises(ValueError, match="Unknown gen_name"):
         prelim(X, y, LogisticRegression(random_state=2020), DecisionTreeClassifier(), "missing", new_size=90)
+
+
+def test_public_exports_remain_available():
+    assert prelim_export is prelim
+    assert build_generator("dummy", seed=2020).my_name() == "dummy"
 
 
 def test_prelim_requires_predict_proba_when_requested():

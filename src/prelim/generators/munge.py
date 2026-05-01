@@ -1,4 +1,3 @@
-import sys
 import numpy as np
 from sklearn.neighbors import NearestNeighbors
 from .base import BaseGenerator
@@ -9,7 +8,7 @@ class Gen_munge(BaseGenerator):
     def __init__(self, local_var=5, p_swap=0.5, seed=2020):
         super().__init__("munge", seed=seed)
         if p_swap < 0.01:
-            sys.exit("p_swap parameter is too small")
+            raise ValueError("p_swap parameter is too small")
         self.p_swap_ = p_swap
         self.local_var_ = local_var
         self.data_ = None

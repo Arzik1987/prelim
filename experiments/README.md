@@ -36,6 +36,8 @@ python3 get_data.py
   - `manifest.json`: run configuration, git revision, and run status
 - common rerun controls:
 ```
+# `paper-main` below is only an example run id chosen by the user.
+# It becomes the directory name under `experiments/registry/runs/`.
 python3 experiments.py --run-id paper-main
 python3 experiments.py --run-id paper-main --resume
 python3 experiments.py --datasets clean2,gas --sizes 100 --nsets 5 --jobs 4

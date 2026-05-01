@@ -1,5 +1,3 @@
-
-import sys
 import warnings
 import numpy as np
 from sklearn.neighbors import KernelDensity
@@ -34,30 +32,6 @@ class Gen_kdebw(BaseGenerator):
     def sample(self, n_samples=1):
         return self.model_.sample(n_samples, random_state=self.rng_)
 
-# =============================================================================
-# # TEST 
-# 
-# mean = [0, 0]
-# cov = [[1, 0], [0, 1]]
-# x = np.random.multivariate_normal(mean, cov, 500)
-# mean = [5, 5]
-# x = np.vstack((x,np.random.multivariate_normal(mean, cov, 500)))
-# x = x[((x <= [6,6]) & (x>=[-1,-1])).all(axis = 1)]
-# import matplotlib.pyplot as plt
-# plt.scatter(x[:,0], x[:,1])
-# 
-# kde = Gen_kdebw()
-# kde.fit(x)
-# df1 = kde.sample(n_samples = 200, hard_limits = True)
-# plt.scatter(df1[:,0], df1[:,1])
-# df2 = kde.sample(n_samples = 200)
-# plt.scatter(df2[:,0], df2[:,1])
-#       
-# x[:,1] = x[:,1]*100
-# kde.fit(x)
-# 
-# =============================================================================
-
 class Gen_kdebwhl(BaseGenerator):
 
     def __init__(self, method = 'silverman', seed=2020):
@@ -67,7 +41,7 @@ class Gen_kdebwhl(BaseGenerator):
         elif method == 'scott':
             self.bw_method_ = bw_scott
         else:
-            sys.exit("The method must be either scott or silverman")
+            raise ValueError("The method must be either scott or silverman")
         self.model_ = None
         self.limits_ = None
 
@@ -91,7 +65,7 @@ class Gen_kdebwhl(BaseGenerator):
             additional = self._cleaned_sample(n_samples * mult)
             sample = np.append(sample, additional, axis = 0)
             if (sample.shape[0]/n_samples < 0.01):
-                sys.exit("< 1 % of generated points are within the limits; please make sure you scaled the data")
+                raise RuntimeError("< 1 % of generated points are within the limits; please make sure you scaled the data")
         return sample[:n_samples]
 
     def _cleaned_sample(self, n_samples):
