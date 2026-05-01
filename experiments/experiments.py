@@ -35,6 +35,8 @@ from config import (
 )
 from metamodels.rf import Meta_rf
 from metamodels.rfb import Meta_rf_bal
+from metamodels.lgbm import Meta_lgbm
+from metamodels.lgbmb import Meta_lgbm_bal
 from metamodels.xgb import Meta_xgb
 from metamodels.xgbb import Meta_xgb_bal
 from prelim.generators.adasyn import Gen_adasyn
@@ -73,11 +75,13 @@ GENERATOR_FACTORIES = (
 
 STANDARD_METAMODEL_FACTORIES = (
     Meta_rf,
+    Meta_lgbm,
     Meta_xgb,
 )
 
 BALANCED_METAMODEL_FACTORIES = (
     Meta_rf_bal,
+    Meta_lgbm_bal,
     Meta_xgb_bal,
 )
 

@@ -1,27 +1,27 @@
-from scipy.stats import uniform, randint
+from scipy.stats import randint, uniform
 from sklearn.model_selection import RandomizedSearchCV
-from xgboost import XGBClassifier
+from lightgbm import LGBMClassifier
 
 from .base import BaseMetaModel
 
-    
-class Meta_xgb(BaseMetaModel):
+
+class Meta_lgbm(BaseMetaModel):
     def __init__(self, params=None, cv=5, seed=2020):
         if params is None:
             params = {
                 "n_estimators": randint(10, 990),
                 "learning_rate": uniform(0.0001, 0.2),
-                "gamma": uniform(0, 0.4),
-                "max_depth": [6],
+                "max_depth": [-1, 3, 5, 7, 9],
+                "num_leaves": randint(15, 63),
                 "subsample": uniform(0.5, 0.5),
             }
-        super().__init__("xgb", seed=seed)
+        super().__init__("lgbm", seed=seed)
         self.params_ = params
         self.cv_ = cv
 
     def _fit_impl(self, X, y):
         search = RandomizedSearchCV(
-            XGBClassifier(nthread=1, verbosity=0, use_label_encoder=False),
+            LGBMClassifier(random_state=self.seed_, verbosity=-1),
             self.params_,
             random_state=self.seed_,
             cv=self.cv_,

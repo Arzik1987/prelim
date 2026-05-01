@@ -97,8 +97,10 @@ class _StubVva(_StubGenerator):
 def _install_experiment_stubs(monkeypatch):
     fake_wittgenstein = types.SimpleNamespace(RIPPER=_StubRuleModel, IREP=_StubRuleModel)
     fake_xgboost = types.SimpleNamespace(XGBClassifier=object)
+    fake_lightgbm = types.SimpleNamespace(LGBMClassifier=object)
     monkeypatch.setitem(sys.modules, "wittgenstein", fake_wittgenstein)
     monkeypatch.setitem(sys.modules, "xgboost", fake_xgboost)
+    monkeypatch.setitem(sys.modules, "lightgbm", fake_lightgbm)
     monkeypatch.syspath_prepend(str(ROOT / "src"))
     monkeypatch.syspath_prepend(str(EXPERIMENTS_DIR))
 
