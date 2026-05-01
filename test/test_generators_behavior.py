@@ -9,6 +9,7 @@ from prelim.generators import Gen_copulagan
 from prelim.generators import Gen_ctgan
 from prelim.generators import Gen_forestdiffusion
 from prelim.generators import Gen_gaussiancopula
+from prelim.generators import Gen_great
 from prelim.generators import Gen_tabgan
 from prelim.generators import Gen_tabsyn
 from prelim.generators import Gen_tvae
@@ -254,6 +255,31 @@ def test_gaussiancopula_generator_uses_backend_and_returns_requested_shape(monke
     assert generator.metadata_.detected_shape_ == x.shape
     assert generator.model_.fit_shape_ == x.shape
     assert build_generator("gaussiancopula", seed=2020).my_name() == "gaussiancopula"
+
+
+def test_great_generator_uses_backend_and_returns_requested_shape(monkeypatch):
+    class _FakeGReaT:
+        def __init__(self, **kwargs):
+            self.kwargs = kwargs
+            self.fit_shape_ = None
+
+        def fit(self, data):
+            self.fit_shape_ = data.shape
+
+        def sample(self, n_samples):
+            return __import__("pandas").DataFrame(np.arange(n_samples * 2).reshape(n_samples, 2))
+
+    monkeypatch.setattr("prelim.generators.great.GReaT", _FakeGReaT)
+
+    x = _clustered_sample()
+    generator = Gen_great(model_kwargs={"epochs": 1}, seed=2020).fit(x)
+
+    sample = generator.sample(n_samples=5)
+
+    assert sample.shape == (5, x.shape[1])
+    assert generator.my_name() == "great"
+    assert generator.model_.fit_shape_ == x.shape
+    assert build_generator("great", seed=2020).my_name() == "great"
 
 
 def test_forestdiffusion_generator_uses_backend_and_returns_requested_shape(monkeypatch):

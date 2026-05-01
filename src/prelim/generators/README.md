@@ -27,6 +27,7 @@ If the generator should be available through the high-level `prelim(...)` API:
 5. For dataframe-based tabular synthesizers such as `TabGAN`, `CTGAN`, `TVAE`, `CopulaGAN`, or `GaussianCopula`, convert internal NumPy arrays at the wrapper boundary and keep the public PRELIM interface NumPy-based.
 6. If a generator needs an internal representation that differs from the public API, keep that translation inside the wrapper. `ForestDiffusion` and the Bayesian-network wrapper follow this rule in opposite directions: one delegates directly to a NumPy backend, the other discretizes numeric columns internally and reconstructs numeric samples before returning them.
 7. If the official implementation is a standalone source repository instead of a pip-installable library, keep that integration explicit in the wrapper. `TabSyn` follows this pattern by calling the official CLI through a configured local checkout instead of reimplementing the training pipeline in PRELIM.
+8. If a backend is pip-installable but still heavyweight because it downloads model weights or expects accelerator support, treat it as optional. `GReaT` follows this pattern: the wrapper is simple, but tests should stub the backend rather than fine-tuning a real transformer in CI.
 
 If the generator is only for direct imports in tests or experiments, exporting it from `__init__.py` is still preferred for discoverability.
 

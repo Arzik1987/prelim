@@ -8,6 +8,7 @@ from .ctgan import Gen_ctgan
 from .dummy import Gen_dummy
 from .forestdiffusion import Gen_forestdiffusion
 from .gaussiancopula import Gen_gaussiancopula
+from .great import Gen_great
 from .gmm import Gen_gmm, Gen_gmmbic, Gen_gmmbical
 from .kde import Gen_kdebw, Gen_kdebwhl
 from .kdeb import Gen_kdeb
@@ -36,6 +37,7 @@ def build_generator(gen_name, seed=2020):
         "dummy": (".dummy", "Gen_dummy"),
         "forestdiffusion": (".forestdiffusion", "Gen_forestdiffusion"),
         "gaussiancopula": (".gaussiancopula", "Gen_gaussiancopula"),
+        "great": (".great", "Gen_great"),
         "gmm": (".gmm", "Gen_gmmbic"),
         "gmmal": (".gmm", "Gen_gmmbical"),
         "kde": (".kde", "Gen_kdebw"),
@@ -71,6 +73,7 @@ __all__ = [
     "Gen_dummy",
     "Gen_forestdiffusion",
     "Gen_gaussiancopula",
+    "Gen_great",
     "Gen_gmm",
     "Gen_gmmbic",
     "Gen_gmmbical",

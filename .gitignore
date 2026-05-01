@@ -141,3 +141,4 @@ requirements_old.txt
 prelim_baseline.png
 .codex
 AGENT_CONTEXT.md
+trainer_great/
