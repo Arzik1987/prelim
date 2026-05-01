@@ -24,7 +24,7 @@ If the generator should be available through the high-level `prelim(...)` API:
 2. Add an entry to `build_generator(...)` in the same file.
 3. Use a short lowercase key such as `kde`, `smote`, or `vva`.
 4. If the backend is optional or heavy, add a focused test that stubs the external library instead of training the real model in CI.
-5. For dataframe-based tabular synthesizers such as `TabGAN` or `CTGAN`, convert internal NumPy arrays at the wrapper boundary and keep the public PRELIM interface NumPy-based.
+5. For dataframe-based tabular synthesizers such as `TabGAN`, `CTGAN`, `TVAE`, or `CopulaGAN`, convert internal NumPy arrays at the wrapper boundary and keep the public PRELIM interface NumPy-based.
 
 If the generator is only for direct imports in tests or experiments, exporting it from `__init__.py` is still preferred for discoverability.
 

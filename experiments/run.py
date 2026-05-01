@@ -55,6 +55,7 @@ from metamodels.lgbmb import Meta_lgbm_bal
 from metamodels.xgb import Meta_xgb
 from metamodels.xgbb import Meta_xgb_bal
 from prelim.generators.adasyn import Gen_adasyn
+from prelim.generators.copulagan import Gen_copulagan
 from prelim.generators.ctgan import Gen_ctgan
 from prelim.generators.dummy import Gen_dummy
 from prelim.generators.gmm import Gen_gmmbic, Gen_gmmbical
@@ -67,6 +68,7 @@ from prelim.generators.rerx import Gen_rerx
 from prelim.generators.rfdens import Gen_rfdens
 from prelim.generators.smote import Gen_smote
 from prelim.generators.tabgan import Gen_tabgan
+from prelim.generators.tvae import Gen_tvae
 from prelim.generators.vva import Gen_vva
 
 
@@ -74,6 +76,7 @@ GENERATOR_FACTORIES = (
     Gen_gmmbic,
     Gen_kdebw,
     Gen_munge,
+    Gen_copulagan,
     Gen_ctgan,
     Gen_randu,
     Gen_randn,
@@ -82,6 +85,7 @@ GENERATOR_FACTORIES = (
     Gen_smote,
     Gen_adasyn,
     Gen_tabgan,
+    Gen_tvae,
     Gen_rfdens,
     Gen_kdebwm,
     Gen_kdeb,

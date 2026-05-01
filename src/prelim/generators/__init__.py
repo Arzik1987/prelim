@@ -2,6 +2,7 @@ from importlib import import_module
 
 from .adasyn import Gen_adasyn
 from .base import BaseGenerator
+from .copulagan import Gen_copulagan
 from .ctgan import Gen_ctgan
 from .dummy import Gen_dummy
 from .gmm import Gen_gmm, Gen_gmmbic, Gen_gmmbical
@@ -16,6 +17,7 @@ from .rerx import Gen_rerx
 from .rfdens import Gen_rfdens
 from .smote import Gen_smote
 from .tabgan import Gen_tabgan
+from .tvae import Gen_tvae
 from .vva import Gen_vva as Gen_vva_legacy
 from .vva_p import Gen_vva as Gen_vva_proba
 
@@ -24,6 +26,7 @@ def build_generator(gen_name, seed=2020):
     registry = {
         "adasyn": (".adasyn", "Gen_adasyn"),
         "cmm": (".rfdens", "Gen_rfdens"),
+        "copulagan": (".copulagan", "Gen_copulagan"),
         "ctgan": (".ctgan", "Gen_ctgan"),
         "dummy": (".dummy", "Gen_dummy"),
         "gmm": (".gmm", "Gen_gmmbic"),
@@ -36,6 +39,7 @@ def build_generator(gen_name, seed=2020):
         "rerx": (".rerx", "Gen_rerx"),
         "smote": (".smote", "Gen_smote"),
         "tabgan": (".tabgan", "Gen_tabgan"),
+        "tvae": (".tvae", "Gen_tvae"),
         "unif": (".rand", "Gen_randu"),
         "vva": (".vva_p", "Gen_vva"),
     }
@@ -53,6 +57,7 @@ def build_generator(gen_name, seed=2020):
 __all__ = [
     "BaseGenerator",
     "Gen_adasyn",
+    "Gen_copulagan",
     "Gen_ctgan",
     "Gen_dummy",
     "Gen_gmm",
@@ -71,6 +76,7 @@ __all__ = [
     "Gen_rfdens",
     "Gen_smote",
     "Gen_tabgan",
+    "Gen_tvae",
     "Gen_vva_legacy",
     "Gen_vva_proba",
     "build_generator",

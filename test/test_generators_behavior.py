@@ -2,8 +2,10 @@ import numpy as np
 import pytest
 
 from prelim.generators import Gen_dummy as Gen_dummy_export
+from prelim.generators import Gen_copulagan
 from prelim.generators import Gen_ctgan
 from prelim.generators import Gen_tabgan
+from prelim.generators import Gen_tvae
 from prelim.generators import Gen_vva_proba as Gen_vva_proba_export
 from prelim.generators import build_generator
 from prelim.generators.adasyn import Gen_adasyn
@@ -149,6 +151,68 @@ def test_ctgan_generator_uses_backend_and_returns_requested_shape(monkeypatch):
     assert generator.model_.fit_shape_ == x.shape
     assert generator.model_.discrete_columns_ == []
     assert build_generator("ctgan", seed=2020).my_name() == "ctgan"
+
+
+def test_tvae_generator_uses_backend_and_returns_requested_shape(monkeypatch):
+    class _FakeTVAE:
+        def __init__(self, **kwargs):
+            self.kwargs = kwargs
+            self.fit_shape_ = None
+
+        def fit(self, data, discrete_columns):
+            self.fit_shape_ = data.shape
+            self.discrete_columns_ = discrete_columns
+
+        def sample(self, n_samples):
+            return __import__("pandas").DataFrame(np.arange(n_samples * 2).reshape(n_samples, 2))
+
+    monkeypatch.setattr("prelim.generators.tvae.TVAE", _FakeTVAE)
+
+    x = _clustered_sample()
+    generator = Gen_tvae(model_kwargs={"epochs": 1}, seed=2020).fit(x)
+
+    sample = generator.sample(n_samples=5)
+
+    assert sample.shape == (5, x.shape[1])
+    assert generator.my_name() == "tvae"
+    assert generator.model_.fit_shape_ == x.shape
+    assert generator.model_.discrete_columns_ == []
+    assert build_generator("tvae", seed=2020).my_name() == "tvae"
+
+
+def test_copulagan_generator_uses_backend_and_returns_requested_shape(monkeypatch):
+    class _FakeMetadata:
+        def __init__(self):
+            self.detected_shape_ = None
+
+        def detect_from_dataframe(self, data):
+            self.detected_shape_ = data.shape
+
+    class _FakeCopulaGAN:
+        def __init__(self, metadata, **kwargs):
+            self.metadata = metadata
+            self.kwargs = kwargs
+            self.fit_shape_ = None
+
+        def fit(self, data):
+            self.fit_shape_ = data.shape
+
+        def sample(self, num_rows):
+            return __import__("pandas").DataFrame(np.arange(num_rows * 2).reshape(num_rows, 2))
+
+    monkeypatch.setattr("prelim.generators.copulagan.SingleTableMetadata", _FakeMetadata)
+    monkeypatch.setattr("prelim.generators.copulagan.CopulaGANSynthesizer", _FakeCopulaGAN)
+
+    x = _clustered_sample()
+    generator = Gen_copulagan(model_kwargs={"epochs": 1}, seed=2020).fit(x)
+
+    sample = generator.sample(n_samples=5)
+
+    assert sample.shape == (5, x.shape[1])
+    assert generator.my_name() == "copulagan"
+    assert generator.metadata_.detected_shape_ == x.shape
+    assert generator.model_.fit_shape_ == x.shape
+    assert build_generator("copulagan", seed=2020).my_name() == "copulagan"
 
 
 def test_perfect_returns_subset_without_replacement_when_possible():
