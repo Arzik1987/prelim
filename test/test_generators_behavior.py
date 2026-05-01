@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import numpy as np
 import pytest
 
@@ -8,6 +10,7 @@ from prelim.generators import Gen_ctgan
 from prelim.generators import Gen_forestdiffusion
 from prelim.generators import Gen_gaussiancopula
 from prelim.generators import Gen_tabgan
+from prelim.generators import Gen_tabsyn
 from prelim.generators import Gen_tvae
 from prelim.generators import Gen_vva_proba as Gen_vva_proba_export
 from prelim.generators import build_generator
@@ -276,6 +279,84 @@ def test_forestdiffusion_generator_uses_backend_and_returns_requested_shape(monk
     assert generator.model_.seed_ == 2020
     assert generator.model_.kwargs == {"n_t": 5}
     assert build_generator("forestdiffusion", seed=2020).my_name() == "forestdiffusion"
+
+
+def test_tabsyn_generator_runs_official_cli_and_returns_requested_shape(monkeypatch, tmp_path):
+    repo_root = tmp_path / "tabsyn"
+    (repo_root / "data" / "Info").mkdir(parents=True)
+    (repo_root / "synthetic").mkdir()
+    (repo_root / "main.py").write_text("", encoding="utf-8")
+    (repo_root / "process_dataset.py").write_text("", encoding="utf-8")
+
+    commands = []
+
+    def _fake_run_command(self, command, env=None):
+        del env
+        commands.append(command)
+        if len(command) > 2 and command[1] == "-c":
+            payload = __import__("json").loads(command[3])
+            if payload["module"] == "tabsyn.sample":
+                sample_path = Path(payload["args"]["save_path"])
+                sample_path.parent.mkdir(parents=True, exist_ok=True)
+                __import__("pandas").DataFrame(
+                    {
+                        "x0": np.arange(3),
+                        "x1": np.arange(3, 6),
+                        "__prelim_tabsyn_helper_cat": ["a", "b", "a"],
+                        "__prelim_tabsyn_helper_target": np.linspace(0.0, 1.0, 3),
+                    }
+                ).to_csv(sample_path, index=False)
+
+    monkeypatch.setattr("prelim.generators.tabsyn.Gen_tabsyn._run_command", _fake_run_command)
+
+    x = _clustered_sample()
+    generator = Gen_tabsyn(repo_path=repo_root, seed=2020).fit(x)
+
+    info_path = repo_root / "data" / "Info" / f"{generator.dataset_name_}.json"
+    info = __import__("json").loads(info_path.read_text(encoding="utf-8"))
+
+    sample = generator.sample(n_samples=5)
+
+    assert sample.shape == (5, x.shape[1])
+    assert generator.my_name() == "tabsyn"
+    assert build_generator("tabsyn", seed=2020).my_name() == "tabsyn"
+    assert info["target_col_idx"]
+    assert info["cat_col_idx"]
+    assert [command[1] for command in commands] == [
+        "process_dataset.py",
+        "-c",
+        "-c",
+        "-c",
+    ]
+    module_payloads = [__import__("json").loads(command[3])["module"] for command in commands[1:]]
+    assert module_payloads == [
+        "tabsyn.vae.main",
+        "tabsyn.main",
+        "tabsyn.sample",
+    ]
+
+
+def test_tabsyn_generator_adds_helper_category_for_numeric_only_data(tmp_path):
+    repo_root = tmp_path / "tabsyn"
+    (repo_root / "data" / "Info").mkdir(parents=True)
+    (repo_root / "main.py").write_text("", encoding="utf-8")
+    (repo_root / "process_dataset.py").write_text("", encoding="utf-8")
+
+    generator = Gen_tabsyn(repo_path=repo_root, seed=2020)
+    generator.repo_root_ = repo_root
+    generator.dataset_name_ = "prelim_tabsyn_test"
+    generator.X_ = _clustered_sample()
+    generator.columns_ = [f"x{i}" for i in range(generator.X_.shape[1])]
+    generator._write_dataset_artifacts()
+
+    info_path = repo_root / "data" / "Info" / "prelim_tabsyn_test.json"
+    data_path = repo_root / "data" / "prelim_tabsyn_test" / "prelim_tabsyn_test.csv"
+    info = __import__("json").loads(info_path.read_text(encoding="utf-8"))
+    data = __import__("pandas").read_csv(data_path)
+
+    assert info["target_col_idx"] == [3]
+    assert info["cat_col_idx"] == [2]
+    assert list(data.columns) == ["x0", "x1", "__prelim_tabsyn_helper_cat", "__prelim_tabsyn_helper_target"]
 
 
 def test_bayesnet_generator_uses_backend_and_rebuilds_numeric_values(monkeypatch):
