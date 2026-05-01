@@ -10,28 +10,30 @@ from sklearn.tree import DecisionTreeClassifier
 
 
 ROOT = Path(__file__).resolve().parents[1]
-UTILS_DIR = ROOT / "experiments" / "utils"
+DATA_DIR = ROOT / "experiments" / "data"
+EVAL_DIR = ROOT / "experiments" / "evaluation"
 
 
 def _load_utils_module(module_basename):
     module_name = f"test_{module_basename}_runner"
     if module_name in sys.modules:
         del sys.modules[module_name]
-    spec = importlib.util.spec_from_file_location(module_name, UTILS_DIR / f"{module_basename}.py")
+    module_dir = DATA_DIR if module_basename in {"loader", "splitter"} else EVAL_DIR
+    spec = importlib.util.spec_from_file_location(module_name, module_dir / f"{module_basename}.py")
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
 
 
 def test_load_data_rejects_unknown_dataset():
-    module = _load_utils_module("data_loader")
+    module = _load_utils_module("loader")
 
     with pytest.raises(ValueError, match="Unknown dataset name"):
         module.load_data("missing-dataset")
 
 
 def test_load_data_uses_data_dir_and_transforms_occupancy_dates(tmp_path):
-    module = _load_utils_module("data_loader")
+    module = _load_utils_module("loader")
     occupancy_dir = tmp_path / "occupancy"
     occupancy_dir.mkdir(parents=True)
 
@@ -62,7 +64,7 @@ def test_load_data_uses_data_dir_and_transforms_occupancy_dates(tmp_path):
 
 
 def test_load_data_converts_jm1_missing_markers_and_drops_nan_rows(tmp_path):
-    module = _load_utils_module("data_loader")
+    module = _load_utils_module("loader")
     jm1_dir = tmp_path / "jm1"
     jm1_dir.mkdir(parents=True)
 
@@ -82,7 +84,7 @@ def test_load_data_converts_jm1_missing_markers_and_drops_nan_rows(tmp_path):
 
 
 def test_data_splitter_requires_fit_before_configure():
-    module = _load_utils_module("data_splitter")
+    module = _load_utils_module("splitter")
     splitter = module.DataSplitter(seed=7)
 
     with pytest.raises(NotFittedError):
@@ -90,7 +92,7 @@ def test_data_splitter_requires_fit_before_configure():
 
 
 def test_data_splitter_validates_configuration_and_returns_copies():
-    module = _load_utils_module("data_splitter")
+    module = _load_utils_module("splitter")
     X = np.arange(20, dtype=float).reshape(10, 2)
     y = np.arange(10, dtype=int)
     splitter = module.DataSplitter(seed=11).fit(X, y)

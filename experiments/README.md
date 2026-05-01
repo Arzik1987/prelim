@@ -2,6 +2,17 @@
 
 This folder contains the code to reproduce the experiments from our manuscript.
 
+Internal layout:
+- `run.py`: experiment orchestration
+- `data/`: dataset loading and split preparation
+- `evaluation/`: reference fitting and PRELIM evaluation phases
+- `results/`: artifact paths and result post-processing
+- `metamodels/`: experiment-local metamodel wrappers
+
+The CLI entry points remain:
+- `experiments.py`
+- `read_results.py`
+
 ### Usage
 - install the `prelim` module following the instructions in the main directory
 - clone this folder (`experiments`) to the desired place where you intend to run the experiments and navigate to it
