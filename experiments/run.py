@@ -55,6 +55,7 @@ from metamodels.lgbmb import Meta_lgbm_bal
 from metamodels.xgb import Meta_xgb
 from metamodels.xgbb import Meta_xgb_bal
 from prelim.generators.adasyn import Gen_adasyn
+from prelim.generators.ctgan import Gen_ctgan
 from prelim.generators.dummy import Gen_dummy
 from prelim.generators.gmm import Gen_gmmbic, Gen_gmmbical
 from prelim.generators.kde import Gen_kdebw
@@ -73,6 +74,7 @@ GENERATOR_FACTORIES = (
     Gen_gmmbic,
     Gen_kdebw,
     Gen_munge,
+    Gen_ctgan,
     Gen_randu,
     Gen_randn,
     Gen_dummy,

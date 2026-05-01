@@ -2,6 +2,7 @@ from importlib import import_module
 
 from .adasyn import Gen_adasyn
 from .base import BaseGenerator
+from .ctgan import Gen_ctgan
 from .dummy import Gen_dummy
 from .gmm import Gen_gmm, Gen_gmmbic, Gen_gmmbical
 from .kde import Gen_kdebw, Gen_kdebwhl
@@ -23,6 +24,7 @@ def build_generator(gen_name, seed=2020):
     registry = {
         "adasyn": (".adasyn", "Gen_adasyn"),
         "cmm": (".rfdens", "Gen_rfdens"),
+        "ctgan": (".ctgan", "Gen_ctgan"),
         "dummy": (".dummy", "Gen_dummy"),
         "gmm": (".gmm", "Gen_gmmbic"),
         "gmmal": (".gmm", "Gen_gmmbical"),
@@ -51,6 +53,7 @@ def build_generator(gen_name, seed=2020):
 __all__ = [
     "BaseGenerator",
     "Gen_adasyn",
+    "Gen_ctgan",
     "Gen_dummy",
     "Gen_gmm",
     "Gen_gmmbic",

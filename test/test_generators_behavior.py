@@ -2,6 +2,7 @@ import numpy as np
 import pytest
 
 from prelim.generators import Gen_dummy as Gen_dummy_export
+from prelim.generators import Gen_ctgan
 from prelim.generators import Gen_tabgan
 from prelim.generators import Gen_vva_proba as Gen_vva_proba_export
 from prelim.generators import build_generator
@@ -121,6 +122,33 @@ def test_tabgan_generator_uses_backend_and_returns_requested_shape(monkeypatch):
     assert sample.shape == (5, x.shape[1])
     assert generator.my_name() == "tabgan"
     assert build_generator("tabgan", seed=2020).my_name() == "tabgan"
+
+
+def test_ctgan_generator_uses_backend_and_returns_requested_shape(monkeypatch):
+    class _FakeCTGAN:
+        def __init__(self, **kwargs):
+            self.kwargs = kwargs
+            self.fit_shape_ = None
+
+        def fit(self, data, discrete_columns):
+            self.fit_shape_ = data.shape
+            self.discrete_columns_ = discrete_columns
+
+        def sample(self, n_samples):
+            return __import__("pandas").DataFrame(np.arange(n_samples * 2).reshape(n_samples, 2))
+
+    monkeypatch.setattr("prelim.generators.ctgan.CTGAN", _FakeCTGAN)
+
+    x = _clustered_sample()
+    generator = Gen_ctgan(model_kwargs={"epochs": 1}, seed=2020).fit(x)
+
+    sample = generator.sample(n_samples=5)
+
+    assert sample.shape == (5, x.shape[1])
+    assert generator.my_name() == "ctgan"
+    assert generator.model_.fit_shape_ == x.shape
+    assert generator.model_.discrete_columns_ == []
+    assert build_generator("ctgan", seed=2020).my_name() == "ctgan"
 
 
 def test_perfect_returns_subset_without_replacement_when_possible():
