@@ -2,12 +2,12 @@ import numpy as np
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import GridSearchCV
 from sklearn.tree import _tree
+
 from .base import BaseGenerator
 # see https://stackoverflow.com/questions/20224526/how-to-extract-the-decision-rules-from-scikit-learn-decision-tree
 
 
 class Gen_rfdens(BaseGenerator):
-    
     def __init__(self, seed=2020):
         super().__init__("cmmrf", seed=seed)
         self.boxes_ = None
@@ -16,9 +16,8 @@ class Gen_rfdens(BaseGenerator):
     def _get_rules_tree(self, tree, box):
         tree_ = tree.tree_
         feature_id = [i if i != _tree.TREE_UNDEFINED else None for i in tree_.feature]
-     
+
         def recurse(node, box, boxes, nsamples):
-            
             if tree_.feature[node] != _tree.TREE_UNDEFINED:
                 ind = feature_id[node]
                 threshold = tree_.threshold[node]
@@ -31,11 +30,11 @@ class Gen_rfdens(BaseGenerator):
             else:
                 boxes.append(box)
                 nsamples.append(tree_.n_node_samples[node])
-        
+
         boxes = []
         nsamples = []
         recurse(0, box, boxes, nsamples)
-            
+
         return boxes, nsamples
 
     def fit(self, X, y=None, metamodel=None):
@@ -48,24 +47,25 @@ class Gen_rfdens(BaseGenerator):
         cv_rf.fit(X, y)
         model = cv_rf.best_estimator_
         box = np.vstack((X.min(axis=0), X.max(axis=0)))
-    
-        for i in model.estimators_:
-            tmpb, tmpn = self._get_rules_tree(i, box)
-            self.boxes_ = self.boxes_ + tmpb
-            self.nsamples_ = self.nsamples_ + tmpn
-            
+
+        for estimator in model.estimators_:
+            tmpb, tmpn = self._get_rules_tree(estimator, box)
+            self.boxes_.extend(tmpb)
+            self.nsamples_.extend(tmpn)
+
         self.nsamples_ = np.array(self.nsamples_)
+        return self
 
     def sample(self, n_samples=1):
-        niter = int(np.ceil(n_samples/sum(self.nsamples_)))
+        niter = int(np.ceil(n_samples / sum(self.nsamples_)))
         X = []
-        
-        for _ in range(0, niter):
-            for i in range(0, len(self.nsamples_)):
+
+        for _ in range(niter):
+            for i in range(len(self.nsamples_)):
                 box = self.boxes_[i]
                 sidelen = box[1, :] - box[0, :]
                 X.append(self.rng_.random_sample((self.nsamples_[i], len(sidelen))) * sidelen + box[0, :])
-        
+
         X = np.concatenate(X)
         xdim = X.shape[0]
         X = X[self.rng_.choice(np.arange(xdim), size=xdim, replace=False), :].copy()
