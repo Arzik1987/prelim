@@ -68,6 +68,8 @@ from prelim.generators.kde import Gen_kdebw
 from prelim.generators.kdeb import Gen_kdeb
 from prelim.generators.kdem import Gen_kdebwm
 from prelim.generators.munge import Gen_munge
+from prelim.generators.noise import Gen_noise
+from prelim.generators.perfect import Gen_perfect
 from prelim.generators.rand import Gen_randn, Gen_randu
 from prelim.generators.rerx import Gen_rerx
 from prelim.generators.rfdens import Gen_rfdens
@@ -88,9 +90,11 @@ GENERATOR_FACTORIES = (
     Gen_forestdiffusion,
     Gen_randu,
     Gen_randn,
+    Gen_noise,
     Gen_bayesnet,
     Gen_dummy,
     Gen_gmmbical,
+    Gen_perfect,
     Gen_smote,
     Gen_adasyn,
     Gen_tabgan,

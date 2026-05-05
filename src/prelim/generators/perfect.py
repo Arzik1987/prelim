@@ -14,9 +14,12 @@ class Gen_perfect(BaseGenerator):
         return self
 
     def sample(self, n_samples=1):
-        res = self.data_.copy()
-        if n_samples >= self.data_.shape[0]:
-            warnings.warn("Too many points are requested. Returning the complete stored set")
-        else:
-            res = res[self.rng_.choice(res.shape[0], n_samples, replace=False), :]
-        return res
+        n_available = self.data_.shape[0]
+        n_return = min(n_available, n_samples)
+        if n_samples > n_available:
+            warnings.warn(
+                "Requested more points than available. Returning all stored rows without resampling"
+            )
+        if n_return == n_available:
+            return self.data_.copy()
+        return self.data_[self.rng_.choice(n_available, n_return, replace=False), :].copy()

@@ -633,7 +633,7 @@ def test_perfect_warns_and_returns_complete_set_when_too_many_points_requested()
     x = _clustered_sample()
     generator = Gen_perfect().fit(x)
 
-    with pytest.warns(UserWarning, match="Too many points are requested"):
+    with pytest.warns(UserWarning, match="Requested more points than available"):
         sample = generator.sample(n_samples=len(x) + 1)
 
     assert np.array_equal(sample, x)
