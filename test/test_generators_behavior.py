@@ -5,6 +5,7 @@ import pytest
 
 from prelim.generators import Gen_dummy as Gen_dummy_export
 from prelim.generators import Gen_bayesnet
+from prelim.generators import Gen_binarydiffusion
 from prelim.generators import Gen_copulagan
 from prelim.generators import Gen_ctgan
 from prelim.generators import Gen_forestdiffusion
@@ -351,6 +352,94 @@ def test_tabddpm_generator_writes_helper_target_and_preserves_column_order(tmp_p
     assert rebuilt.shape[1] == x.shape[1]
     assert rebuilt[0, 1] == "a"
     assert float(rebuilt[1, 2]) == 20.0
+
+
+def test_binarydiffusion_generator_uses_backend_and_returns_requested_shape(monkeypatch):
+    class _FakeDataset:
+        def __init__(self, table, target_column, split_feature_target, task, numerical_columns, categorical_columns):
+            self.table = table
+            self.target_column = target_column
+            self.split_feature_target = split_feature_target
+            self.task = task
+            self.numerical_columns = numerical_columns
+            self.categorical_columns = categorical_columns
+            self.row_size = table.shape[1] * 4
+            self.n_classes = 2
+            self.conditional = True
+            self.transformation = self
+
+        def inverse_transform(self, rows, labels):
+            arr = rows.detach().cpu().numpy()
+            frame = __import__("pandas").DataFrame(arr[:, :2], columns=["x0", "x1"])
+            return frame, labels.detach().cpu().numpy()
+
+    class _FakeModel:
+        def __init__(self, **kwargs):
+            self.config = kwargs
+            self.data_dim = kwargs["data_dim"]
+            self.out_dim = kwargs["out_dim"]
+            self.conditional = kwargs["conditional"]
+            self.n_classes = kwargs["n_classes"]
+            self.classifier_free_guidance = kwargs["classifier_free_guidance"]
+
+        def to(self, device):
+            self.device = device
+            return self
+
+    class _FakeDiffusion:
+        def __init__(self, denoise_model, **kwargs):
+            self.model = denoise_model
+            self.conditional = denoise_model.conditional
+            self.n_classes = denoise_model.n_classes
+            self.classifier_free_guidance = denoise_model.classifier_free_guidance
+            self.kwargs = kwargs
+
+        def to(self, device):
+            self.device = device
+            return self
+
+        def eval(self):
+            return self
+
+        def sample(self, **kwargs):
+            n = kwargs["n"]
+            return __import__("torch").tensor(np.arange(n * 8).reshape(n, 8)).float()
+
+    class _FakeEMA:
+        def __init__(self, diffusion):
+            self.ema_model = diffusion
+
+    class _FakeTrainer:
+        def __init__(self, diffusion, dataset, **kwargs):
+            self.diffusion = diffusion
+            self.dataset = dataset
+            self.kwargs = kwargs
+            self.device = "cpu"
+            self.ema = _FakeEMA(diffusion)
+            self.trained = False
+
+        def train(self):
+            self.trained = True
+
+    fake_backend = {
+        "FixedSizeBinaryTableDataset": _FakeDataset,
+        "BinaryDiffusion1D": _FakeDiffusion,
+        "SimpleTableGenerator": _FakeModel,
+        "FixedSizeTableBinaryDiffusionTrainer": _FakeTrainer,
+        "get_base_model": lambda model: model,
+        "get_random_labels": lambda **kwargs: __import__("torch").zeros(kwargs["n_labels"], dtype=__import__("torch").long),
+    }
+
+    monkeypatch.setattr("prelim.generators.binarydiffusion.Gen_binarydiffusion._import_backend", lambda self: fake_backend)
+
+    x = _clustered_sample()
+    generator = Gen_binarydiffusion(seed=2020).fit(x)
+    sample = generator.sample(n_samples=5)
+
+    assert sample.shape == (5, x.shape[1])
+    assert generator.my_name() == "binarydiffusion"
+    assert generator.trainer_.trained is True
+    assert build_generator("binarydiffusion", seed=2020).my_name() == "binarydiffusion"
 
 
 def test_forestdiffusion_generator_uses_backend_and_returns_requested_shape(monkeypatch):

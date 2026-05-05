@@ -1,4 +1,5 @@
 # Prevent numpy multithreading: https://stackoverflow.com/questions/17053671/how-do-you-stop-numpy-from-multithreading
+from importlib.util import find_spec
 import os
 os.environ.update(
     OMP_NUM_THREADS = '1',
@@ -56,6 +57,7 @@ from metamodels.xgb import Meta_xgb
 from metamodels.xgbb import Meta_xgb_bal
 from prelim.generators.adasyn import Gen_adasyn
 from prelim.generators.bayesnet import Gen_bayesnet
+from prelim.generators.binarydiffusion import Gen_binarydiffusion
 from prelim.generators.copulagan import Gen_copulagan
 from prelim.generators.ctgan import Gen_ctgan
 from prelim.generators.dummy import Gen_dummy
@@ -129,6 +131,8 @@ RULE_MODEL_FACTORIES = (
 
 def build_generators():
     factories = list(GENERATOR_FACTORIES)
+    if find_spec("binary_diffusion_tabular") is not None:
+        factories.append(Gen_binarydiffusion)
     if os.environ.get("TABDDPM_REPO_PATH"):
         factories.append(Gen_tabddpm)
     return [factory() for factory in factories], Gen_rerx(), Gen_vva()

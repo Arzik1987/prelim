@@ -29,6 +29,7 @@ If the generator should be available through the high-level `prelim(...)` API:
 7. If the official implementation is a standalone source repository instead of a pip-installable library, keep that integration explicit in the wrapper. `TabSyn` follows this pattern by calling the official CLI through a configured local checkout instead of reimplementing the training pipeline in PRELIM.
 8. If a backend is pip-installable but still heavyweight because it downloads model weights or expects accelerator support, treat it as optional. `GReaT` follows this pattern: the wrapper is simple, but tests should stub the backend rather than fine-tuning a real transformer in CI.
 9. If an official repository exposes importable train/sample functions but still expects a custom split dataset layout, keep the dataset translation inside the wrapper. `TabDDPM` follows this pattern by writing temporary split arrays and a helper binary target for the official code, then reconstructing PRELIM rows from the sampled arrays.
+10. If a backend is a real pip package with importable dataset, model, diffusion, and trainer classes, prefer an in-process wrapper over shelling out. `Binary Diffusion` follows this pattern, with a no-op logger and temporary helper target so PRELIM can train and sample without external scripts.
 
 If the generator is only for direct imports in tests or experiments, exporting it from `__init__.py` is still preferred for discoverability.
 

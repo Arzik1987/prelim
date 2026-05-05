@@ -3,6 +3,7 @@ from importlib import import_module
 from .adasyn import Gen_adasyn
 from .base import BaseGenerator
 from .bayesnet import Gen_bayesnet
+from .binarydiffusion import Gen_binarydiffusion
 from .copulagan import Gen_copulagan
 from .ctgan import Gen_ctgan
 from .dummy import Gen_dummy
@@ -32,6 +33,7 @@ def build_generator(gen_name, seed=2020):
     registry = {
         "adasyn": (".adasyn", "Gen_adasyn"),
         "bayesnet": (".bayesnet", "Gen_bayesnet"),
+        "binarydiffusion": (".binarydiffusion", "Gen_binarydiffusion"),
         "cmm": (".rfdens", "Gen_rfdens"),
         "copulagan": (".copulagan", "Gen_copulagan"),
         "ctgan": (".ctgan", "Gen_ctgan"),
@@ -70,6 +72,7 @@ __all__ = [
     "BaseGenerator",
     "Gen_adasyn",
     "Gen_bayesnet",
+    "Gen_binarydiffusion",
     "Gen_copulagan",
     "Gen_ctgan",
     "Gen_dummy",
