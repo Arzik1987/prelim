@@ -9,9 +9,7 @@ from .dummy import Gen_dummy
 from .forestdiffusion import Gen_forestdiffusion
 from .gaussiancopula import Gen_gaussiancopula
 from .gmm import Gen_classgmm, Gen_gmm, Gen_gmmbic, Gen_gmmbical
-from .kde import Gen_kdebw, Gen_kdebwhl
-from .kdeb import Gen_kdeb
-from .kdem import Gen_kdebwm
+from .kde import Gen_kdeb, Gen_kdebw, Gen_kdebwhl, Gen_kdebwm
 from .munge import Gen_munge
 from .noise import Gen_noise
 from .part import Gen_part
@@ -53,8 +51,8 @@ def build_generator(gen_name, seed=2020):
         "gmm": (".gmm", "Gen_gmmbic"),
         "gmmal": (".gmm", "Gen_gmmbical"),
         "kde": (".kde", "Gen_kdebw"),
-        "kdeb": (".kdeb", "Gen_kdeb"),
-        "kdem": (".kdem", "Gen_kdebwm"),
+        "kdeb": (".kde", "Gen_kdeb"),
+        "kdem": (".kde", "Gen_kdebwm"),
         "lhs": (".rand", "Gen_lhs"),
         "munge": (".munge", "Gen_munge"),
         "norm": (".rand", "Gen_randn"),

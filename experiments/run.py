@@ -64,9 +64,7 @@ from prelim.generators.dummy import Gen_dummy
 from prelim.generators.forestdiffusion import Gen_forestdiffusion
 from prelim.generators.gaussiancopula import Gen_gaussiancopula
 from prelim.generators.gmm import Gen_classgmm, Gen_gmmbic, Gen_gmmbical
-from prelim.generators.kde import Gen_kdebw
-from prelim.generators.kdeb import Gen_kdeb
-from prelim.generators.kdem import Gen_kdebwm
+from prelim.generators.kde import Gen_kdeb, Gen_kdebw, Gen_kdebwm
 from prelim.generators.munge import Gen_munge
 from prelim.generators.noise import Gen_noise
 from prelim.generators.part import Gen_part

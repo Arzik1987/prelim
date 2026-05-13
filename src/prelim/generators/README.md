@@ -17,6 +17,19 @@ The common conventions are:
 - failures should raise Python exceptions such as `ValueError` or `RuntimeError`, not call `sys.exit(...)`
 - `my_name()` should stay stable; do not mutate `self.name_` to signal internal fallback behavior
 
+### Families
+
+Generator modules are organized by backend or method family where it keeps imports simple:
+- `rand.py`: simple distribution-free baselines such as uniform, normal, and LHS.
+- `gmm.py`: global and class-conditional Gaussian-mixture generators.
+- `kde.py`: KDE variants, including bounded and marginal KDE wrappers.
+- `rfdens.py`, `part.py`, and `treedens.py`: rule/tree partition density samplers.
+- `smote.py`, `adasyn.py`, and `rose.py`: supervised oversampling-style generators.
+- `gaussiancopula.py`, `copulagan.py`, and `vinecopula.py`: copula-based tabular generators.
+- `tabgan.py`, `ctgan.py`, `tvae.py`, `great.py`, `tabsyn.py`, `tabddpm.py`, and `binarydiffusion.py`: wrappers around heavier optional tabular synthesis backends.
+
+Prefer adding new variants to an existing family module when they share dependencies and implementation style. Keep standalone backend wrappers in their own modules, especially when they import optional or heavyweight packages.
+
 ### Registration
 
 If the generator should be available through the high-level `prelim(...)` API:
