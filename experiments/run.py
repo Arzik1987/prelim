@@ -26,13 +26,13 @@ from .data.split import load_experiment_split as prepare_experiment_split
 from .data.split import write_default_classifier_metadata
 from .data.loader import load_data
 from .evaluation.helpers import get_new_test
-from .evaluation.phases import (
+from .evaluation.baselines import fit_reference_models
+from .evaluation.strategies import (
     evaluate_rerx,
     evaluate_sampled_generators,
     evaluate_ssl,
     evaluate_vva,
     fit_generators_and_metamodels,
-    fit_reference_models,
 )
 from .results.artifacts import (
     iter_experiment_args,

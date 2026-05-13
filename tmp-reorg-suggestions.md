@@ -4,6 +4,5 @@ Temporary note from the repository inspection. Completed items have been removed
 
 ## Remaining follow-ups
 
-- Split `experiments/evaluation/phases.py` into scoring, baselines, and individual strategy modules.
 - Replace string-formatted CSV result writes with a small dataclass plus `csv.DictWriter`.
 - Add a cleanup helper for generated local artifacts such as `__pycache__` and egg-info directories.

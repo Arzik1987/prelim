@@ -3,9 +3,14 @@
 This folder contains the code to reproduce the experiments from our manuscript.
 
 Internal layout:
-- `run.py`: experiment orchestration
+- `run.py`: CLI configuration, logging, shard execution, and parallel dispatch
+- `registries.py`: experiment generator, metamodel, tree, and rule-model factory registries
+- `state.py`: experiment state assembly
 - `data/`: dataset loading and split preparation
-- `evaluation/`: reference fitting and PRELIM evaluation phases
+- `evaluation/scoring.py`: shared scoring, fidelity, and model-size helpers
+- `evaluation/baselines.py`: reference baseline fitting
+- `evaluation/strategies.py`: RERX, VVA, sampled-generator, and SSL evaluation phases
+- `evaluation/phases.py`: compatibility re-export layer for older imports
 - `results/`: artifact paths and result post-processing
 - `metamodels/`: experiment-local metamodel wrappers
 
