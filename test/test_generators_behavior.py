@@ -13,7 +13,7 @@ from prelim.generators import Gen_vva_proba as Gen_vva_proba_export
 from prelim.generators import build_generator
 from prelim.generators.adasyn import Gen_adasyn
 from prelim.generators.dummy import Gen_dummy
-from prelim.generators.gmm import Gen_gmm, Gen_gmmbic, Gen_gmmbical
+from prelim.generators.gmm import Gen_classgmm, Gen_gmm, Gen_gmmbic, Gen_gmmbical
 from prelim.generators.kde import Gen_kdebw, Gen_kdebwhl
 from prelim.generators.kdeb import Gen_kdeb
 from prelim.generators.kdem import Gen_kdebwm
@@ -24,8 +24,10 @@ from prelim.generators.perfect import Gen_perfect
 from prelim.generators.rand import Gen_lhs, Gen_randn, Gen_randu
 from prelim.generators.rerx import Gen_rerx
 from prelim.generators.rfdens import Gen_rfdens
+from prelim.generators.rose import Gen_rose
 from prelim.generators.smote import Gen_smote
 from prelim.generators.treedens import Gen_treedens
+from prelim.generators.vinecopula import Gen_vinecopula
 from prelim.generators.vva import Gen_vva as Gen_vva_legacy
 from prelim.generators.vva_p import Gen_vva as Gen_vva_proba
 
@@ -437,6 +439,7 @@ def test_lhs_stratifies_each_feature_and_samples_within_observed_bounds():
         (Gen_treedens(n_estimators=5, seed=2020), Gen_treedens(n_estimators=5, seed=2020), {"n_samples": 20}),
         (Gen_noise(scale=0.3, seed=2020), Gen_noise(scale=0.3, seed=2020), {"n_samples": 25}),
         (Gen_perfect(seed=2020), Gen_perfect(seed=2020), {"n_samples": 10}),
+        (Gen_rose(seed=2020), Gen_rose(seed=2020), {"n_samples": 20}),
         (Gen_kdeb(knn=5, seed=2020), Gen_kdeb(knn=5, seed=2020), {"n_samples": 20}),
         (Gen_kdebw(seed=2020), Gen_kdebw(seed=2020), {"n_samples": 20}),
         (Gen_kdebwhl(seed=2020), Gen_kdebwhl(seed=2020), {"n_samples": 20}),
@@ -450,7 +453,7 @@ def test_seeded_generators_are_reproducible(generator_a, generator_b, sample_kwa
     x = _clustered_sample()
     y = np.concatenate((np.zeros(40, dtype=int), np.ones(40, dtype=int)))
 
-    if isinstance(generator_a, Gen_rfdens):
+    if isinstance(generator_a, (Gen_rfdens, Gen_rose)):
         generator_a.fit(x, y)
         generator_b.fit(x, y)
     elif isinstance(generator_a, Gen_vva_proba):
@@ -687,6 +690,136 @@ def test_gmm_family_generates_requested_shape(generator_cls, expected_name):
 
     assert sample.shape == (20, x.shape[1])
     assert generator.my_name() == expected_name
+
+
+def test_classgmm_requires_labels():
+    with pytest.raises(ValueError, match="requires y"):
+        Gen_classgmm().fit(_clustered_sample())
+
+
+def test_classgmm_fits_one_density_per_class_and_samples_requested_shape():
+    x, y = _labeled_clustered_sample()
+    generator = Gen_classgmm(params={"covariance_type": ["diag"], "n_components": [1, 2]}, seed=2020).fit(x, y)
+
+    sample = generator.sample(n_samples=30)
+
+    assert sample.shape == (30, x.shape[1])
+    assert set(generator.models_) == set(np.unique(y))
+    assert np.allclose(generator.priors_, [0.5, 0.5])
+    assert generator.my_name() == "class_gmm"
+
+
+def test_classgmm_balanced_sampling_uses_each_class(monkeypatch):
+    x, y = _labeled_clustered_sample()
+    generator = Gen_classgmm(params={"covariance_type": ["diag"], "n_components": [1]}, balanced=True, seed=2020).fit(x, y)
+    calls = []
+
+    class _FakeModel:
+        def __init__(self, value):
+            self.value = value
+
+        def sample(self, count):
+            calls.append((self.value, count))
+            return np.full((count, x.shape[1]), self.value), None
+
+    generator.models_ = {0: _FakeModel(0.0), 1: _FakeModel(1.0)}
+
+    sample = generator.sample(n_samples=9)
+
+    assert sample.shape == (9, x.shape[1])
+    assert sorted(count for _, count in calls) == [4, 5]
+
+
+def test_classgmm_handles_singleton_class():
+    x = np.array([[0.0, 0.0], [3.0, 3.0], [3.2, 3.1]])
+    y = np.array([0, 1, 1])
+    generator = Gen_classgmm(params={"covariance_type": ["diag"], "n_components": [1]}, seed=2020).fit(x, y)
+
+    sample = generator.sample(n_samples=10)
+
+    assert sample.shape == (10, x.shape[1])
+    assert 0 in generator.singletons_
+
+
+def test_classgmm_generator_is_registered():
+    assert build_generator("class_gmm", seed=2020).my_name() == "class_gmm"
+
+
+def test_rose_requires_labels():
+    with pytest.raises(ValueError, match="requires y"):
+        Gen_rose().fit(_clustered_sample())
+
+
+def test_rose_samples_smoothed_bootstrap_with_observed_priors_and_bounds():
+    x, y = _labeled_clustered_sample()
+    generator = Gen_rose(smoothing=0.2, seed=2020).fit(x, y)
+
+    sample = generator.sample(n_samples=30)
+
+    assert sample.shape == (30, x.shape[1])
+    assert np.all(sample >= x.min(axis=0))
+    assert np.all(sample <= x.max(axis=0))
+    assert np.allclose(generator.priors_, [0.5, 0.5])
+    assert generator.my_name() == "rose"
+
+
+def test_rose_balanced_sampling_uses_each_class():
+    x, y = _labeled_clustered_sample()
+    generator = Gen_rose(smoothing=0.0, balanced=True, seed=2020).fit(x, y)
+
+    counts = generator._class_counts(9)
+
+    assert sorted(counts) == [4, 5]
+
+
+def test_rose_can_leave_samples_unclipped():
+    x = np.array([[0.0], [0.0], [1.0], [1.0]])
+    y = np.array([0, 0, 1, 1])
+    generator = Gen_rose(smoothing=10.0, clip=False, seed=2020).fit(x, y)
+
+    sample = generator.sample(n_samples=50)
+
+    assert sample.shape == (50, 1)
+    assert np.any((sample < x.min(axis=0)) | (sample > x.max(axis=0)))
+
+
+def test_rose_generator_is_registered():
+    assert build_generator("rose", seed=2020).my_name() == "rose"
+
+
+def test_vinecopula_generator_uses_backend_and_returns_requested_shape(monkeypatch):
+    class _FakeVineCopula:
+        def __init__(self, vine_type, random_state=None, **kwargs):
+            self.vine_type = vine_type
+            self.random_state = random_state
+            self.kwargs = kwargs
+            self.fit_columns_ = None
+
+        def fit(self, data):
+            self.fit_columns_ = list(data.columns)
+
+        def sample(self, n_samples):
+            return __import__("pandas").DataFrame(
+                np.arange(n_samples * 2).reshape(n_samples, 2),
+                columns=["x0", "x1"],
+            )
+
+    monkeypatch.setattr("prelim.generators.vinecopula.VineCopula", _FakeVineCopula)
+
+    x = _clustered_sample()
+    generator = Gen_vinecopula(vine_type="direct", model_kwargs={"foo": "bar"}, seed=2020).fit(x)
+    sample = generator.sample(n_samples=5)
+
+    assert sample.shape == (5, x.shape[1])
+    assert generator.my_name() == "vinecopula"
+    assert generator.model_.vine_type == "direct"
+    assert generator.model_.random_state == 2020
+    assert generator.model_.kwargs == {"foo": "bar"}
+    assert generator.model_.fit_columns_ == ["x0", "x1"]
+
+
+def test_vinecopula_generator_is_registered():
+    assert build_generator("vinecopula", seed=2020).my_name() == "vinecopula"
 
 
 def test_vva_proba_returns_empty_sample_for_r_zero_and_out_of_range_r_fails():

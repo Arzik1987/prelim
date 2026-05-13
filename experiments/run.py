@@ -63,7 +63,7 @@ from prelim.generators.ctgan import Gen_ctgan
 from prelim.generators.dummy import Gen_dummy
 from prelim.generators.forestdiffusion import Gen_forestdiffusion
 from prelim.generators.gaussiancopula import Gen_gaussiancopula
-from prelim.generators.gmm import Gen_gmmbic, Gen_gmmbical
+from prelim.generators.gmm import Gen_classgmm, Gen_gmmbic, Gen_gmmbical
 from prelim.generators.kde import Gen_kdebw
 from prelim.generators.kdeb import Gen_kdeb
 from prelim.generators.kdem import Gen_kdebwm
@@ -74,16 +74,19 @@ from prelim.generators.perfect import Gen_perfect
 from prelim.generators.rand import Gen_lhs, Gen_randn, Gen_randu
 from prelim.generators.rerx import Gen_rerx
 from prelim.generators.rfdens import Gen_rfdens
+from prelim.generators.rose import Gen_rose
 from prelim.generators.smote import Gen_smote
 from prelim.generators.tabgan import Gen_tabgan
 from prelim.generators.tabddpm import Gen_tabddpm
 from prelim.generators.treedens import Gen_treedens
 from prelim.generators.tvae import Gen_tvae
+from prelim.generators.vinecopula import Gen_vinecopula
 from prelim.generators.vva import Gen_vva
 
 
 GENERATOR_FACTORIES = (
     Gen_gmmbic,
+    Gen_classgmm,
     Gen_kdebw,
     Gen_munge,
     Gen_gaussiancopula,
@@ -95,10 +98,12 @@ GENERATOR_FACTORIES = (
     Gen_randn,
     Gen_noise,
     Gen_treedens,
+    Gen_vinecopula,
     Gen_bayesnet,
     Gen_dummy,
     Gen_gmmbical,
     Gen_perfect,
+    Gen_rose,
     Gen_smote,
     Gen_adasyn,
     Gen_tabgan,

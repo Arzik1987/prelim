@@ -8,7 +8,7 @@ from .ctgan import Gen_ctgan
 from .dummy import Gen_dummy
 from .forestdiffusion import Gen_forestdiffusion
 from .gaussiancopula import Gen_gaussiancopula
-from .gmm import Gen_gmm, Gen_gmmbic, Gen_gmmbical
+from .gmm import Gen_classgmm, Gen_gmm, Gen_gmmbic, Gen_gmmbical
 from .kde import Gen_kdebw, Gen_kdebwhl
 from .kdeb import Gen_kdeb
 from .kdem import Gen_kdebwm
@@ -19,10 +19,12 @@ from .perfect import Gen_perfect
 from .rand import Gen_lhs, Gen_randn, Gen_randu
 from .rerx import Gen_rerx
 from .rfdens import Gen_rfdens
+from .rose import Gen_rose
 from .smote import Gen_smote
 from .tabgan import Gen_tabgan
 from .treedens import Gen_treedens
 from .tvae import Gen_tvae
+from .vinecopula import Gen_vinecopula
 from .vva import Gen_vva as Gen_vva_legacy
 from .vva_p import Gen_vva as Gen_vva_proba
 
@@ -40,6 +42,7 @@ def build_generator(gen_name, seed=2020):
         "adasyn": (".adasyn", "Gen_adasyn"),
         "bayesnet": (".bayesnet", "Gen_bayesnet"),
         "binarydiffusion": (".binarydiffusion", "Gen_binarydiffusion"),
+        "class_gmm": (".gmm", "Gen_classgmm"),
         "cmm": (".rfdens", "Gen_rfdens"),
         "copulagan": (".copulagan", "Gen_copulagan"),
         "ctgan": (".ctgan", "Gen_ctgan"),
@@ -57,6 +60,7 @@ def build_generator(gen_name, seed=2020):
         "norm": (".rand", "Gen_randn"),
         "cmmpart": (".part", "Gen_part"),
         "rerx": (".rerx", "Gen_rerx"),
+        "rose": (".rose", "Gen_rose"),
         "smote": (".smote", "Gen_smote"),
         "tabgan": (".tabgan", "Gen_tabgan"),
         "tabddpm": (".tabddpm", "Gen_tabddpm"),
@@ -64,6 +68,7 @@ def build_generator(gen_name, seed=2020):
         "treedens": (".treedens", "Gen_treedens"),
         "tvae": (".tvae", "Gen_tvae"),
         "unif": (".rand", "Gen_randu"),
+        "vinecopula": (".vinecopula", "Gen_vinecopula"),
         "vva": (".vva_p", "Gen_vva"),
     }
 
@@ -99,6 +104,7 @@ __all__ = [
     "Gen_dummy",
     "Gen_forestdiffusion",
     "Gen_gaussiancopula",
+    "Gen_classgmm",
     "Gen_great",
     "Gen_gmm",
     "Gen_gmmbic",
@@ -116,12 +122,14 @@ __all__ = [
     "Gen_randu",
     "Gen_rerx",
     "Gen_rfdens",
+    "Gen_rose",
     "Gen_smote",
     "Gen_tabgan",
     "Gen_tabddpm",
     "Gen_tabsyn",
     "Gen_treedens",
     "Gen_tvae",
+    "Gen_vinecopula",
     "Gen_vva_legacy",
     "Gen_vva_proba",
     "build_generator",
