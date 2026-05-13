@@ -24,6 +24,11 @@ pip install git+https://github.com/Arzik1987/prelim
 Call <code>pytest</code> in the command line from the project root directory to run the generator tests. 
 To run tests, it is required to install the package locally.
 
+To remove generated local artifacts such as `__pycache__`, `.pytest_cache`, build directories, and egg-info metadata, run:
+```
+python scripts/clean_artifacts.py
+```
+
 ### Exemplary Usage
 
 `prelim` takes the target `rule_based_model` algorithm and uses a powerful `mediator` model coupled with a transfer set generator (here - `kde`) to fit a `wb_model` of the target model class.

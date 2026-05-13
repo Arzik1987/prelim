@@ -1,6 +1,31 @@
+import csv
 import json
 import os
+from dataclasses import asdict, dataclass
 from itertools import product
+
+
+RESULT_FIELDS = ("alg", "gen", "met", "tra", "tes", "nle", "tme", "fid", "bac")
+META_FIELDS = ("alg", "val")
+
+
+@dataclass(frozen=True)
+class ExperimentResult:
+    alg: object
+    gen: object
+    met: object
+    tra: object
+    tes: object
+    nle: object
+    tme: object
+    fid: object
+    bac: object
+
+
+@dataclass(frozen=True)
+class ExperimentMeta:
+    alg: object
+    val: object
 
 
 def result_prefix(config, dataset_name, split_index, dataset_size):
@@ -24,14 +49,25 @@ def shard_is_complete(config, dataset_name, split_index, dataset_size):
 
 
 def write_result(handle, model_name, gen_name, meta_name, sctrain, sctest, complexity, elapsed, fidelity, bactest):
-    handle.write(
-        model_name + ",%s,%s,%s,%s,%s,%s,%s,%s\n"
-        % (gen_name, meta_name, sctrain, sctest, complexity, elapsed, fidelity, bactest)
+    row = ExperimentResult(
+        alg=model_name,
+        gen=gen_name,
+        met=meta_name,
+        tra=sctrain,
+        tes=sctest,
+        nle=complexity,
+        tme=elapsed,
+        fid=fidelity,
+        bac=bactest,
     )
+    writer = csv.DictWriter(handle, fieldnames=RESULT_FIELDS, lineterminator="\n")
+    writer.writerow(asdict(row))
 
 
 def write_meta(handle, key, value):
-    handle.write("%s,%s\n" % (key, value))
+    row = ExperimentMeta(alg=key, val=value)
+    writer = csv.DictWriter(handle, fieldnames=META_FIELDS, lineterminator="\n")
+    writer.writerow(asdict(row))
 
 
 def iter_experiment_args(config):
