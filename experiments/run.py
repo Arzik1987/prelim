@@ -71,12 +71,13 @@ from prelim.generators.munge import Gen_munge
 from prelim.generators.noise import Gen_noise
 from prelim.generators.part import Gen_part
 from prelim.generators.perfect import Gen_perfect
-from prelim.generators.rand import Gen_randn, Gen_randu
+from prelim.generators.rand import Gen_lhs, Gen_randn, Gen_randu
 from prelim.generators.rerx import Gen_rerx
 from prelim.generators.rfdens import Gen_rfdens
 from prelim.generators.smote import Gen_smote
 from prelim.generators.tabgan import Gen_tabgan
 from prelim.generators.tabddpm import Gen_tabddpm
+from prelim.generators.treedens import Gen_treedens
 from prelim.generators.tvae import Gen_tvae
 from prelim.generators.vva import Gen_vva
 
@@ -89,9 +90,11 @@ GENERATOR_FACTORIES = (
     Gen_copulagan,
     Gen_ctgan,
     Gen_forestdiffusion,
+    Gen_lhs,
     Gen_randu,
     Gen_randn,
     Gen_noise,
+    Gen_treedens,
     Gen_bayesnet,
     Gen_dummy,
     Gen_gmmbical,

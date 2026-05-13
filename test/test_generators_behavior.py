@@ -21,10 +21,11 @@ from prelim.generators.munge import Gen_munge
 from prelim.generators.noise import Gen_noise
 from prelim.generators.part import Gen_part
 from prelim.generators.perfect import Gen_perfect
-from prelim.generators.rand import Gen_randn, Gen_randu
+from prelim.generators.rand import Gen_lhs, Gen_randn, Gen_randu
 from prelim.generators.rerx import Gen_rerx
 from prelim.generators.rfdens import Gen_rfdens
 from prelim.generators.smote import Gen_smote
+from prelim.generators.treedens import Gen_treedens
 from prelim.generators.vva import Gen_vva as Gen_vva_legacy
 from prelim.generators.vva_p import Gen_vva as Gen_vva_proba
 
@@ -409,11 +410,31 @@ def test_randn_learns_location_and_covariance_and_samples_requested_shape():
     assert generator.my_name() == "randn"
 
 
+def test_lhs_stratifies_each_feature_and_samples_within_observed_bounds():
+    x = _clustered_sample()
+    generator = Gen_lhs(seed=2020).fit(x)
+
+    sample = generator.sample(n_samples=25)
+
+    assert sample.shape == (25, x.shape[1])
+    assert np.all(sample >= x.min(axis=0))
+    assert np.all(sample <= x.max(axis=0))
+    assert generator.my_name() == "lhs"
+
+    unit_sample = (sample - generator.minimum_) / generator.range_
+    strata = np.floor(unit_sample * len(sample)).astype(int)
+    strata = np.clip(strata, 0, len(sample) - 1)
+    for ind in range(sample.shape[1]):
+        assert set(strata[:, ind]) == set(range(len(sample)))
+
+
 @pytest.mark.parametrize(
     ("generator_a", "generator_b", "sample_kwargs"),
     [
         (Gen_randn(seed=2020), Gen_randn(seed=2020), {"n_samples": 25}),
         (Gen_randu(seed=2020), Gen_randu(seed=2020), {"n_samples": 25}),
+        (Gen_lhs(seed=2020), Gen_lhs(seed=2020), {"n_samples": 25}),
+        (Gen_treedens(n_estimators=5, seed=2020), Gen_treedens(n_estimators=5, seed=2020), {"n_samples": 20}),
         (Gen_noise(scale=0.3, seed=2020), Gen_noise(scale=0.3, seed=2020), {"n_samples": 25}),
         (Gen_perfect(seed=2020), Gen_perfect(seed=2020), {"n_samples": 10}),
         (Gen_kdeb(knn=5, seed=2020), Gen_kdeb(knn=5, seed=2020), {"n_samples": 20}),
@@ -624,6 +645,29 @@ Number of Rules  : \t2
 
 def test_part_generator_is_registered():
     assert build_generator("cmmpart", seed=2020).my_name() == "cmmpart"
+
+
+def test_lhs_generator_is_registered():
+    assert build_generator("lhs", seed=2020).my_name() == "lhs"
+
+
+def test_treedens_fit_populates_boxes_and_sample_stays_within_global_bounds():
+    x = _clustered_sample()
+    generator = Gen_treedens(n_estimators=5, seed=2020)
+
+    generator.fit(x)
+    sample = generator.sample(n_samples=25)
+
+    assert len(generator.boxes_) > 0
+    assert len(generator.boxes_) == len(generator.nsamples_)
+    assert sample.shape == (25, x.shape[1])
+    assert np.all(sample >= x.min(axis=0))
+    assert np.all(sample <= x.max(axis=0))
+    assert generator.my_name() == "treedens"
+
+
+def test_treedens_generator_is_registered():
+    assert build_generator("treedens", seed=2020).my_name() == "treedens"
 
 
 @pytest.mark.parametrize(

@@ -16,11 +16,12 @@ from .munge import Gen_munge
 from .noise import Gen_noise
 from .part import Gen_part
 from .perfect import Gen_perfect
-from .rand import Gen_randn, Gen_randu
+from .rand import Gen_lhs, Gen_randn, Gen_randu
 from .rerx import Gen_rerx
 from .rfdens import Gen_rfdens
 from .smote import Gen_smote
 from .tabgan import Gen_tabgan
+from .treedens import Gen_treedens
 from .tvae import Gen_tvae
 from .vva import Gen_vva as Gen_vva_legacy
 from .vva_p import Gen_vva as Gen_vva_proba
@@ -51,6 +52,7 @@ def build_generator(gen_name, seed=2020):
         "kde": (".kde", "Gen_kdebw"),
         "kdeb": (".kdeb", "Gen_kdeb"),
         "kdem": (".kdem", "Gen_kdebwm"),
+        "lhs": (".rand", "Gen_lhs"),
         "munge": (".munge", "Gen_munge"),
         "norm": (".rand", "Gen_randn"),
         "cmmpart": (".part", "Gen_part"),
@@ -59,6 +61,7 @@ def build_generator(gen_name, seed=2020):
         "tabgan": (".tabgan", "Gen_tabgan"),
         "tabddpm": (".tabddpm", "Gen_tabddpm"),
         "tabsyn": (".tabsyn", "Gen_tabsyn"),
+        "treedens": (".treedens", "Gen_treedens"),
         "tvae": (".tvae", "Gen_tvae"),
         "unif": (".rand", "Gen_randu"),
         "vva": (".vva_p", "Gen_vva"),
@@ -108,6 +111,7 @@ __all__ = [
     "Gen_noise",
     "Gen_part",
     "Gen_perfect",
+    "Gen_lhs",
     "Gen_randn",
     "Gen_randu",
     "Gen_rerx",
@@ -116,6 +120,7 @@ __all__ = [
     "Gen_tabgan",
     "Gen_tabddpm",
     "Gen_tabsyn",
+    "Gen_treedens",
     "Gen_tvae",
     "Gen_vva_legacy",
     "Gen_vva_proba",

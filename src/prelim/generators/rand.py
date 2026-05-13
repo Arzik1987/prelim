@@ -35,3 +35,26 @@ class Gen_randu(BaseGenerator):
 
     def sample(self, n_samples=1):
         return self.rng_.random_sample((n_samples, len(self.range_))) * self.range_ + self.minimum_
+
+
+class Gen_lhs(BaseGenerator):
+
+    def __init__(self, seed=2020):
+        super().__init__("lhs", seed=seed)
+        self.range_ = None
+        self.minimum_ = None
+
+    def fit(self, X, y=None, metamodel=None):
+        self.range_ = X.max(axis=0) - X.min(axis=0)
+        self.minimum_ = X.min(axis=0)
+        return self
+
+    def sample(self, n_samples=1):
+        ndim = len(self.range_)
+        sample = np.empty((n_samples, ndim))
+
+        for ind in range(ndim):
+            strata = (np.arange(n_samples) + self.rng_.random_sample(n_samples)) / n_samples
+            sample[:, ind] = self.rng_.permutation(strata)
+
+        return sample * self.range_ + self.minimum_
