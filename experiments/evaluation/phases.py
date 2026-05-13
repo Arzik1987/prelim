@@ -6,11 +6,11 @@ from sklearn.metrics import accuracy_score, balanced_accuracy_score
 from sklearn.model_selection import GridSearchCV
 from sklearn.tree import DecisionTreeClassifier
 
-from evaluation.helpers import get_bi_param, n_leaves, opt_param
+from .helpers import get_bi_param, n_leaves, opt_param
 from prelim.generators.vva import Gen_vva
 from prelim.sd.bi import BI
 from prelim.sd.prim import PRIM
-from results.artifacts import write_meta, write_result
+from ..results.artifacts import write_meta, write_result
 
 
 RULE_MODEL_NAMES = {"ripper", "irep"}

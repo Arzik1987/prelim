@@ -25,6 +25,14 @@ from .tvae import Gen_tvae
 from .vinecopula import Gen_vinecopula
 from .vva import Gen_vva as Gen_vva_legacy
 from .vva_p import Gen_vva as Gen_vva_proba
+from .registry import (
+    EXPERIMENT_GENERATOR_NAMES,
+    GENERATOR_SPECS,
+    PUBLIC_GENERATOR_NAMES,
+    build_generator,
+    get_generator_class,
+    make_generator_factory,
+)
 
 
 _LAZY_EXPORTS = {
@@ -33,51 +41,6 @@ _LAZY_EXPORTS = {
     "Gen_tabddpm": (".tabddpm", "Gen_tabddpm"),
     "Gen_tabsyn": (".tabsyn", "Gen_tabsyn"),
 }
-
-
-def build_generator(gen_name, seed=2020):
-    registry = {
-        "adasyn": (".adasyn", "Gen_adasyn"),
-        "bayesnet": (".bayesnet", "Gen_bayesnet"),
-        "binarydiffusion": (".binarydiffusion", "Gen_binarydiffusion"),
-        "class_gmm": (".gmm", "Gen_classgmm"),
-        "cmm": (".rfdens", "Gen_rfdens"),
-        "copulagan": (".copulagan", "Gen_copulagan"),
-        "ctgan": (".ctgan", "Gen_ctgan"),
-        "dummy": (".dummy", "Gen_dummy"),
-        "forestdiffusion": (".forestdiffusion", "Gen_forestdiffusion"),
-        "gaussiancopula": (".gaussiancopula", "Gen_gaussiancopula"),
-        "great": (".great", "Gen_great"),
-        "gmm": (".gmm", "Gen_gmmbic"),
-        "gmmal": (".gmm", "Gen_gmmbical"),
-        "kde": (".kde", "Gen_kdebw"),
-        "kdeb": (".kde", "Gen_kdeb"),
-        "kdem": (".kde", "Gen_kdebwm"),
-        "lhs": (".rand", "Gen_lhs"),
-        "munge": (".munge", "Gen_munge"),
-        "norm": (".rand", "Gen_randn"),
-        "cmmpart": (".part", "Gen_part"),
-        "rerx": (".rerx", "Gen_rerx"),
-        "rose": (".rose", "Gen_rose"),
-        "smote": (".smote", "Gen_smote"),
-        "tabgan": (".tabgan", "Gen_tabgan"),
-        "tabddpm": (".tabddpm", "Gen_tabddpm"),
-        "tabsyn": (".tabsyn", "Gen_tabsyn"),
-        "treedens": (".treedens", "Gen_treedens"),
-        "tvae": (".tvae", "Gen_tvae"),
-        "unif": (".rand", "Gen_randu"),
-        "vinecopula": (".vinecopula", "Gen_vinecopula"),
-        "vva": (".vva_p", "Gen_vva"),
-    }
-
-    try:
-        module_name, class_name = registry[gen_name]
-    except KeyError as exc:
-        valid_names = ", ".join(sorted(registry))
-        raise ValueError(f"Unknown gen_name '{gen_name}'. Expected one of: {valid_names}") from exc
-
-    module = import_module(module_name, __name__)
-    return getattr(module, class_name)(seed=seed)
 
 
 def __getattr__(name):
@@ -130,5 +93,10 @@ __all__ = [
     "Gen_vinecopula",
     "Gen_vva_legacy",
     "Gen_vva_proba",
+    "EXPERIMENT_GENERATOR_NAMES",
+    "GENERATOR_SPECS",
+    "PUBLIC_GENERATOR_NAMES",
     "build_generator",
+    "get_generator_class",
+    "make_generator_factory",
 ]

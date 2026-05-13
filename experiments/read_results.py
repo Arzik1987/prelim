@@ -1,9 +1,16 @@
 from pathlib import Path
+import sys
 
 
-READ_RESULTS_PATH = Path(__file__).with_name("results") / "read_results.py"
+if __package__ in {None, ""}:
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    __package__ = "experiments"
+    if __spec__ is not None and __spec__.parent != __package__:
+        __spec__ = None
 
-exec(
-    compile(READ_RESULTS_PATH.read_text(encoding="utf-8"), str(READ_RESULTS_PATH), "exec"),
-    globals(),
-)
+from .results.read_results import *  # noqa: F401,F403
+from .results.read_results import main
+
+
+if __name__ == "__main__":
+    main()

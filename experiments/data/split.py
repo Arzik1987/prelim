@@ -1,9 +1,9 @@
 import numpy as np
 from sklearn.preprocessing import StandardScaler
 
-from data.loader import load_data
-from data.splitter import DataSplitter
-from results.artifacts import result_paths, write_meta
+from .loader import load_data
+from .splitter import DataSplitter
+from ..results.artifacts import result_paths, write_meta
 
 
 def load_experiment_split(config, split_index, dataset_name, dataset_size, data_loader=load_data):

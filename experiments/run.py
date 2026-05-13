@@ -1,6 +1,8 @@
 # Prevent numpy multithreading: https://stackoverflow.com/questions/17053671/how-do-you-stop-numpy-from-multithreading
 from importlib.util import find_spec
 import os
+import sys
+from pathlib import Path
 os.environ.update(
     OMP_NUM_THREADS = '1',
     OPENBLAS_NUM_THREADS = '1',
@@ -13,18 +15,18 @@ import json
 import logging
 import time
 import traceback
-from dataclasses import dataclass
 
-import numpy as np
-import wittgenstein as lw
 from joblib import Parallel, delayed
-from sklearn.tree import DecisionTreeClassifier
 
-from data.split import load_experiment_split as prepare_experiment_split
-from data.split import write_default_classifier_metadata
-from data.loader import load_data
-from evaluation.helpers import get_new_test
-from evaluation.phases import (
+if __package__ in {None, ""}:
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    __package__ = "experiments"
+
+from .data.split import load_experiment_split as prepare_experiment_split
+from .data.split import write_default_classifier_metadata
+from .data.loader import load_data
+from .evaluation.helpers import get_new_test
+from .evaluation.phases import (
     evaluate_rerx,
     evaluate_sampled_generators,
     evaluate_ssl,
@@ -32,7 +34,7 @@ from evaluation.phases import (
     fit_generators_and_metamodels,
     fit_reference_models,
 )
-from results.artifacts import (
+from .results.artifacts import (
     iter_experiment_args,
     result_paths,
     shard_is_complete,
@@ -40,7 +42,7 @@ from results.artifacts import (
     write_manifest,
     write_meta,
 )
-from config import (
+from .config import (
     DEFAULT_DATASET_NAMES,
     DEFAULT_DATASET_SIZES,
     DEFAULT_VVA_GRID,
@@ -49,97 +51,21 @@ from config import (
     ensure_run_layout,
     parse_csv_list,
 )
-from metamodels.rf import Meta_rf
-from metamodels.rfb import Meta_rf_bal
-from metamodels.lgbm import Meta_lgbm
-from metamodels.lgbmb import Meta_lgbm_bal
-from metamodels.xgb import Meta_xgb
-from metamodels.xgbb import Meta_xgb_bal
-from prelim.generators.adasyn import Gen_adasyn
-from prelim.generators.bayesnet import Gen_bayesnet
-from prelim.generators.binarydiffusion import Gen_binarydiffusion
-from prelim.generators.copulagan import Gen_copulagan
-from prelim.generators.ctgan import Gen_ctgan
-from prelim.generators.dummy import Gen_dummy
-from prelim.generators.forestdiffusion import Gen_forestdiffusion
-from prelim.generators.gaussiancopula import Gen_gaussiancopula
-from prelim.generators.gmm import Gen_classgmm, Gen_gmmbic, Gen_gmmbical
-from prelim.generators.kde import Gen_kdeb, Gen_kdebw, Gen_kdebwm
-from prelim.generators.munge import Gen_munge
-from prelim.generators.noise import Gen_noise
-from prelim.generators.part import Gen_part
-from prelim.generators.perfect import Gen_perfect
-from prelim.generators.rand import Gen_lhs, Gen_randn, Gen_randu
-from prelim.generators.rerx import Gen_rerx
-from prelim.generators.rfdens import Gen_rfdens
-from prelim.generators.rose import Gen_rose
-from prelim.generators.smote import Gen_smote
-from prelim.generators.tabgan import Gen_tabgan
-from prelim.generators.tabddpm import Gen_tabddpm
-from prelim.generators.treedens import Gen_treedens
-from prelim.generators.tvae import Gen_tvae
-from prelim.generators.vinecopula import Gen_vinecopula
-from prelim.generators.vva import Gen_vva
-
-
-GENERATOR_FACTORIES = (
-    Gen_gmmbic,
-    Gen_classgmm,
-    Gen_kdebw,
-    Gen_munge,
-    Gen_gaussiancopula,
-    Gen_copulagan,
-    Gen_ctgan,
-    Gen_forestdiffusion,
-    Gen_lhs,
-    Gen_randu,
-    Gen_randn,
-    Gen_noise,
-    Gen_treedens,
-    Gen_vinecopula,
-    Gen_bayesnet,
-    Gen_dummy,
-    Gen_gmmbical,
-    Gen_perfect,
-    Gen_rose,
-    Gen_smote,
-    Gen_adasyn,
-    Gen_tabgan,
-    Gen_tvae,
-    Gen_rfdens,
-    Gen_part,
-    Gen_kdebwm,
-    Gen_kdeb,
+from .registries import (
+    BALANCED_METAMODEL_FACTORIES,
+    BALANCED_TREE_MODEL_FACTORIES,
+    GENERATOR_FACTORIES,
+    RULE_MODEL_FACTORIES,
+    STANDARD_METAMODEL_FACTORIES,
+    TREE_MODEL_FACTORIES,
+    Gen_binarydiffusion,
+    Gen_rerx,
+    Gen_tabddpm,
+    Gen_vva,
 )
+from .state import ExperimentState
+from .state import build_model_state as _build_model_state
 
-STANDARD_METAMODEL_FACTORIES = (
-    Meta_rf,
-    Meta_lgbm,
-    Meta_xgb,
-)
-
-BALANCED_METAMODEL_FACTORIES = (
-    Meta_rf_bal,
-    Meta_lgbm_bal,
-    Meta_xgb_bal,
-)
-
-TREE_MODEL_FACTORIES = (
-    ('dt', lambda: DecisionTreeClassifier(min_samples_split = 10)),
-    # one could restrict depth instead. Results will be worse, but
-    # ranking of generator's will not generally change (still kde is the best)
-    ('dtc', lambda: DecisionTreeClassifier(max_leaf_nodes = 8)),
-)
-
-BALANCED_TREE_MODEL_FACTORIES = (
-    ('dtb', lambda: DecisionTreeClassifier(min_samples_split = 10, class_weight = 'balanced')),
-    ('dtcb', lambda: DecisionTreeClassifier(max_leaf_nodes = 8, class_weight = 'balanced')),
-)
-
-RULE_MODEL_FACTORIES = (
-    ('ripper', lambda: lw.RIPPER(max_rules = 8)),
-    ('irep', lambda: lw.IREP(max_rules = 8)),
-)
 
 def build_generators():
     factories = list(GENERATOR_FACTORIES)
@@ -172,46 +98,14 @@ def is_balanced_metamodel(model):
     return isinstance(model, BALANCED_METAMODEL_FACTORIES)
 
 
-@dataclass
-class ExperimentState:
-    X: np.ndarray
-    y: np.ndarray
-    Xtest: np.ndarray
-    ytest: np.ndarray
-    ydeftest: np.ndarray
-    generators: list
-    genrerx: object
-    genvva: object
-    standard_metamodels: list
-    balanced_metamodels: list
-    all_metamodels: list
-    tree_models: dict
-    balanced_tree_models: dict
-    rule_models: dict
-    dtval: object
-    dtvalb: object
-    dtvalold: object
-    dtvalbold: object
-    bicv: object
-    primcv: object
-
-
 def build_model_state():
-    generators, genrerx, genvva = build_generators()
-    standard_metamodels, balanced_metamodels = build_metamodel_groups()
-    return {
-        'generators': generators,
-        'genrerx': genrerx,
-        'genvva': genvva,
-        'standard_metamodels': standard_metamodels,
-        'balanced_metamodels': balanced_metamodels,
-        'all_metamodels': standard_metamodels + balanced_metamodels,
-        'tree_models': build_tree_models(),
-        'balanced_tree_models': build_balanced_tree_models(),
-        'rule_models': build_rule_models(),
-        'dtval': DecisionTreeClassifier(),
-        'dtvalb': DecisionTreeClassifier(class_weight = 'balanced'),
-    }
+    return _build_model_state(
+        build_generators_fn=build_generators,
+        build_metamodel_groups_fn=build_metamodel_groups,
+        build_tree_models_fn=build_tree_models,
+        build_balanced_tree_models_fn=build_balanced_tree_models,
+        build_rule_models_fn=build_rule_models,
+    )
 
 
 def load_experiment_split(config, split_index, dataset_name, dataset_size):

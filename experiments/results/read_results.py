@@ -5,7 +5,7 @@ from dataclasses import dataclass
 import numpy as np
 import pandas as pd
 
-from config import read_latest_run_id, resolve_run_dir
+from ..config import read_latest_run_id, resolve_run_dir
 
 
 FILEPATH = os.path.dirname(os.path.abspath(__file__))
