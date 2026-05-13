@@ -4,35 +4,72 @@
 
 ### Installation
 
-Use the following commands to set up the environment and install the module `prelim`.
+This repository contains two pieces:
 
-With [Anaconda](https://www.anaconda.com/products/distribution):
+- `prelim`: the installable Python package under `src/prelim`.
+- `experiments/`: repo-local manuscript reproduction code with additional dependencies.
+
+For local development with the `prelim` package, create a virtual environment and install `prelim` in editable mode.
+
+With [uv](https://docs.astral.sh/uv/):
 ```
-conda create -n yourenv pip
-conda activate yourenv
-pip install git+https://github.com/Arzik1987/prelim
+uv venv
+source .venv/bin/activate
+uv pip install -e .
 ```
 
-With [venv](https://packaging.python.org/en/latest/guides/installing-using-pip-and-virtual-environments/)
+With the standard library [venv](https://packaging.python.org/en/latest/guides/installing-using-pip-and-virtual-environments/):
 ```
-python3 -m venv yourenv
-source yourenv/bin/activate
-pip install git+https://github.com/Arzik1987/prelim
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install -e .
+```
+
+To install directly from GitHub instead of a local checkout:
+```
+python -m pip install git+https://github.com/Arzik1987/prelim
+```
+
+The package currently keeps older dependency pins in `setup.cfg`; if you use a newer Python stack, run the tests after installing.
+
+To run the manuscript reproduction code, install the package first and then install the experiment-only requirements:
+```
+uv pip install -e .
+uv pip install -r experiments/requirements.txt
+```
+
+Then run experiment entry points from the repository root:
+```
+PYTHONPATH=src python experiments/experiments.py
+PYTHONPATH=src python experiments/read_results.py
 ```
 
 ### Testing the package contents
-Call <code>pytest</code> in the command line from the project root directory to run the generator tests. 
-To run tests, it is required to install the package locally.
+Call `pytest` from the project root after installing the package locally:
+```
+pytest
+```
+
+For source-level checks without installing, many tests can also be run with:
+```
+PYTHONPATH=src pytest
+```
 
 To remove generated local artifacts such as `__pycache__`, `.pytest_cache`, build directories, and egg-info metadata, run:
 ```
 python scripts/clean_artifacts.py
 ```
 
-### Exemplary Usage
+### Basic Usage
 
-`prelim` takes the target `rule_based_model` algorithm and uses a powerful `mediator` model coupled with a transfer set generator (here - `kde`) to fit a `wb_model` of the target model class.
-The resulting `wb_model` is often more accurate than the `rule_based_model` would have been if fitted directly to the train data.
+`prelim` trains an interpretable white-box model through a stronger mediator model:
+
+1. Fit or reuse a mediator model on the small training set.
+2. Generate extra feature rows with a transfer-set generator such as `kde`.
+3. Label those generated rows with the mediator.
+4. Fit the target interpretable model on the generated data plus the original data.
+
+In the example below, the mediator is a random forest and the interpretable target model is a small decision tree.
 
 ```python
 import numpy as np
@@ -66,83 +103,29 @@ wb_model = prelim(
 ) 
 ```
 
-The following code shows how the quality of the `wb_model' learned with `prelim' exceeds the quality of the `baseline_model', 
-which is the model of the same class but estimated directly from the train data without a mediator model and a transfer set.
+### Small Reproducible Demonstration
 
-```python
-import numpy as np
-import pandas as pd
-import seaborn as sns
-import sys
-from sklearn.tree import DecisionTreeClassifier
-from sklearn.ensemble import RandomForestClassifier
-from prelim.prelim import prelim
+The script below compares PRELIM against the same decision-tree model fitted directly on the small training data. It repeats a synthetic two-class problem across several sample sizes, saves the plot, and writes the summary numbers used here.
 
-# Function to compare PRELIM to a baseline model
-def small_exp(n_samples, cov=[[1, 0], [0, 1]], mean1=[0, 0], mean2=[1, 1]):
-    # Generate training data
-    X_train = np.vstack((
-        np.random.multivariate_normal(mean1, cov, n_samples),
-        np.random.multivariate_normal(mean2, cov, n_samples)
-    ))
-    y_train = np.hstack((np.zeros(n_samples), np.ones(n_samples))).astype(int)
-
-    # Generate testing data
-    X_test = np.vstack((
-        np.random.multivariate_normal(mean1, cov, 100 * n_samples),
-        np.random.multivariate_normal(mean2, cov, 100 * n_samples)
-    ))
-    y_test = np.hstack((np.zeros(100 * n_samples), np.ones(100 * n_samples))).astype(int)
-
-    # Train using PRELIM
-    wb_model = prelim(
-        X_train,
-        y_train,
-        RandomForestClassifier(),
-        DecisionTreeClassifier(max_leaf_nodes=8),
-        gen_name='kde',
-        new_size=100 * n_samples,
-        proba=False,
-        verbose=False
-    )
-
-    # Train baseline decision tree
-    baseline_model = DecisionTreeClassifier(max_leaf_nodes=8).fit(X_train, y_train)
-
-    return wb_model.score(X_test, y_test), baseline_model.score(X_test, y_test)
-
-# Run experiments
-repetitions = 30
-sample_sizes = [25, 50, 100, 200, 400]
-results = []
-experiment_counter = 0
-
-for _ in range(repetitions):
-    for size in sample_sizes:
-        experiment_counter += 1
-        sys.stdout.write(f'\rExperiment {experiment_counter}/{repetitions * len(sample_sizes)}')
-        acc_prelim, acc_baseline = small_exp(size)
-        results.append(pd.DataFrame([[size, acc_prelim, acc_baseline]]))
-
-# Aggregate results
-results_df = pd.concat(results)
-results_df.columns = ['Small data size', 'PRELIM', 'Baseline']
-
-# Reshape for plotting
-prelim_df = results_df[['Small data size', 'PRELIM']].copy()
-prelim_df['method'] = 'PRELIM'
-prelim_df.columns = ['Small data size', 'Accuracy', 'method']
-
-baseline_df = results_df[['Small data size', 'Baseline']].copy()
-baseline_df['method'] = 'Baseline'
-baseline_df.columns = ['Small data size', 'Accuracy', 'method']
-
-plot_df = pd.concat([prelim_df, baseline_df])
-
-# Plot the results
-sns.pointplot(x='Small data size', y='Accuracy', hue='method', data=plot_df)
+```bash
+PYTHONPATH=src python examples/readme_small_experiment.py
 ```
 
+![PRELIM vs. direct decision-tree fitting](docs/assets/readme-small-experiment.png)
+
+The plot shows mean test accuracy over 20 seeded repetitions. Error bars are standard errors. In this setting, PRELIM improves the decision tree most when the training set is smallest, because the tree is fitted on a mediator-labeled transfer set instead of only the original small sample.
+
+Summary from the generated run:
+
+| Training examples per class | PRELIM mean accuracy | Baseline mean accuracy | Mean improvement |
+| ---: | ---: | ---: | ---: |
+| 25 | 0.718 | 0.691 | +0.026 |
+| 50 | 0.730 | 0.715 | +0.015 |
+| 100 | 0.734 | 0.720 | +0.015 |
+| 200 | 0.744 | 0.728 | +0.017 |
+| 400 | 0.743 | 0.737 | +0.007 |
+
+Across all runs, PRELIM averaged `0.734` accuracy versus `0.718` for the direct decision-tree baseline, an average improvement of `+0.016`.
 
 ### Reproducing the Experiments
 See respective description in the subdirectory `experiments`.
