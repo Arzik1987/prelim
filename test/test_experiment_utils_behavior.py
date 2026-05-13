@@ -18,7 +18,7 @@ def _load_utils_module(module_basename):
     module_name = f"test_{module_basename}_runner"
     if module_name in sys.modules:
         del sys.modules[module_name]
-    module_dir = DATA_DIR if module_basename in {"loader", "splitter"} else EVAL_DIR
+    module_dir = DATA_DIR if module_basename in {"loader", "partitioner"} else EVAL_DIR
     spec = importlib.util.spec_from_file_location(module_name, module_dir / f"{module_basename}.py")
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -83,40 +83,40 @@ def test_load_data_converts_jm1_missing_markers_and_drops_nan_rows(tmp_path):
     assert y.tolist() == [1]
 
 
-def test_data_splitter_requires_fit_before_configure():
-    module = _load_utils_module("splitter")
-    splitter = module.DataSplitter(seed=7)
+def test_data_partitioner_requires_fit_before_configure():
+    module = _load_utils_module("partitioner")
+    partitioner = module.DataSplitter(seed=7)
 
     with pytest.raises(NotFittedError):
-        splitter.configure(2, 1)
+        partitioner.configure(2, 1)
 
 
-def test_data_splitter_validates_configuration_and_returns_copies():
-    module = _load_utils_module("splitter")
+def test_data_partitioner_validates_configuration_and_returns_copies():
+    module = _load_utils_module("partitioner")
     X = np.arange(20, dtype=float).reshape(10, 2)
     y = np.arange(10, dtype=int)
-    splitter = module.DataSplitter(seed=11).fit(X, y)
+    partitioner = module.DataSplitter(seed=11).fit(X, y)
 
     with pytest.raises(ValueError, match="nparts must be positive"):
-        splitter.configure(0, 2)
+        partitioner.configure(0, 2)
     with pytest.raises(ValueError, match="npoints must be positive"):
-        splitter.configure(2, 0)
+        partitioner.configure(2, 0)
     with pytest.raises(ValueError, match="at most the fitted sample size"):
-        splitter.configure(2, 11)
+        partitioner.configure(2, 11)
 
-    returned = splitter.configure(3, 2)
-    Xtrain, ytrain = splitter.get_train(1)
-    Xtest, ytest = splitter.get_test(1)
+    returned = partitioner.configure(3, 2)
+    Xtrain, ytrain = partitioner.get_train(1)
+    Xtest, ytest = partitioner.get_test(1)
 
-    assert returned is splitter
+    assert returned is partitioner
     assert Xtrain.shape == (2, 2)
     assert ytrain.shape == (2,)
     assert Xtest.shape == (8, 2)
     assert ytest.shape == (8,)
 
-    original_value = splitter.X_[splitter.startpts_[1], 0]
+    original_value = partitioner.X_[partitioner.startpts_[1], 0]
     Xtrain[0, 0] = -999.0
-    assert splitter.X_[splitter.startpts_[1], 0] == original_value
+    assert partitioner.X_[partitioner.startpts_[1], 0] == original_value
 
 
 def test_opt_param_averages_only_split_scores():

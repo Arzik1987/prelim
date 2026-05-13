@@ -2,22 +2,22 @@ import numpy as np
 from sklearn.preprocessing import StandardScaler
 
 from .loader import load_data
-from .splitter import DataSplitter
+from .partitioner import DataSplitter
 from ..results.artifacts import result_paths, write_meta
 
 
 def load_experiment_split(config, split_index, dataset_name, dataset_size, data_loader=load_data):
     paths = result_paths(config, dataset_name, split_index, dataset_size)
     X, y = data_loader(dataset_name)
-    splitter = DataSplitter(seed=config.split_seed)
-    splitter.fit(X, y)
-    splitter.configure(config.nsets, dataset_size)
-    X, y = splitter.get_train(split_index)
+    partitioner = DataSplitter(seed=config.split_seed)
+    partitioner.fit(X, y)
+    partitioner.configure(config.nsets, dataset_size)
+    X, y = partitioner.get_train(split_index)
     if y.sum() == 0:
         open(paths["zeros"], "a", encoding="utf-8").close()
         return None
 
-    Xtest, ytest = splitter.get_test(split_index)
+    Xtest, ytest = partitioner.get_test(split_index)
     variable_mask = X.max(axis=0) != X.min(axis=0)
     Xtest = Xtest[:, variable_mask]
     X = X[:, variable_mask]

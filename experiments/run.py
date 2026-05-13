@@ -22,8 +22,8 @@ if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
     __package__ = "experiments"
 
-from .data.split import load_experiment_split as prepare_experiment_split
-from .data.split import write_default_classifier_metadata
+from .data.preparation import load_experiment_split as prepare_experiment_split
+from .data.preparation import write_default_classifier_metadata
 from .data.loader import load_data
 from .evaluation.helpers import get_new_test
 from .evaluation.baselines import fit_reference_models
@@ -218,7 +218,7 @@ def parse_args():
     parser.add_argument('--datasets', default = ','.join(DEFAULT_DATASET_NAMES), help = 'Comma-separated dataset names.')
     parser.add_argument('--sizes', default = ','.join(str(size) for size in DEFAULT_DATASET_SIZES), help = 'Comma-separated dataset sizes.')
     parser.add_argument('--nsets', type = int, default = 25, help = 'Number of train/test splits per dataset size.')
-    parser.add_argument('--split-seed', type = int, default = 2020, help = 'Seed used by the data splitter.')
+    parser.add_argument('--split-seed', type = int, default = 2020, help = 'Seed used by the data partitioner.')
     parser.add_argument('--jobs', type = int, default = os.cpu_count() or 1, help = 'Parallel worker count.')
     parser.add_argument('--generated-sample-size', type = int, default = 100000, help = 'Synthetic sample size used for generator evaluation.')
     parser.add_argument('--rules-sample-size', type = int, default = 10000, help = 'Maximum sample size used for rule learners.')
