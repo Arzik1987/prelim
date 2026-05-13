@@ -69,6 +69,7 @@ from prelim.generators.kdeb import Gen_kdeb
 from prelim.generators.kdem import Gen_kdebwm
 from prelim.generators.munge import Gen_munge
 from prelim.generators.noise import Gen_noise
+from prelim.generators.part import Gen_part
 from prelim.generators.perfect import Gen_perfect
 from prelim.generators.rand import Gen_randn, Gen_randu
 from prelim.generators.rerx import Gen_rerx
@@ -100,6 +101,7 @@ GENERATOR_FACTORIES = (
     Gen_tabgan,
     Gen_tvae,
     Gen_rfdens,
+    Gen_part,
     Gen_kdebwm,
     Gen_kdeb,
 )

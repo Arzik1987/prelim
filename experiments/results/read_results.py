@@ -158,6 +158,7 @@ def change_names(data):
         'dtb': 'DT',
         'adasyn': 'ADASYN',
         'cmmrf': 'CMM',
+        'cmmpart': 'CMMPART',
         'dummy': 'DUMMY',
         'gmm': 'GMM',
         'gmmal': 'GMMAL',

@@ -3,30 +3,35 @@ from importlib import import_module
 from .adasyn import Gen_adasyn
 from .base import BaseGenerator
 from .bayesnet import Gen_bayesnet
-from .binarydiffusion import Gen_binarydiffusion
 from .copulagan import Gen_copulagan
 from .ctgan import Gen_ctgan
 from .dummy import Gen_dummy
 from .forestdiffusion import Gen_forestdiffusion
 from .gaussiancopula import Gen_gaussiancopula
-from .great import Gen_great
 from .gmm import Gen_gmm, Gen_gmmbic, Gen_gmmbical
 from .kde import Gen_kdebw, Gen_kdebwhl
 from .kdeb import Gen_kdeb
 from .kdem import Gen_kdebwm
 from .munge import Gen_munge
 from .noise import Gen_noise
+from .part import Gen_part
 from .perfect import Gen_perfect
 from .rand import Gen_randn, Gen_randu
 from .rerx import Gen_rerx
 from .rfdens import Gen_rfdens
 from .smote import Gen_smote
 from .tabgan import Gen_tabgan
-from .tabddpm import Gen_tabddpm
-from .tabsyn import Gen_tabsyn
 from .tvae import Gen_tvae
 from .vva import Gen_vva as Gen_vva_legacy
 from .vva_p import Gen_vva as Gen_vva_proba
+
+
+_LAZY_EXPORTS = {
+    "Gen_binarydiffusion": (".binarydiffusion", "Gen_binarydiffusion"),
+    "Gen_great": (".great", "Gen_great"),
+    "Gen_tabddpm": (".tabddpm", "Gen_tabddpm"),
+    "Gen_tabsyn": (".tabsyn", "Gen_tabsyn"),
+}
 
 
 def build_generator(gen_name, seed=2020):
@@ -48,6 +53,7 @@ def build_generator(gen_name, seed=2020):
         "kdem": (".kdem", "Gen_kdebwm"),
         "munge": (".munge", "Gen_munge"),
         "norm": (".rand", "Gen_randn"),
+        "cmmpart": (".part", "Gen_part"),
         "rerx": (".rerx", "Gen_rerx"),
         "smote": (".smote", "Gen_smote"),
         "tabgan": (".tabgan", "Gen_tabgan"),
@@ -66,6 +72,18 @@ def build_generator(gen_name, seed=2020):
 
     module = import_module(module_name, __name__)
     return getattr(module, class_name)(seed=seed)
+
+
+def __getattr__(name):
+    try:
+        module_name, class_name = _LAZY_EXPORTS[name]
+    except KeyError as exc:
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}") from exc
+
+    module = import_module(module_name, __name__)
+    value = getattr(module, class_name)
+    globals()[name] = value
+    return value
 
 
 __all__ = [
@@ -88,6 +106,7 @@ __all__ = [
     "Gen_kdebwm",
     "Gen_munge",
     "Gen_noise",
+    "Gen_part",
     "Gen_perfect",
     "Gen_randn",
     "Gen_randu",
