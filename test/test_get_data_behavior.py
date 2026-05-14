@@ -59,6 +59,22 @@ def test_plain_download_creates_dataset_directory(monkeypatch, tmp_path):
     assert (tmp_path / "clean2").is_dir()
 
 
+def test_plain_download_skips_when_prepared_file_exists(monkeypatch, tmp_path):
+    module = _load_get_data_module()
+    prepared_path = tmp_path / "clean2" / "clean2.tsv.gz"
+    prepared_path.parent.mkdir()
+    prepared_path.write_text("already prepared", encoding="utf-8")
+
+    def fail_download(url, output_path, dname):
+        raise AssertionError("download should be skipped")
+
+    monkeypatch.setattr(module, "download_url", fail_download)
+
+    module.get_single("clean2", data_dir=tmp_path)
+
+    assert prepared_path.read_text(encoding="utf-8") == "already prepared"
+
+
 def test_zip_dataset_extracts_and_cleans_archive(monkeypatch, tmp_path):
     module = _load_get_data_module()
 
@@ -110,3 +126,19 @@ def test_converter_path_writes_csv(monkeypatch, tmp_path):
 
     result = pd.read_csv(tmp_path / "bankruptcy" / "3year.csv", header=None)
     assert result.values.tolist() == [[1, 2], [3, 4]]
+
+
+def test_converted_dataset_skips_when_prepared_csv_exists(monkeypatch, tmp_path):
+    module = _load_get_data_module()
+    prepared_path = tmp_path / "dry" / "Dry_Bean_Dataset.csv"
+    prepared_path.parent.mkdir()
+    prepared_path.write_text("prepared csv", encoding="utf-8")
+
+    def fail_download(url, output_path, dname):
+        raise AssertionError("download should be skipped")
+
+    monkeypatch.setattr(module, "download_url", fail_download)
+
+    module.get_single("dry", data_dir=tmp_path)
+
+    assert prepared_path.read_text(encoding="utf-8") == "prepared csv"

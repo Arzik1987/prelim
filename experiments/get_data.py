@@ -130,6 +130,7 @@ class DatasetSpec:
     url: str
     download_relpath: str
     extract_relpath: str | None = None
+    prepared_relpaths: tuple[str, ...] = ()
     rename_pairs: tuple[tuple[str, str], ...] = ()
     converter: object = None
     cleanup_download: bool = False
@@ -140,30 +141,35 @@ DATASET_SPECS = {
         url="https://archive.ics.uci.edu/ml/machine-learning-databases/00406/Anuran%20Calls%20(MFCCs).zip",
         download_relpath="anuran.zip",
         extract_relpath="anuran",
+        prepared_relpaths=("anuran/Frogs_MFCCs.csv",),
         cleanup_download=True,
     ),
     "avila": DatasetSpec(
         url="https://archive.ics.uci.edu/ml/machine-learning-databases/00459/avila.zip",
         download_relpath="avila.zip",
         extract_relpath=".",
+        prepared_relpaths=("avila/avila-tr.txt", "avila/avila-ts.txt"),
         cleanup_download=True,
     ),
     "bankruptcy": DatasetSpec(
         url="https://archive.ics.uci.edu/ml/machine-learning-databases/00365/data.zip",
         download_relpath="bankruptcy.zip",
         extract_relpath="bankruptcy",
+        prepared_relpaths=("bankruptcy/3year.csv",),
         converter=convert_bankruptcy,
         cleanup_download=True,
     ),
     "cc": DatasetSpec(
         url="https://archive.ics.uci.edu/ml/machine-learning-databases/00350/default%20of%20credit%20card%20clients.xls",
         download_relpath="cc/default of credit card clients.xls",
+        prepared_relpaths=("cc/default_of_credit_card_clients.csv",),
         converter=convert_cc,
     ),
     "ccpp": DatasetSpec(
         url="http://archive.ics.uci.edu/ml/machine-learning-databases/00294/CCPP.zip",
         download_relpath="ccpp.zip",
         extract_relpath=".",
+        prepared_relpaths=("ccpp/Folds5x2_pp.csv",),
         rename_pairs=(("CCPP", "ccpp"),),
         converter=convert_ccpp,
         cleanup_download=True,
@@ -176,6 +182,7 @@ DATASET_SPECS = {
         url="https://archive.ics.uci.edu/ml/machine-learning-databases/00602/DryBeanDataset.zip",
         download_relpath="dry.zip",
         extract_relpath=".",
+        prepared_relpaths=("dry/Dry_Bean_Dataset.csv",),
         rename_pairs=(("DryBeanDataset", "dry"),),
         converter=convert_dry,
         cleanup_download=True,
@@ -204,6 +211,7 @@ DATASET_SPECS = {
         url="https://archive.ics.uci.edu/ml/machine-learning-databases/00372/HTRU2.zip",
         download_relpath="htru.zip",
         extract_relpath="htru",
+        prepared_relpaths=("htru/HTRU_2.csv",),
         cleanup_download=True,
     ),
     "jm1": DatasetSpec(
@@ -214,6 +222,7 @@ DATASET_SPECS = {
         url="https://archive.ics.uci.edu/ml/machine-learning-databases/00249/ml-prove.tar.gz",
         download_relpath="ml.tar.gz",
         extract_relpath=".",
+        prepared_relpaths=("ml/train.csv", "ml/test.csv", "ml/validation.csv"),
         rename_pairs=(("ml-prove", "ml"),),
         cleanup_download=True,
     ),
@@ -225,6 +234,11 @@ DATASET_SPECS = {
         url="http://archive.ics.uci.edu/ml/machine-learning-databases/00357/occupancy_data.zip",
         download_relpath="occupancy.zip",
         extract_relpath="occupancy",
+        prepared_relpaths=(
+            "occupancy/datatest.txt",
+            "occupancy/datatest2.txt",
+            "occupancy/datatraining.txt",
+        ),
         cleanup_download=True,
     ),
     "parkinson": DatasetSpec(
@@ -271,6 +285,13 @@ DATASET_SPECS = {
         url="https://archive.ics.uci.edu/ml/machine-learning-databases/00551/pp_gas_emission.zip",
         download_relpath="turbine.zip",
         extract_relpath="turbine",
+        prepared_relpaths=(
+            "turbine/gt_2011.csv",
+            "turbine/gt_2012.csv",
+            "turbine/gt_2013.csv",
+            "turbine/gt_2014.csv",
+            "turbine/gt_2015.csv",
+        ),
         cleanup_download=True,
     ),
     "wine": DatasetSpec(
@@ -311,8 +332,26 @@ def apply_renames(data_dir, rename_pairs):
         (data_dir / source_relpath).rename(data_dir / target_relpath)
 
 
+def get_prepared_relpaths(dataset_name, spec):
+    relpaths = spec.prepared_relpaths or (spec.download_relpath,)
+    extra_relpaths = tuple(
+        extra_relpath for _extra_url, extra_relpath in EXTRA_DOWNLOADS.get(dataset_name, ())
+    )
+    return relpaths + extra_relpaths
+
+
+def is_prepared(dataset_name, spec, data_dir):
+    return all(
+        (data_dir / relpath).is_file() for relpath in get_prepared_relpaths(dataset_name, spec)
+    )
+
+
 def materialize_dataset(dataset_name, spec, data_dir):
     data_dir.mkdir(parents=True, exist_ok=True)
+    if is_prepared(dataset_name, spec, data_dir):
+        print("%s already exists in prepared form; skipping download." % dataset_name)
+        return
+
     download_path = data_dir / spec.download_relpath
     ensure_parent(download_path)
     download_url(spec.url, download_path, dataset_name)
