@@ -3,42 +3,42 @@
     "100": {
       "Baseline_mean": 0.7196925000000001,
       "Baseline_std": 0.016293106994257282,
-      "Difference_mean": 0.014582499999999943,
-      "PRELIM_mean": 0.734275,
-      "PRELIM_std": 0.010962669911063984
+      "Difference_mean": 0.01524749999999997,
+      "PRELIM_mean": 0.73494,
+      "PRELIM_std": 0.009162776527025554
     },
     "200": {
       "Baseline_mean": 0.72762875,
       "Baseline_std": 0.015386133698800646,
-      "Difference_mean": 0.01662874999999997,
-      "PRELIM_mean": 0.7442575,
-      "PRELIM_std": 0.00885985215808694
+      "Difference_mean": 0.016398749999999906,
+      "PRELIM_mean": 0.7440275,
+      "PRELIM_std": 0.00822220557233181
     },
     "25": {
       "Baseline_mean": 0.6913400000000001,
       "Baseline_std": 0.03271111834159595,
-      "Difference_mean": 0.02617999999999998,
-      "PRELIM_mean": 0.71752,
-      "PRELIM_std": 0.025614338090012657
+      "Difference_mean": 0.026019999999999932,
+      "PRELIM_mean": 0.71736,
+      "PRELIM_std": 0.02660942452749044
     },
     "400": {
       "Baseline_mean": 0.736741875,
       "Baseline_std": 0.008986907760847065,
-      "Difference_mean": 0.006510624999999992,
-      "PRELIM_mean": 0.7432525,
-      "PRELIM_std": 0.005805709247664846
+      "Difference_mean": 0.007089375000000064,
+      "PRELIM_mean": 0.74383125,
+      "PRELIM_std": 0.007991921805469364
     },
     "50": {
       "Baseline_mean": 0.71482,
       "Baseline_std": 0.018147773533150724,
-      "Difference_mean": 0.01503499999999991,
-      "PRELIM_mean": 0.7298549999999999,
-      "PRELIM_std": 0.01143445738937681
+      "Difference_mean": 0.01495499999999994,
+      "PRELIM_mean": 0.729775,
+      "PRELIM_std": 0.014005182311521227
     }
   },
   "overall_mean": {
     "Baseline": 0.7180446250000001,
-    "Difference": 0.015787375,
-    "PRELIM": 0.733832
+    "Difference": 0.015942124999999994,
+    "PRELIM": 0.7339867499999998
   }
 }

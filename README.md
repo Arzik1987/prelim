@@ -1,6 +1,6 @@
-## PRELIM &mdash; **P**edagogical **R**ule **E**xtraction to **L**earn **I**nterpretable **M**odels
+## PRELIM
 
-`prelim` is the python module that allows one to learn better comprehensible rule-based models (e.g., decision trees, classification rules, subgroups) from small datasets. Besides the distribution of `prelim`, this folder also contains the subdirectory `experiments` with the code to reproduce the experiments from the manuscript.
+`prelim` is a Python package for improving decision-tree-like interpretable models trained on small datasets. It uses a stronger mediator model and a generated transfer set to give tree-based models, rules, and related simple classifiers better training data than the raw small sample alone. The example below shows this for a scikit-learn decision tree, and this repository also contains `experiments/`, the code used to reproduce the manuscript results.
 
 ### Installation
 
@@ -62,14 +62,14 @@ python scripts/clean_artifacts.py
 
 ### Basic Usage
 
-`prelim` trains an interpretable white-box model through a stronger mediator model:
+`prelim` trains an interpretable model through a stronger mediator model:
 
 1. Fit or reuse a mediator model on the small training set.
 2. Generate extra feature rows with a transfer-set generator such as `kde`.
 3. Label those generated rows with the mediator.
 4. Fit the target interpretable model on the generated data plus the original data.
 
-In the example below, the mediator is a random forest and the interpretable target model is a small decision tree.
+In the example below, the mediator is a random forest and the target is a small scikit-learn decision tree.
 
 ```python
 import numpy as np
@@ -86,16 +86,15 @@ X_class1 = np.random.multivariate_normal([1, 1], covariance_matrix, n_samples)
 X = np.vstack((X_class0, X_class1))
 y = np.hstack((np.zeros(n_samples), np.ones(n_samples))).astype(int)
 
-# Define models
 mediator = RandomForestClassifier()
-rule_based_model = DecisionTreeClassifier(max_leaf_nodes=8)
+student_tree = DecisionTreeClassifier(max_leaf_nodes=8)
 
 # Train using Prelim
 wb_model = prelim(
     X,
     y,
     mediator,
-    rule_based_model,
+    student_tree,
     gen_name='kde',
     new_size=2000,
     proba=False,
@@ -105,7 +104,7 @@ wb_model = prelim(
 
 ### Small Reproducible Demonstration
 
-The script below compares PRELIM against the same decision-tree model fitted directly on the small training data. It repeats a synthetic two-class problem across several sample sizes, saves the plot, and writes the summary numbers used here.
+The script below compares PRELIM against the same scikit-learn decision tree fitted directly on the small training data. It repeats a synthetic two-class problem across several sample sizes, saves the plot, and writes the summary numbers used here.
 
 ```bash
 PYTHONPATH=src python examples/readme_small_experiment.py
@@ -113,17 +112,17 @@ PYTHONPATH=src python examples/readme_small_experiment.py
 
 ![PRELIM vs. direct decision-tree fitting](docs/assets/readme-small-experiment.png)
 
-The plot shows mean test accuracy over 20 seeded repetitions. Error bars are standard errors. In this setting, PRELIM improves the decision tree most when the training set is smallest, because the tree is fitted on a mediator-labeled transfer set instead of only the original small sample.
+The plot shows mean test accuracy over 20 seeded repetitions. Error bars are standard errors. The PRELIM curve stays above the direct decision-tree baseline across all sample sizes shown, with the biggest gain at the smallest training set. That happens because PRELIM augments the limited training data with mediator-labeled synthetic samples before fitting the final tree.
 
 Summary from the generated run:
 
 | Training examples per class | PRELIM mean accuracy | Baseline mean accuracy | Mean improvement |
 | ---: | ---: | ---: | ---: |
-| 25 | 0.718 | 0.691 | +0.026 |
+| 25 | 0.717 | 0.691 | +0.026 |
 | 50 | 0.730 | 0.715 | +0.015 |
-| 100 | 0.734 | 0.720 | +0.015 |
-| 200 | 0.744 | 0.728 | +0.017 |
-| 400 | 0.743 | 0.737 | +0.007 |
+| 100 | 0.735 | 0.720 | +0.015 |
+| 200 | 0.744 | 0.728 | +0.016 |
+| 400 | 0.744 | 0.737 | +0.007 |
 
 Across all runs, PRELIM averaged `0.734` accuracy versus `0.718` for the direct decision-tree baseline, an average improvement of `+0.016`.
 

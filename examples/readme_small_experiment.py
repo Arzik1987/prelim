@@ -37,7 +37,7 @@ def small_exp(n_samples, seed):
         mediator,
         tree,
         gen_name="kde",
-        new_size=100 * n_samples,
+        new_size=250 * n_samples,
         proba=False,
         verbose=False,
         seed=seed,
