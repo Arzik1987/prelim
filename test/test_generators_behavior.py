@@ -908,6 +908,10 @@ def test_vinecopula_is_excluded_from_experiment_generators():
     assert "vinecopula" not in EXPERIMENT_GENERATOR_NAMES
 
 
+def test_forestdiffusion_is_excluded_from_experiment_generators():
+    assert "forestdiffusion" not in EXPERIMENT_GENERATOR_NAMES
+
+
 def test_binarydiffusion_is_excluded_from_experiment_generators():
     assert "binarydiffusion" not in EXPERIMENT_GENERATOR_NAMES
 

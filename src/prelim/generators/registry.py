@@ -53,7 +53,6 @@ EXPERIMENT_GENERATOR_NAMES = (
     "gaussiancopula",
     "copulagan",
     "ctgan",
-    "forestdiffusion",
     "lhs",
     "unif",
     "norm",

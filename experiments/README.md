@@ -14,6 +14,51 @@ Internal layout:
 - `results/`: artifact paths and result post-processing
 - `metamodels/`: experiment-local metamodel wrappers
 
+### Generator Sets
+The default experiment sweep uses `EXPERIMENT_GENERATOR_NAMES` from `src/prelim/generators/registry.py`:
+```text
+gmm
+class_gmm
+kde
+munge
+gaussiancopula
+copulagan
+ctgan
+lhs
+unif
+norm
+noise
+treedens
+bayesnet
+dummy
+gmmal
+perfect
+rose
+smote
+adasyn
+tabgan
+tvae
+cmm
+cmmpart
+kdem
+kdeb
+```
+
+Implemented generators that are not part of `EXPERIMENT_GENERATOR_NAMES`:
+- `binarydiffusion`
+- `forestdiffusion`
+- `great`
+- `rerx`
+- `tabddpm`
+- `tabsyn`
+- `vinecopula`
+- `vva`
+
+Notes:
+- `forestdiffusion` and `binarydiffusion` are excluded from the default sweep because fitting them is prohibitively slow in the current experiment setup.
+- `rerx` and `vva` are implemented as separate evaluation paths, not as standard sweep generators.
+- `great`, `tabddpm`, `tabsyn`, and `vinecopula` are implemented backends that are available through the generator API, but they are not part of the default experiment sweep.
+
 The CLI entry points remain:
 - `experiments.py`
 - `read_results.py`
