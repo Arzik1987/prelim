@@ -58,7 +58,6 @@ EXPERIMENT_GENERATOR_NAMES = (
     "norm",
     "noise",
     "treedens",
-    "bayesnet",
     "dummy",
     "gmmal",
     "perfect",

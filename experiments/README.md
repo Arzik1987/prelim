@@ -29,7 +29,6 @@ unif
 norm
 noise
 treedens
-bayesnet
 dummy
 gmmal
 perfect
@@ -45,6 +44,7 @@ kdeb
 ```
 
 Implemented generators that are not part of `EXPERIMENT_GENERATOR_NAMES`:
+- `bayesnet`
 - `binarydiffusion`
 - `forestdiffusion`
 - `great`
@@ -55,9 +55,8 @@ Implemented generators that are not part of `EXPERIMENT_GENERATOR_NAMES`:
 - `vva`
 
 Notes:
-- `forestdiffusion` and `binarydiffusion` are excluded from the default sweep because fitting them is prohibitively slow in the current experiment setup.
 - `rerx` and `vva` are implemented as separate evaluation paths, not as standard sweep generators.
-- `great`, `tabddpm`, `tabsyn`, and `vinecopula` are implemented backends that are available through the generator API, but they are not part of the default experiment sweep.
+- `bayesnet`, `binarydiffusion`, `forestdiffusion`, `great`, `tabddpm`, `tabsyn`, and `vinecopula` are implemented backends that are available through the generator API, but they are excluded from the default experiment sweep because fitting them is prohibitively slow in the current experiment setup.
 
 The CLI entry points remain:
 - `experiments.py`

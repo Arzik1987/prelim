@@ -916,6 +916,10 @@ def test_binarydiffusion_is_excluded_from_experiment_generators():
     assert "binarydiffusion" not in EXPERIMENT_GENERATOR_NAMES
 
 
+def test_bayesnet_is_excluded_from_experiment_generators():
+    assert "bayesnet" not in EXPERIMENT_GENERATOR_NAMES
+
+
 def test_vva_proba_returns_empty_sample_for_r_zero_and_out_of_range_r_fails():
     x = _clustered_sample()
     generator = Gen_vva_proba().fit(x, _LinearProbabilityMeta())
