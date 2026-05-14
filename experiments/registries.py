@@ -14,6 +14,7 @@ from prelim.generators import EXPERIMENT_GENERATOR_NAMES, get_generator_class, m
 
 
 GENERATOR_FACTORIES = tuple(make_generator_factory(name) for name in EXPERIMENT_GENERATOR_NAMES)
+GENERATOR_FACTORIES_BY_NAME = {name: make_generator_factory(name) for name in EXPERIMENT_GENERATOR_NAMES}
 Gen_rerx = get_generator_class("rerx")
 Gen_tabddpm = get_generator_class("tabddpm")
 Gen_vva = get_generator_class("vva_legacy")
@@ -58,8 +59,11 @@ RULE_MODEL_FACTORIES = (
 )
 
 
-def build_generators():
-    factories = list(GENERATOR_FACTORIES)
+def build_generators(generator_names=None):
+    if generator_names is None:
+        factories = list(GENERATOR_FACTORIES)
+    else:
+        factories = [GENERATOR_FACTORIES_BY_NAME[name] for name in generator_names]
     if os.environ.get("TABDDPM_REPO_PATH"):
         factories.append(Gen_tabddpm)
     return [factory() for factory in factories], Gen_rerx(), Gen_vva()

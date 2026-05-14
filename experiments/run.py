@@ -56,6 +56,7 @@ from .registries import (
     BALANCED_METAMODEL_FACTORIES,
     BALANCED_METAMODEL_FACTORIES_BY_NAME,
     BALANCED_TREE_MODEL_FACTORIES,
+    build_generators as build_registry_generators,
     GENERATOR_FACTORIES,
     RULE_MODEL_FACTORIES,
     STANDARD_METAMODEL_FACTORIES,
@@ -67,13 +68,11 @@ from .registries import (
 )
 from .state import ExperimentState
 from .state import build_model_state as _build_model_state
+from prelim.generators.registry import EXPERIMENT_GENERATOR_NAMES
 
 
-def build_generators():
-    factories = list(GENERATOR_FACTORIES)
-    if os.environ.get("TABDDPM_REPO_PATH"):
-        factories.append(Gen_tabddpm)
-    return [factory() for factory in factories], Gen_rerx(), Gen_vva()
+def build_generators(generator_names=None):
+    return build_registry_generators(generator_names)
 
 
 def _resolve_named_factories(selected_names, factories_by_name, kind):
@@ -127,7 +126,7 @@ def is_balanced_metamodel(model):
 
 def build_model_state(config=None):
     return _build_model_state(
-        build_generators_fn=build_generators,
+        build_generators_fn=lambda: build_generators(config.generator_names if config is not None else None),
         build_metamodel_groups_fn=lambda: build_metamodel_groups(config),
         build_tree_models_fn=build_tree_models,
         build_balanced_tree_models_fn=build_balanced_tree_models,
@@ -251,6 +250,7 @@ def parse_args():
     parser.add_argument('--rules-sample-size', type = int, default = 10000, help = 'Maximum sample size used for rule learners.')
     parser.add_argument('--ssl-pool-size', type = int, default = 10000, help = 'Maximum unlabeled pool size used in SSL evaluation.')
     parser.add_argument('--vva-grid', default = ','.join(str(value) for value in DEFAULT_VVA_GRID), help = 'Comma-separated VVA ratio grid.')
+    parser.add_argument('--generators', default = ','.join(EXPERIMENT_GENERATOR_NAMES), help = 'Comma-separated generator names to fit and evaluate.')
     parser.add_argument('--standard-metamodels', default = ','.join(DEFAULT_STANDARD_METAMODELS), help = 'Comma-separated standard metamodel names: rf,lgbm,xgb.')
     parser.add_argument('--balanced-metamodels', default = ','.join(DEFAULT_BALANCED_METAMODELS), help = 'Comma-separated balanced metamodel names: rf,lgbm,xgb.')
     parser.add_argument('--resume', action = 'store_true', help = 'Reuse an existing run directory and skip completed shards.')
@@ -273,6 +273,7 @@ def build_config(args):
         rules_sample_size = args.rules_sample_size,
         ssl_pool_size = args.ssl_pool_size,
         vva_grid = parse_csv_list(args.vva_grid, float),
+        generator_names = parse_csv_list(args.generators, str),
         standard_metamodels = standard_metamodels,
         balanced_metamodels = balanced_metamodels,
         jobs = args.jobs,

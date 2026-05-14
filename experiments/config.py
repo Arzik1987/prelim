@@ -6,6 +6,8 @@ import sys
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 
+from prelim.generators.registry import EXPERIMENT_GENERATOR_NAMES
+
 
 EXPERIMENTS_DIR = os.path.dirname(os.path.abspath(__file__))
 REGISTRY_DIR = os.path.join(EXPERIMENTS_DIR, 'registry')
@@ -81,6 +83,7 @@ class ExperimentConfig:
     rules_sample_size: int = 10000
     ssl_pool_size: int = 10000
     vva_grid: tuple[float, ...] = field(default_factory = lambda: DEFAULT_VVA_GRID)
+    generator_names: tuple[str, ...] = field(default_factory = lambda: EXPERIMENT_GENERATOR_NAMES)
     standard_metamodels: tuple[str, ...] = field(default_factory = lambda: DEFAULT_STANDARD_METAMODELS)
     balanced_metamodels: tuple[str, ...] = field(default_factory = lambda: DEFAULT_BALANCED_METAMODELS)
     jobs: int = field(default_factory = lambda: os.cpu_count() or 1)
