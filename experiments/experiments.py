@@ -12,6 +12,8 @@ from . import run as _run
 from .config import (
     DEFAULT_DATASET_NAMES,
     DEFAULT_DATASET_SIZES,
+    DEFAULT_BALANCED_METAMODELS,
+    DEFAULT_STANDARD_METAMODELS,
     DEFAULT_VVA_GRID,
     ExperimentConfig,
     default_run_id,
@@ -39,11 +41,12 @@ from .run import (
 
 GENERATOR_FACTORIES = _run.GENERATOR_FACTORIES
 STANDARD_METAMODEL_FACTORIES = _run.STANDARD_METAMODEL_FACTORIES
+STANDARD_METAMODEL_FACTORIES_BY_NAME = _run.STANDARD_METAMODEL_FACTORIES_BY_NAME
 BALANCED_METAMODEL_FACTORIES = _run.BALANCED_METAMODEL_FACTORIES
+BALANCED_METAMODEL_FACTORIES_BY_NAME = _run.BALANCED_METAMODEL_FACTORIES_BY_NAME
 TREE_MODEL_FACTORIES = _run.TREE_MODEL_FACTORIES
 BALANCED_TREE_MODEL_FACTORIES = _run.BALANCED_TREE_MODEL_FACTORIES
 RULE_MODEL_FACTORIES = _run.RULE_MODEL_FACTORIES
-Gen_binarydiffusion = _run.Gen_binarydiffusion
 Gen_rerx = _run.Gen_rerx
 Gen_tabddpm = _run.Gen_tabddpm
 Gen_vva = _run.Gen_vva
@@ -55,11 +58,12 @@ def _sync_run_overrides():
     for name in (
         "GENERATOR_FACTORIES",
         "STANDARD_METAMODEL_FACTORIES",
+        "STANDARD_METAMODEL_FACTORIES_BY_NAME",
         "BALANCED_METAMODEL_FACTORIES",
+        "BALANCED_METAMODEL_FACTORIES_BY_NAME",
         "TREE_MODEL_FACTORIES",
         "BALANCED_TREE_MODEL_FACTORIES",
         "RULE_MODEL_FACTORIES",
-        "Gen_binarydiffusion",
         "Gen_rerx",
         "Gen_tabddpm",
         "Gen_vva",
@@ -74,9 +78,9 @@ def build_generators():
     return _run.build_generators()
 
 
-def build_metamodel_groups():
+def build_metamodel_groups(config=None):
     _sync_run_overrides()
-    return _run.build_metamodel_groups()
+    return _run.build_metamodel_groups(config)
 
 
 def build_tree_models():

@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 import pytest
 
 from prelim.generators import Gen_dummy as Gen_dummy_export
@@ -11,6 +12,7 @@ from prelim.generators import Gen_tabgan
 from prelim.generators import Gen_tvae
 from prelim.generators import Gen_vva_proba as Gen_vva_proba_export
 from prelim.generators import build_generator
+from prelim.generators import EXPERIMENT_GENERATOR_NAMES
 from prelim.generators.adasyn import Gen_adasyn
 from prelim.generators.dummy import Gen_dummy
 from prelim.generators.gmm import Gen_classgmm, Gen_gmm, Gen_gmmbic, Gen_gmmbical
@@ -110,12 +112,19 @@ def test_generator_package_exports_public_surface():
 
 
 def test_tabgan_generator_uses_backend_and_returns_requested_shape(monkeypatch):
+    instances = []
+
     class _FakeGANGenerator:
         def __init__(self, **kwargs):
             self.kwargs = kwargs
+            self.calls = 0
+            instances.append(self)
 
         def generate_data_pipe(self, train_df, target, test_df, **kwargs):
-            rows = train_df.iloc[:3, :].copy().reset_index(drop=True)
+            self.calls += 1
+            assert isinstance(target, pd.DataFrame)
+            assert list(target.columns) == ["target"]
+            rows = pd.concat([train_df] * int(self.kwargs["gen_x_times"]), ignore_index=True)
             rows.iloc[:, :] = np.arange(rows.size).reshape(rows.shape)
             return rows, None
 
@@ -127,8 +136,66 @@ def test_tabgan_generator_uses_backend_and_returns_requested_shape(monkeypatch):
     sample = generator.sample(n_samples=5)
 
     assert sample.shape == (5, x.shape[1])
+    assert len(instances) == 1
+    assert instances[0].calls == 1
+    assert instances[0].kwargs["gen_x_times"] == 1.1
     assert generator.my_name() == "tabgan"
     assert build_generator("tabgan", seed=2020).my_name() == "tabgan"
+
+
+def test_tabgan_generator_scales_backend_request_to_requested_sample_size(monkeypatch):
+    instances = []
+
+    class _FakeGANGenerator:
+        def __init__(self, **kwargs):
+            self.kwargs = kwargs
+            instances.append(self)
+
+        def generate_data_pipe(self, train_df, target, test_df, **kwargs):
+            rows = pd.concat([train_df] * int(self.kwargs["gen_x_times"]), ignore_index=True)
+            rows.iloc[:, :] = np.arange(rows.size).reshape(rows.shape)
+            return rows, None
+
+    monkeypatch.setattr("prelim.generators.tabgan.GANGenerator", _FakeGANGenerator)
+
+    x = _clustered_sample()
+    generator = Gen_tabgan(generator_kwargs={"gen_x_times": 1.1}, seed=2020).fit(x)
+
+    sample = generator.sample(n_samples=len(x) * 3 + 1)
+
+    assert sample.shape == (len(x) * 3 + 1, x.shape[1])
+    assert len(instances) == 1
+    assert instances[0].kwargs["gen_x_times"] == 4
+
+
+def test_tabgan_generator_pads_if_backend_underproduces(monkeypatch):
+    class _FakeGANGenerator:
+        def __init__(self, **kwargs):
+            self.kwargs = kwargs
+
+        def generate_data_pipe(self, train_df, target, test_df, **kwargs):
+            return train_df.iloc[:1, :].copy(), None
+
+    monkeypatch.setattr("prelim.generators.tabgan.GANGenerator", _FakeGANGenerator)
+
+    sample = Gen_tabgan(seed=2020).fit(_clustered_sample()).sample(n_samples=5)
+
+    assert sample.shape == (5, 2)
+    assert np.all(sample == sample[0])
+
+
+def test_tabgan_generator_fails_if_backend_returns_no_rows(monkeypatch):
+    class _FakeGANGenerator:
+        def __init__(self, **kwargs):
+            self.kwargs = kwargs
+
+        def generate_data_pipe(self, train_df, target, test_df, **kwargs):
+            return train_df.iloc[:0, :].copy(), None
+
+    monkeypatch.setattr("prelim.generators.tabgan.GANGenerator", _FakeGANGenerator)
+
+    with pytest.raises(RuntimeError, match="no generated rows"):
+        Gen_tabgan().fit(_clustered_sample()).sample(n_samples=5)
 
 
 def test_ctgan_generator_uses_backend_and_returns_requested_shape(monkeypatch):
@@ -139,6 +206,7 @@ def test_ctgan_generator_uses_backend_and_returns_requested_shape(monkeypatch):
 
         def fit(self, data, discrete_columns):
             self.fit_shape_ = data.shape
+            self.fit_columns_ = list(data.columns)
             self.discrete_columns_ = discrete_columns
 
         def sample(self, n_samples):
@@ -154,6 +222,7 @@ def test_ctgan_generator_uses_backend_and_returns_requested_shape(monkeypatch):
     assert sample.shape == (5, x.shape[1])
     assert generator.my_name() == "ctgan"
     assert generator.model_.fit_shape_ == x.shape
+    assert generator.model_.fit_columns_ == ["0", "1"]
     assert generator.model_.discrete_columns_ == []
     assert build_generator("ctgan", seed=2020).my_name() == "ctgan"
 
@@ -166,6 +235,7 @@ def test_tvae_generator_uses_backend_and_returns_requested_shape(monkeypatch):
 
         def fit(self, data, discrete_columns):
             self.fit_shape_ = data.shape
+            self.fit_columns_ = list(data.columns)
             self.discrete_columns_ = discrete_columns
 
         def sample(self, n_samples):
@@ -181,6 +251,7 @@ def test_tvae_generator_uses_backend_and_returns_requested_shape(monkeypatch):
     assert sample.shape == (5, x.shape[1])
     assert generator.my_name() == "tvae"
     assert generator.model_.fit_shape_ == x.shape
+    assert generator.model_.fit_columns_ == ["0", "1"]
     assert generator.model_.discrete_columns_ == []
     assert build_generator("tvae", seed=2020).my_name() == "tvae"
 
@@ -189,18 +260,22 @@ def test_copulagan_generator_uses_backend_and_returns_requested_shape(monkeypatc
     class _FakeMetadata:
         def __init__(self):
             self.detected_shape_ = None
+            self.columns_ = None
 
         def detect_from_dataframe(self, data):
             self.detected_shape_ = data.shape
+            self.columns_ = list(data.columns)
 
     class _FakeCopulaGAN:
         def __init__(self, metadata, **kwargs):
             self.metadata = metadata
             self.kwargs = kwargs
             self.fit_shape_ = None
+            self.fit_columns_ = None
 
         def fit(self, data):
             self.fit_shape_ = data.shape
+            self.fit_columns_ = list(data.columns)
 
         def sample(self, num_rows):
             return __import__("pandas").DataFrame(np.arange(num_rows * 2).reshape(num_rows, 2))
@@ -216,7 +291,9 @@ def test_copulagan_generator_uses_backend_and_returns_requested_shape(monkeypatc
     assert sample.shape == (5, x.shape[1])
     assert generator.my_name() == "copulagan"
     assert generator.metadata_.detected_shape_ == x.shape
+    assert generator.metadata_.columns_ == ["0", "1"]
     assert generator.model_.fit_shape_ == x.shape
+    assert generator.model_.fit_columns_ == ["0", "1"]
     assert build_generator("copulagan", seed=2020).my_name() == "copulagan"
 
 
@@ -224,18 +301,22 @@ def test_gaussiancopula_generator_uses_backend_and_returns_requested_shape(monke
     class _FakeMetadata:
         def __init__(self):
             self.detected_shape_ = None
+            self.columns_ = None
 
         def detect_from_dataframe(self, data):
             self.detected_shape_ = data.shape
+            self.columns_ = list(data.columns)
 
     class _FakeGaussianCopula:
         def __init__(self, metadata, **kwargs):
             self.metadata = metadata
             self.kwargs = kwargs
             self.fit_shape_ = None
+            self.fit_columns_ = None
 
         def fit(self, data):
             self.fit_shape_ = data.shape
+            self.fit_columns_ = list(data.columns)
 
         def sample(self, num_rows):
             return __import__("pandas").DataFrame(np.arange(num_rows * 2).reshape(num_rows, 2))
@@ -251,7 +332,9 @@ def test_gaussiancopula_generator_uses_backend_and_returns_requested_shape(monke
     assert sample.shape == (5, x.shape[1])
     assert generator.my_name() == "gaussiancopula"
     assert generator.metadata_.detected_shape_ == x.shape
+    assert generator.metadata_.columns_ == ["0", "1"]
     assert generator.model_.fit_shape_ == x.shape
+    assert generator.model_.fit_columns_ == ["0", "1"]
     assert build_generator("gaussiancopula", seed=2020).my_name() == "gaussiancopula"
 
 
@@ -346,6 +429,7 @@ def test_bayesnet_generator_uses_backend_and_rebuilds_numeric_values(monkeypatch
     assert sample.shape == (5, x.shape[1])
     assert generator.my_name() == "bayesnet"
     assert generator.model_.fit_shape_ == x.shape
+    assert generator.model_.estimator_ is not None
     assert generator.model_.nodes_ == ["x0", "x1"]
     assert set(np.unique(sample[:, 0])).issubset({0.0, 1.0})
     assert set(np.unique(sample[:, 1])).issubset({10.0, 20.0})
@@ -818,6 +902,14 @@ def test_vinecopula_generator_uses_backend_and_returns_requested_shape(monkeypat
 
 def test_vinecopula_generator_is_registered():
     assert build_generator("vinecopula", seed=2020).my_name() == "vinecopula"
+
+
+def test_vinecopula_is_excluded_from_experiment_generators():
+    assert "vinecopula" not in EXPERIMENT_GENERATOR_NAMES
+
+
+def test_binarydiffusion_is_excluded_from_experiment_generators():
+    assert "binarydiffusion" not in EXPERIMENT_GENERATOR_NAMES
 
 
 def test_vva_proba_returns_empty_sample_for_r_zero_and_out_of_range_r_fails():

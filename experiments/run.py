@@ -1,5 +1,4 @@
 # Prevent numpy multithreading: https://stackoverflow.com/questions/17053671/how-do-you-stop-numpy-from-multithreading
-from importlib.util import find_spec
 import os
 import sys
 from pathlib import Path
@@ -43,8 +42,10 @@ from .results.artifacts import (
     write_meta,
 )
 from .config import (
+    DEFAULT_BALANCED_METAMODELS,
     DEFAULT_DATASET_NAMES,
     DEFAULT_DATASET_SIZES,
+    DEFAULT_STANDARD_METAMODELS,
     DEFAULT_VVA_GRID,
     ExperimentConfig,
     default_run_id,
@@ -53,12 +54,13 @@ from .config import (
 )
 from .registries import (
     BALANCED_METAMODEL_FACTORIES,
+    BALANCED_METAMODEL_FACTORIES_BY_NAME,
     BALANCED_TREE_MODEL_FACTORIES,
     GENERATOR_FACTORIES,
     RULE_MODEL_FACTORIES,
     STANDARD_METAMODEL_FACTORIES,
+    STANDARD_METAMODEL_FACTORIES_BY_NAME,
     TREE_MODEL_FACTORIES,
-    Gen_binarydiffusion,
     Gen_rerx,
     Gen_tabddpm,
     Gen_vva,
@@ -69,16 +71,41 @@ from .state import build_model_state as _build_model_state
 
 def build_generators():
     factories = list(GENERATOR_FACTORIES)
-    if find_spec("binary_diffusion_tabular") is not None:
-        factories.append(Gen_binarydiffusion)
     if os.environ.get("TABDDPM_REPO_PATH"):
         factories.append(Gen_tabddpm)
     return [factory() for factory in factories], Gen_rerx(), Gen_vva()
 
 
-def build_metamodel_groups():
-    standard = [factory() for factory in STANDARD_METAMODEL_FACTORIES]
-    balanced = [factory() for factory in BALANCED_METAMODEL_FACTORIES]
+def _resolve_named_factories(selected_names, factories_by_name, kind):
+    factories = []
+    for name in selected_names:
+        try:
+            factories.append(factories_by_name[name])
+        except KeyError as exc:
+            valid_names = ", ".join(sorted(factories_by_name))
+            raise ValueError(f"Unknown {kind} metamodel '{name}'. Expected one of: {valid_names}") from exc
+    return tuple(factories)
+
+
+def build_metamodel_groups(config=None):
+    if config is None or config.standard_metamodels == DEFAULT_STANDARD_METAMODELS:
+        standard_factories = STANDARD_METAMODEL_FACTORIES
+    else:
+        standard_factories = _resolve_named_factories(
+            config.standard_metamodels,
+            STANDARD_METAMODEL_FACTORIES_BY_NAME,
+            "standard",
+        )
+    if config is None or config.balanced_metamodels == DEFAULT_BALANCED_METAMODELS:
+        balanced_factories = BALANCED_METAMODEL_FACTORIES
+    else:
+        balanced_factories = _resolve_named_factories(
+            config.balanced_metamodels,
+            BALANCED_METAMODEL_FACTORIES_BY_NAME,
+            "balanced",
+        )
+    standard = [factory() for factory in standard_factories]
+    balanced = [factory() for factory in balanced_factories]
     return standard, balanced
 
 
@@ -98,10 +125,10 @@ def is_balanced_metamodel(model):
     return isinstance(model, BALANCED_METAMODEL_FACTORIES)
 
 
-def build_model_state():
+def build_model_state(config=None):
     return _build_model_state(
         build_generators_fn=build_generators,
-        build_metamodel_groups_fn=build_metamodel_groups,
+        build_metamodel_groups_fn=lambda: build_metamodel_groups(config),
         build_tree_models_fn=build_tree_models,
         build_balanced_tree_models_fn=build_balanced_tree_models,
         build_rule_models_fn=build_rule_models,
@@ -128,7 +155,7 @@ def experiment(config, split_index, dataset_name, dataset_size):
         return 'zero-class'
 
     started_at = time.time()
-    state_dict = build_model_state()
+    state_dict = build_model_state(config)
     fileres = open(paths['raw'], 'a', encoding = 'utf-8')
     filetme = open(paths['meta'], 'a', encoding = 'utf-8')
 
@@ -224,12 +251,18 @@ def parse_args():
     parser.add_argument('--rules-sample-size', type = int, default = 10000, help = 'Maximum sample size used for rule learners.')
     parser.add_argument('--ssl-pool-size', type = int, default = 10000, help = 'Maximum unlabeled pool size used in SSL evaluation.')
     parser.add_argument('--vva-grid', default = ','.join(str(value) for value in DEFAULT_VVA_GRID), help = 'Comma-separated VVA ratio grid.')
+    parser.add_argument('--standard-metamodels', default = ','.join(DEFAULT_STANDARD_METAMODELS), help = 'Comma-separated standard metamodel names: rf,lgbm,xgb.')
+    parser.add_argument('--balanced-metamodels', default = ','.join(DEFAULT_BALANCED_METAMODELS), help = 'Comma-separated balanced metamodel names: rf,lgbm,xgb.')
     parser.add_argument('--resume', action = 'store_true', help = 'Reuse an existing run directory and skip completed shards.')
     return parser.parse_args()
 
 
 def build_config(args):
     run_id = args.run_id or default_run_id()
+    standard_metamodels = parse_csv_list(args.standard_metamodels, str)
+    balanced_metamodels = parse_csv_list(args.balanced_metamodels, str)
+    _resolve_named_factories(standard_metamodels, STANDARD_METAMODEL_FACTORIES_BY_NAME, "standard")
+    _resolve_named_factories(balanced_metamodels, BALANCED_METAMODEL_FACTORIES_BY_NAME, "balanced")
     return ExperimentConfig(
         run_id = run_id,
         datasets = parse_csv_list(args.datasets, str),
@@ -240,6 +273,8 @@ def build_config(args):
         rules_sample_size = args.rules_sample_size,
         ssl_pool_size = args.ssl_pool_size,
         vva_grid = parse_csv_list(args.vva_grid, float),
+        standard_metamodels = standard_metamodels,
+        balanced_metamodels = balanced_metamodels,
         jobs = args.jobs,
         resume = args.resume,
     )

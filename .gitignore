@@ -145,3 +145,6 @@ trainer_great/
 
 # Downloaded experiment datasets
 experiments/data/*/
+
+# Generated experiment outputs
+experiments/registry/*

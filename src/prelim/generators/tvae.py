@@ -15,7 +15,8 @@ class Gen_tvae(BaseGenerator):
     def fit(self, X, y=None, metamodel=None):
         self.X_ = np.asarray(X).copy()
         self.model_ = TVAE(**self.model_kwargs_)
-        self.model_.fit(pd.DataFrame(self.X_), discrete_columns=[])
+        columns = [str(index) for index in range(self.X_.shape[1])]
+        self.model_.fit(pd.DataFrame(self.X_, columns=columns), discrete_columns=[])
         return self
 
     def sample(self, n_samples=1):

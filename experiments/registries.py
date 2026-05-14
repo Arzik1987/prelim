@@ -14,7 +14,6 @@ from prelim.generators import EXPERIMENT_GENERATOR_NAMES, get_generator_class, m
 
 
 GENERATOR_FACTORIES = tuple(make_generator_factory(name) for name in EXPERIMENT_GENERATOR_NAMES)
-Gen_binarydiffusion = get_generator_class("binarydiffusion")
 Gen_rerx = get_generator_class("rerx")
 Gen_tabddpm = get_generator_class("tabddpm")
 Gen_vva = get_generator_class("vva_legacy")
@@ -24,12 +23,22 @@ STANDARD_METAMODEL_FACTORIES = (
     Meta_lgbm,
     Meta_xgb,
 )
+STANDARD_METAMODEL_FACTORIES_BY_NAME = {
+    "rf": Meta_rf,
+    "lgbm": Meta_lgbm,
+    "xgb": Meta_xgb,
+}
 
 BALANCED_METAMODEL_FACTORIES = (
     Meta_rf_bal,
     Meta_lgbm_bal,
     Meta_xgb_bal,
 )
+BALANCED_METAMODEL_FACTORIES_BY_NAME = {
+    "rf": Meta_rf_bal,
+    "lgbm": Meta_lgbm_bal,
+    "xgb": Meta_xgb_bal,
+}
 
 TREE_MODEL_FACTORIES = (
     ("dt", lambda: DecisionTreeClassifier(min_samples_split=10)),
@@ -51,8 +60,6 @@ RULE_MODEL_FACTORIES = (
 
 def build_generators():
     factories = list(GENERATOR_FACTORIES)
-    if find_spec("binary_diffusion_tabular") is not None:
-        factories.append(Gen_binarydiffusion)
     if os.environ.get("TABDDPM_REPO_PATH"):
         factories.append(Gen_tabddpm)
     return [factory() for factory in factories], Gen_rerx(), Gen_vva()

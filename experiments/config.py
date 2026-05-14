@@ -22,6 +22,8 @@ DEFAULT_DATASET_NAMES = (
 )
 DEFAULT_DATASET_SIZES = (400, 100)
 DEFAULT_VVA_GRID = (0.5, 1.0, 1.5, 2.0, 2.5)
+DEFAULT_STANDARD_METAMODELS = ('rf', 'lgbm', 'xgb')
+DEFAULT_BALANCED_METAMODELS = ('rf', 'lgbm', 'xgb')
 
 
 def utc_timestamp():
@@ -79,6 +81,8 @@ class ExperimentConfig:
     rules_sample_size: int = 10000
     ssl_pool_size: int = 10000
     vva_grid: tuple[float, ...] = field(default_factory = lambda: DEFAULT_VVA_GRID)
+    standard_metamodels: tuple[str, ...] = field(default_factory = lambda: DEFAULT_STANDARD_METAMODELS)
+    balanced_metamodels: tuple[str, ...] = field(default_factory = lambda: DEFAULT_BALANCED_METAMODELS)
     jobs: int = field(default_factory = lambda: os.cpu_count() or 1)
     resume: bool = False
     registry_dir: str = REGISTRY_DIR

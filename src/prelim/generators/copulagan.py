@@ -16,7 +16,8 @@ class Gen_copulagan(BaseGenerator):
 
     def fit(self, X, y=None, metamodel=None):
         self.X_ = np.asarray(X).copy()
-        train_df = pd.DataFrame(self.X_)
+        columns = [str(index) for index in range(self.X_.shape[1])]
+        train_df = pd.DataFrame(self.X_, columns=columns)
         self.metadata_ = SingleTableMetadata()
         self.metadata_.detect_from_dataframe(train_df)
         self.model_ = CopulaGANSynthesizer(self.metadata_, **self.model_kwargs_)

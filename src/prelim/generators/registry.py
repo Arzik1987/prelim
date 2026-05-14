@@ -59,7 +59,6 @@ EXPERIMENT_GENERATOR_NAMES = (
     "norm",
     "noise",
     "treedens",
-    "vinecopula",
     "bayesnet",
     "dummy",
     "gmmal",

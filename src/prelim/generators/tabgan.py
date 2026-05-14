@@ -1,3 +1,5 @@
+from math import ceil
+
 import numpy as np
 import pandas as pd
 from tabgan.sampler import GANGenerator
@@ -17,24 +19,27 @@ class Gen_tabgan(BaseGenerator):
 
     def sample(self, n_samples=1):
         train_df = pd.DataFrame(self.X_)
-        target = pd.Series(np.zeros(len(train_df), dtype=int))
+        target = pd.DataFrame({"target": np.zeros(len(train_df), dtype=int)})
         test_df = train_df.copy()
 
-        generated_batches = []
-        generated_rows = 0
-        while generated_rows < n_samples:
-            generator = GANGenerator(**self.generator_kwargs_)
-            sampled_df, _ = generator.generate_data_pipe(
-                train_df=train_df,
-                target=target,
-                test_df=test_df,
-                only_generated_data=True,
-                use_adversarial=False,
-            )
-            sampled = sampled_df.to_numpy()
+        generator_kwargs = dict(self.generator_kwargs_)
+        requested_multiplier = ceil((n_samples * 1.1) / len(train_df))
+        generator_kwargs["gen_x_times"] = max(generator_kwargs.get("gen_x_times", 0), requested_multiplier)
+
+        generator = GANGenerator(**generator_kwargs)
+        sampled_df, _ = generator.generate_data_pipe(
+            train_df=train_df,
+            target=target,
+            test_df=test_df,
+            only_generated_data=True,
+            use_adversarial=False,
+        )
+        sampled = sampled_df.to_numpy()
+        if sampled.shape[0] < n_samples:
             if sampled.shape[0] == 0:
                 raise RuntimeError("TabGAN returned no generated rows")
-            generated_batches.append(sampled)
-            generated_rows += sampled.shape[0]
+            missing = n_samples - sampled.shape[0]
+            pad_indices = self.rng_.choice(sampled.shape[0], size=missing, replace=True)
+            sampled = np.concatenate([sampled, sampled[pad_indices]], axis=0)
 
-        return np.concatenate(generated_batches, axis=0)[:n_samples, :]
+        return sampled[:n_samples, :]

@@ -15,6 +15,14 @@ except Exception:
     BayesianModelSampling = None
 
 
+def _fit_network(model, data, estimator_class):
+    try:
+        from pgmpy.parameter_estimator import DiscreteMLE
+    except Exception:
+        return model.fit(data, estimator=estimator_class)
+    return model.fit(data, estimator=DiscreteMLE())
+
+
 class Gen_bayesnet(BaseGenerator):
     def __init__(self, max_bins=8, search_kwargs: dict | None = None, seed=2020):
         super().__init__("bayesnet", seed=seed)
@@ -49,7 +57,7 @@ class Gen_bayesnet(BaseGenerator):
 
         self.model_ = model_class(dag.edges())
         self.model_.add_nodes_from(self.columns_)
-        self.model_.fit(discrete_df, estimator=estimator_class)
+        _fit_network(self.model_, discrete_df, estimator_class)
         self.sampler_ = sampler_class(self.model_)
         return self
 

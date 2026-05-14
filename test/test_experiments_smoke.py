@@ -6,6 +6,7 @@ from dataclasses import replace
 from pathlib import Path
 
 import numpy as np
+import pytest
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -176,6 +177,69 @@ def _patch_smoke_components(monkeypatch, module):
         ),
     )
     monkeypatch.setattr(module, "is_balanced_metamodel", lambda model: model.my_name().endswith("b"))
+
+
+def test_build_config_accepts_metamodel_cli_selection(monkeypatch):
+    module = _load_experiments_module(monkeypatch)
+    args = types.SimpleNamespace(
+        run_id="configured-run",
+        datasets="ccpp",
+        sizes="100",
+        nsets=1,
+        split_seed=2020,
+        jobs=1,
+        generated_sample_size=100,
+        rules_sample_size=50,
+        ssl_pool_size=50,
+        vva_grid="0.5,1.0",
+        standard_metamodels="rf",
+        balanced_metamodels="rf",
+        resume=False,
+    )
+
+    config = module.build_config(args)
+
+    assert config.standard_metamodels == ("rf",)
+    assert config.balanced_metamodels == ("rf",)
+
+
+def test_build_config_rejects_unknown_metamodel_name(monkeypatch):
+    module = _load_experiments_module(monkeypatch)
+    args = types.SimpleNamespace(
+        run_id="configured-run",
+        datasets="ccpp",
+        sizes="100",
+        nsets=1,
+        split_seed=2020,
+        jobs=1,
+        generated_sample_size=100,
+        rules_sample_size=50,
+        ssl_pool_size=50,
+        vva_grid="0.5,1.0",
+        standard_metamodels="missing",
+        balanced_metamodels="rf",
+        resume=False,
+    )
+
+    with pytest.raises(ValueError, match="Unknown standard metamodel"):
+        module.build_config(args)
+
+
+def test_build_metamodel_groups_uses_configured_metamodel_names(monkeypatch, tmp_path):
+    module = _load_experiments_module(monkeypatch)
+    config = module.ExperimentConfig(
+        run_id="metamodel-selection",
+        datasets=("toy",),
+        dataset_sizes=(10,),
+        standard_metamodels=("rf",),
+        balanced_metamodels=("rf",),
+        registry_dir=str(tmp_path / "registry"),
+    )
+
+    standard, balanced = module.build_metamodel_groups(config)
+
+    assert [model.my_name() for model in standard] == ["rf"]
+    assert [model.my_name() for model in balanced] == ["rfb"]
 
 
 def test_exp_parallel_smoke_creates_versioned_run_artifacts(monkeypatch, tmp_path):

@@ -21,7 +21,8 @@ class Gen_gaussiancopula(BaseGenerator):
 
     def fit(self, X, y=None, metamodel=None):
         self.X_ = np.asarray(X).copy()
-        train_df = pd.DataFrame(self.X_)
+        columns = [str(index) for index in range(self.X_.shape[1])]
+        train_df = pd.DataFrame(self.X_, columns=columns)
         metadata_class = SingleTableMetadata
         model_class = GaussianCopulaSynthesizer
         if metadata_class is None or model_class is None:
