@@ -244,7 +244,7 @@ def parse_args():
     parser.add_argument('--run-id', default = None, help = 'Unique run identifier. Defaults to a UTC timestamp-based id.')
     parser.add_argument('--datasets', default = ','.join(DEFAULT_DATASET_NAMES), help = 'Comma-separated dataset names.')
     parser.add_argument('--sizes', default = ','.join(str(size) for size in DEFAULT_DATASET_SIZES), help = 'Comma-separated dataset sizes.')
-    parser.add_argument('--nsets', type = int, default = 25, help = 'Number of train/test splits per dataset size.')
+    parser.add_argument('--nsets', type = int, default = 10, help = 'Number of train/test splits per dataset size.')
     parser.add_argument('--split-seed', type = int, default = 2020, help = 'Seed used by the data partitioner.')
     parser.add_argument('--jobs', type = int, default = os.cpu_count() or 1, help = 'Parallel worker count.')
     parser.add_argument('--generated-sample-size', type = int, default = 100000, help = 'Synthetic sample size used for generator evaluation.')

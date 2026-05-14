@@ -12,6 +12,7 @@ from sklearn.tree import DecisionTreeClassifier
 ROOT = Path(__file__).resolve().parents[1]
 DATA_DIR = ROOT / "experiments" / "data"
 EVAL_DIR = ROOT / "experiments" / "evaluation"
+RESULTS_DIR = ROOT / "experiments" / "results"
 
 
 def _load_utils_module(module_basename):
@@ -20,6 +21,16 @@ def _load_utils_module(module_basename):
         del sys.modules[module_name]
     module_dir = DATA_DIR if module_basename in {"loader", "partitioner"} else EVAL_DIR
     spec = importlib.util.spec_from_file_location(module_name, module_dir / f"{module_basename}.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def _load_results_module(module_basename):
+    module_name = f"test_results_{module_basename}_runner"
+    if module_name in sys.modules:
+        del sys.modules[module_name]
+    spec = importlib.util.spec_from_file_location(module_name, RESULTS_DIR / f"{module_basename}.py")
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
@@ -160,3 +171,28 @@ def test_get_new_test_never_uses_negative_pool_size():
     assert np.array_equal(kept_X, Xtest)
     assert np.array_equal(kept_y, ytest)
     assert new_X.shape == (0, 2)
+
+
+def test_result_writers_flush_after_each_row():
+    module = _load_results_module("artifacts")
+
+    class _BufferedHandle:
+        def __init__(self):
+            self.data = []
+            self.flush_count = 0
+
+        def write(self, chunk):
+            self.data.append(chunk)
+            return len(chunk)
+
+        def flush(self):
+            self.flush_count += 1
+
+    result_handle = _BufferedHandle()
+    meta_handle = _BufferedHandle()
+
+    module.write_result(result_handle, "dt", "na", "na", 0.1, 0.2, 3, 0.4, "na", 0.5)
+    module.write_meta(meta_handle, "overall", 1.23)
+
+    assert result_handle.flush_count == 1
+    assert meta_handle.flush_count == 1

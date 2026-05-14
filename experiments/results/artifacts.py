@@ -62,12 +62,14 @@ def write_result(handle, model_name, gen_name, meta_name, sctrain, sctest, compl
     )
     writer = csv.DictWriter(handle, fieldnames=RESULT_FIELDS, lineterminator="\n")
     writer.writerow(asdict(row))
+    handle.flush()
 
 
 def write_meta(handle, key, value):
     row = ExperimentMeta(alg=key, val=value)
     writer = csv.DictWriter(handle, fieldnames=META_FIELDS, lineterminator="\n")
     writer.writerow(asdict(row))
+    handle.flush()
 
 
 def iter_experiment_args(config):

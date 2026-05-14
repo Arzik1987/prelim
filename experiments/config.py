@@ -75,7 +75,7 @@ class ExperimentConfig:
     run_id: str
     datasets: tuple[str, ...]
     dataset_sizes: tuple[int, ...]
-    nsets: int = 25
+    nsets: int = 10
     split_seed: int = 2020
     generated_sample_size: int = 100000
     rules_sample_size: int = 10000
