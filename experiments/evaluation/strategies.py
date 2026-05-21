@@ -192,20 +192,21 @@ def evaluate_standard_generator(generator, Xgen, meta_model, state, config, file
     end = time.time()
     write_meta(filetme, generator.my_name() + meta_model.my_name(), end - start)
 
-    for name, model in [("dt", state.tree_models["dt"]), ("dtc", state.tree_models["dtc"]), ("dtval", state.dtval)]:
-        score = fit_score_classifier(model, Xnew, predicted_labels, state.X, state.y, state.Xtest, state.ytest)
-        write_result(
-            fileres,
-            GENERATED_TREE_ALIASES[name],
-            generator.my_name(),
-            meta_model.my_name(),
-            score["train"],
-            score["test"],
-            model_size(name, model),
-            score["elapsed"],
-            fidelity_score(model.predict(state.Xtest), ypredtest),
-            score["bactest"],
-        )
+    if config.include_generated_only_tree_models:
+        for name, model in [("dt", state.tree_models["dt"]), ("dtc", state.tree_models["dtc"]), ("dtval", state.dtval)]:
+            score = fit_score_classifier(model, Xnew, predicted_labels, state.X, state.y, state.Xtest, state.ytest)
+            write_result(
+                fileres,
+                GENERATED_TREE_ALIASES[name],
+                generator.my_name(),
+                meta_model.my_name(),
+                score["train"],
+                score["test"],
+                model_size(name, model),
+                score["elapsed"],
+                fidelity_score(model.predict(state.Xtest), ypredtest),
+                score["bactest"],
+            )
 
     Xnew = Xnew[: config.generated_sample_size - len(state.y), :]
     predicted_labels = predicted_labels[: config.generated_sample_size - len(state.y)]

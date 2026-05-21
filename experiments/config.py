@@ -86,6 +86,7 @@ class ExperimentConfig:
     generator_names: tuple[str, ...] = field(default_factory = lambda: EXPERIMENT_GENERATOR_NAMES)
     standard_metamodels: tuple[str, ...] = field(default_factory = lambda: DEFAULT_STANDARD_METAMODELS)
     balanced_metamodels: tuple[str, ...] = field(default_factory = lambda: DEFAULT_BALANCED_METAMODELS)
+    include_generated_only_tree_models: bool = False
     jobs: int = field(default_factory = lambda: os.cpu_count() or 1)
     resume: bool = False
     registry_dir: str = REGISTRY_DIR

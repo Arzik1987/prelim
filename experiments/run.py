@@ -253,6 +253,11 @@ def parse_args():
     parser.add_argument('--generators', default = ','.join(EXPERIMENT_GENERATOR_NAMES), help = 'Comma-separated generator names to fit and evaluate.')
     parser.add_argument('--standard-metamodels', default = ','.join(DEFAULT_STANDARD_METAMODELS), help = 'Comma-separated standard metamodel names: rf,lgbm,xgb.')
     parser.add_argument('--balanced-metamodels', default = ','.join(DEFAULT_BALANCED_METAMODELS), help = 'Comma-separated balanced metamodel names: rf,lgbm,xgb.')
+    parser.add_argument(
+        '--include-generated-only-tree-models',
+        action = 'store_true',
+        help = 'Also evaluate dtp/dtcp/dtvalp models trained only on generated pseudo-labeled data.',
+    )
     parser.add_argument('--resume', action = 'store_true', help = 'Reuse an existing run directory and skip completed shards.')
     return parser.parse_args()
 
@@ -276,6 +281,7 @@ def build_config(args):
         generator_names = parse_csv_list(args.generators, str),
         standard_metamodels = standard_metamodels,
         balanced_metamodels = balanced_metamodels,
+        include_generated_only_tree_models = getattr(args, "include_generated_only_tree_models", False),
         jobs = args.jobs,
         resume = args.resume,
     )
