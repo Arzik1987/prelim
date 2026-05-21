@@ -303,11 +303,10 @@ def evaluate_sampled_generators(config, state, fileres, filetme):
             evaluate_balanced_generator(generator, Xgen, meta_model, state, config, fileres, filetme)
 
 
-def evaluate_ssl(config, state, fileres, is_balanced_metamodel, get_new_test):
-    Xtest, ytest, Xgen = get_new_test(state.Xtest, state.ytest, len(state.y), new_size=config.ssl_pool_size)
+def _evaluate_ssl_mode(state, fileres, is_balanced_metamodel, Xtest, ytest, Xgen, pool_labels, mode_name):
     for meta_model in state.all_metamodels:
         ypredtest = meta_model.predict(Xtest)
-        ynew = np.concatenate([meta_model.predict(Xgen), state.y])
+        ynew = np.concatenate([pool_labels(meta_model, Xgen), state.y])
         Xnew = np.concatenate([Xgen, state.X])
 
         for name, model in get_supervised_models(
@@ -323,7 +322,7 @@ def evaluate_ssl(config, state, fileres, is_balanced_metamodel, get_new_test):
             write_result(
                 fileres,
                 name,
-                "ssl",
+                mode_name,
                 meta_model.my_name(),
                 score["train"],
                 score["test"],
@@ -340,7 +339,7 @@ def evaluate_ssl(config, state, fileres, is_balanced_metamodel, get_new_test):
                 write_result(
                     fileres,
                     name,
-                    "ssl",
+                    mode_name,
                     meta_model.my_name(),
                     score["train"],
                     score["test"],
@@ -349,3 +348,32 @@ def evaluate_ssl(config, state, fileres, is_balanced_metamodel, get_new_test):
                     "na",
                     "na",
                 )
+
+
+def evaluate_ssl(config, state, fileres, is_balanced_metamodel, get_new_test):
+    Xtest, ytest, Xgen, ygen_true = get_new_test(
+        state.Xtest,
+        state.ytest,
+        len(state.y),
+        new_size=config.ssl_pool_size,
+    )
+    _evaluate_ssl_mode(
+        state,
+        fileres,
+        is_balanced_metamodel,
+        Xtest,
+        ytest,
+        Xgen,
+        lambda meta_model, Xpool: meta_model.predict(Xpool),
+        "ssl",
+    )
+    _evaluate_ssl_mode(
+        state,
+        fileres,
+        is_balanced_metamodel,
+        Xtest,
+        ytest,
+        Xgen,
+        lambda meta_model, Xpool: ygen_true,
+        "ssl_oracle",
+    )

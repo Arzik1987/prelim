@@ -166,11 +166,12 @@ def test_get_new_test_never_uses_negative_pool_size():
     Xtest = np.arange(12, dtype=float).reshape(6, 2)
     ytest = np.array([0, 1, 0, 1, 0, 1])
 
-    kept_X, kept_y, new_X = module.get_new_test(Xtest, ytest, dsize=8, new_size=6)
+    kept_X, kept_y, new_X, new_y = module.get_new_test(Xtest, ytest, dsize=8, new_size=6)
 
     assert np.array_equal(kept_X, Xtest)
     assert np.array_equal(kept_y, ytest)
     assert new_X.shape == (0, 2)
+    assert new_y.shape == (0,)
 
 
 def test_result_writers_flush_after_each_row():
