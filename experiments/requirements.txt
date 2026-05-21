@@ -11,6 +11,7 @@ liac-arff
 numpy
 pandas
 pgmpy
+python-weka-wrapper3
 scikit-learn
 scipy
 seaborn

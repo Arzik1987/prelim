@@ -57,6 +57,7 @@ Implemented generators that are not part of `EXPERIMENT_GENERATOR_NAMES`:
 Notes:
 - `rerx` and `vva` are implemented as separate evaluation paths, not as standard sweep generators.
 - `bayesnet`, `binarydiffusion`, `forestdiffusion`, `great`, `tabddpm`, `tabsyn`, and `vinecopula` are implemented backends that are available through the generator API, but they are excluded from the default experiment sweep because fitting them is prohibitively slow in the current experiment setup.
+- `cmmpart` is part of the default experiment sweep and requires `python-weka-wrapper3` plus a working Java installation available through `java` or `JAVA_HOME`.
 
 The CLI entry points remain:
 - `experiments.py`
