@@ -198,12 +198,9 @@ def test_result_writers_flush_after_each_row():
     assert meta_handle.flush_count == 1
 
 
-def test_build_generators_can_be_scoped_to_forestdiffusion():
+def test_build_generators_rejects_forestdiffusion_outside_default_experiment_set():
     sys.path.insert(0, str(ROOT / "src"))
     from experiments import registries
 
-    generators, genrerx, genvva = registries.build_generators(("forestdiffusion",))
-
-    assert [generator.my_name() for generator in generators] == ["forestdiffusion"]
-    assert genrerx.my_name() == "rerx"
-    assert genvva.my_name() == "vva"
+    with pytest.raises(KeyError, match="forestdiffusion"):
+        registries.build_generators(("forestdiffusion",))

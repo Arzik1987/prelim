@@ -153,13 +153,8 @@ def _tiny_dataset():
 
 def _patch_smoke_components(monkeypatch, module):
     monkeypatch.setattr(module, "load_data", lambda dataset_name: _tiny_dataset())
-    monkeypatch.setattr(
-        module,
-        "GENERATOR_FACTORIES",
-        (
-            lambda: _StubGenerator("stubgen"),
-        ),
-    )
+    monkeypatch.setattr(module, "build_generators", lambda generator_names=None: ([_StubGenerator("stubgen")], _StubRerx("rerx"), _StubVva("vva")))
+    monkeypatch.setattr(module._run, "build_generators", lambda generator_names=None: ([_StubGenerator("stubgen")], _StubRerx("rerx"), _StubVva("vva")))
     monkeypatch.setattr(module, "Gen_rerx", lambda: _StubRerx("rerx"))
     monkeypatch.setattr(module, "Gen_vva", lambda: _StubVva("vva"))
     monkeypatch.setattr(
@@ -192,6 +187,7 @@ def test_build_config_accepts_metamodel_cli_selection(monkeypatch):
         rules_sample_size=50,
         ssl_pool_size=50,
         vva_grid="0.5,1.0",
+        generators="dummy",
         standard_metamodels="rf",
         balanced_metamodels="rf",
         resume=False,
@@ -216,6 +212,7 @@ def test_build_config_rejects_unknown_metamodel_name(monkeypatch):
         rules_sample_size=50,
         ssl_pool_size=50,
         vva_grid="0.5,1.0",
+        generators="dummy",
         standard_metamodels="missing",
         balanced_metamodels="rf",
         resume=False,

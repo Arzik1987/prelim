@@ -173,11 +173,6 @@ def _load_seizure(data_dir):
     return _build_xy(frame, "y", 1, lambda df: df.filter(regex="X", axis=1))
 
 
-def _load_smartphone(data_dir):
-    frame = _read_csv(data_dir, "smartphone/php88ZB4Q.csv", delimiter=",")
-    return _build_xy(frame, "Class", 1, lambda df: df[df.columns.drop("Class")])
-
-
 def _load_ccpp(data_dir):
     frame = _read_csv(data_dir, "ccpp/Folds5x2_pp.csv", delimiter=",")
     y = (frame["PE"] > 455).astype(int).to_numpy()
@@ -186,7 +181,14 @@ def _load_ccpp(data_dir):
 
 
 def _load_seoul(data_dir):
-    frame = _read_csv(data_dir, "seoul/SeoulBikeData.csv", delimiter=",", skiprows=1, header=None)
+    frame = _read_csv(
+        data_dir,
+        "seoul/SeoulBikeData.csv",
+        delimiter=",",
+        skiprows=1,
+        header=None,
+        encoding="latin1",
+    )
     y = (frame.iloc[:, 1] > 800).astype(int).to_numpy()
     X = frame.iloc[:, 2:11].to_numpy()
     return X, y
@@ -271,7 +273,6 @@ DATASET_LOADERS = {
     "gas": DatasetLoader(_load_gas),
     "clean2": DatasetLoader(_load_clean2),
     "seizure": DatasetLoader(_load_seizure),
-    "smartphone": DatasetLoader(_load_smartphone),
     "ccpp": DatasetLoader(_load_ccpp),
     "seoul": DatasetLoader(_load_seoul),
     "turbine": DatasetLoader(_load_turbine),
