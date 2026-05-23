@@ -16,11 +16,10 @@ LATEST_RUN_PATH = os.path.join(REGISTRY_DIR, 'latest_run.txt')
 LAYOUT_VERSION = 2
 
 DEFAULT_DATASET_NAMES = (
-    'clean2', 'seizure', 'gas', 'nomao', 'bankruptcy', 'anuran', 'avila',
-    'ccpp', 'cc', 'dry', 'ees', 'electricity', 'gt', 'higgs21', 'higgs7',
-    'htru', 'jm1', 'ml', 'occupancy', 'parkinson', 'pendata', 'ring',
-    'saac2', 'sensorless', 'seoul', 'shuttle', 'stocks', 'sylva', 'turbine',
-    'wine',
+    'ccpp', 'occupancy', 'electricity', 'higgs7', 'htru', 'seoul', 'shuttle',
+    'turbine', 'avila', 'gt', 'wine', 'ees', 'dry', 'parkinson', 'pendata',
+    'ring', 'higgs21', 'jm1', 'stocks', 'anuran', 'cc', 'sensorless', 'ml',
+    'saac2', 'bankruptcy', 'sylva', 'nomao', 'gas', 'clean2', 'seizure',
 )
 DEFAULT_DATASET_SIZES = (400, 100)
 DEFAULT_VVA_GRID = (0.5, 1.0, 1.5, 2.0, 2.5)
