@@ -142,6 +142,7 @@ prelim_baseline.png
 .codex
 AGENT_CONTEXT.md
 trainer_great/
+docs/assets/bi_comparison_10000.csv
 
 # Downloaded experiment datasets
 experiments/data/*/

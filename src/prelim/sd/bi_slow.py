@@ -38,43 +38,54 @@ class BI(BaseEstimator):
 
         box_init = self._get_initial_restrictions(X)
         res_box = []
-        res_tab = []
+        res_tab = np.empty([0, 3])
 
         for i in range(dim):
             box_new, quality, improved = self._refine(X, y, box_init, i, 0)
             res_box.append(box_new)
-            res_tab.append([quality, improved, i])
+            res_tab = np.concatenate((res_tab, np.array([[quality, improved, i]])), axis=0)
 
         if depth > 1:
             add_iter = depth + self.add_iter
             while add_iter > 0:
                 add_iter -= 1
 
-                if len(res_tab) > self.beam_size:
-                    res_box, res_tab = self._trim_candidates(res_box, res_tab)
+                if res_tab.shape[0] > self.beam_size:
+                    retain = res_tab[:, 0] >= np.sort(res_tab[:, 0])[::-1][self.beam_size - 1]
+                    if np.sum(retain) < len(retain):
+                        res_tab = res_tab[retain]
+                        res_box = [res_box[i] for i in np.where(retain)[0]]
+                    if len(res_box) > 1:
+                        retain = self._get_dup_boxes(res_box)
+                        if np.sum(retain) < len(retain):
+                            res_tab = res_tab[retain]
+                            res_box = [res_box[i] for i in np.where(retain)[0]]
+                    if res_tab.shape[0] > self.beam_size:
+                        sort_ind = res_tab[:, 0].argsort()[: self.beam_size]
+                        res_tab = res_tab[sort_ind]
+                        res_box = [res_box[i] for i in sort_ind]
 
-                if not any(tab[1] == 1 for tab in res_tab):
-                    break
+                if res_tab[:, 1].sum() == 0:
+                    add_iter = 0
 
-                current_size = len(res_tab)
-                for k in range(current_size):
-                    if res_tab[k][1] != 1:
-                        continue
-                    res_tab[k][1] = 0
+                for k in range(len(res_tab)):
+                    if res_tab[k, 1] == 1:
+                        res_tab[k, 1] = 0
+                        inds_r = np.where(np.equal(box_init, res_box[k]).sum(axis=0) < 2)[0]
+                        if len(inds_r) < depth:
+                            inds_r = np.arange(dim)
+                        inds_r = inds_r[inds_r != res_tab[k, 2]]
+                        for i in inds_r:
+                            box_new, quality, improved = self._refine(X, y, res_box[k], i, res_tab[k, 0])
+                            if improved == 1:
+                                res_box.append(box_new)
+                                res_tab = np.concatenate(
+                                    (res_tab, np.array([[quality, improved, i]])),
+                                    axis=0,
+                                )
 
-                    inds_r = np.where(np.equal(box_init, res_box[k]).sum(axis=0) < 2)[0]
-                    if len(inds_r) < depth:
-                        inds_r = np.arange(dim)
-                    inds_r = inds_r[inds_r != int(res_tab[k][2])]
-
-                    for i in inds_r:
-                        box_new, quality, improved = self._refine(X, y, res_box[k], i, res_tab[k][0])
-                        if improved == 1:
-                            res_box.append(box_new)
-                            res_tab.append([quality, improved, i])
-
-        best_index = max(range(len(res_tab)), key=lambda idx: res_tab[idx][0])
-        self.box_ = res_box[best_index]
+        winner = np.where(res_tab[:, 0] == max(res_tab[:, 0]))[0][0]
+        self.box_ = res_box[winner]
         return self
 
     def score(self, X, y):
@@ -94,30 +105,13 @@ class BI(BaseEstimator):
             np.sum(y[ind_in_box]) / np.sum(ind_in_box) - np.sum(y) / len(y)
         )
 
-    def _trim_candidates(self, boxes, table):
-        scores = np.array([row[0] for row in table], dtype=float)
-        threshold = np.sort(scores)[::-1][self.beam_size - 1]
-        retain = [row[0] >= threshold for row in table]
-        filtered_boxes = [box for box, keep in zip(boxes, retain) if keep]
-        filtered_table = [row for row, keep in zip(table, retain) if keep]
-
-        if len(filtered_boxes) > 1:
-            dedup_boxes = []
-            dedup_table = []
-            for box, row in zip(filtered_boxes, filtered_table):
-                if any(np.array_equal(box, existing) for existing in dedup_boxes):
-                    continue
-                dedup_boxes.append(box)
-                dedup_table.append(row)
-            filtered_boxes = dedup_boxes
-            filtered_table = dedup_table
-
-        if len(filtered_table) > self.beam_size:
-            keep = np.argsort([row[0] for row in filtered_table])[: self.beam_size]
-            filtered_boxes = [filtered_boxes[idx] for idx in keep]
-            filtered_table = [filtered_table[idx] for idx in keep]
-
-        return filtered_boxes, filtered_table
+    def _get_dup_boxes(self, boxes):
+        inds = np.ones(len(boxes), dtype=bool)
+        for i in range(len(boxes) - 1):
+            for j in range(i + 1, len(boxes)):
+                if inds[j] and np.array_equal(boxes[i], boxes[j]):
+                    inds[j] = False
+        return inds
 
     def _refine(self, X, y, box, ind, start_q):
         # The numbered comments below refer to Algorithm 3 in:
@@ -130,64 +124,41 @@ class BI(BaseEstimator):
                     ind_in_box,
                     np.logical_and(X[:, i] >= box[0, i], X[:, i] <= box[1, i]),
                 )
-
-        x_in = X[ind_in_box, ind]
-        y_in = y[ind_in_box].astype(float, copy=False)
-
-        if x_in.size == 0:
-            return box.copy(), start_q, 0
-
-        order = np.argsort(x_in, kind="mergesort")
-        x_sorted = x_in[order]
-        y_sorted = y_in[order]
-
-        unique_vals, first_idx, counts = np.unique(
-            x_sorted,
-            return_index=True,
-            return_counts=True,
-        )
-        pos_counts = np.add.reduceat(y_sorted, first_idx)
-
-        suffix_n = np.cumsum(counts[::-1])[::-1].astype(float, copy=False)
-        suffix_pos = np.cumsum(pos_counts[::-1])[::-1].astype(float, copy=False)
-        prefix_n = np.cumsum(counts).astype(float, copy=False)
-        prefix_pos = np.cumsum(pos_counts).astype(float, copy=False)
+        in_box = np.vstack((X[ind_in_box, ind], y[ind_in_box])).T
+        in_box = in_box[in_box[:, 1].argsort()]
 
         t_m, h_m = -np.inf, -np.inf  # 3-4
-        start_idx = 0
         l, r = box[0, ind], box[1, ind]  # 1
+        n = in_box.shape[0]
+        npos = in_box[:, 1].sum()
         wracc_m = start_q  # 2
 
-        itert = len(unique_vals)
+        t = np.unique(in_box[:, 0])  # define T; sorting happens implicitly
+        itert = len(t)
         for i in range(itert):  # 5
-            n = suffix_n[i]
-            npos = suffix_pos[i]
+            if i != 0:
+                tmp = in_box[in_box[:, 0] == t[i - 1]]
+                n = n - tmp.shape[0]  # 6
+                npos = npos - tmp[:, 1].sum()  # 6
             h = self._wracc(n, npos, self.N_, self.Np_)  # 7
             if h > h_m:  # 8
                 h_m = h  # 9
                 if i == 0:  # 10
                     t_m = -np.inf
-                    start_idx = 0
                 else:
-                    t_m = (unique_vals[i] + unique_vals[i - 1]) / 2
-                    start_idx = i
+                    t_m = (t[i] + t[i - 1]) / 2
 
-            if start_idx == 0:
-                n_i = prefix_n[i]
-                npos_i = prefix_pos[i]
-            else:
-                n_i = prefix_n[i] - prefix_n[start_idx - 1]
-                npos_i = prefix_pos[i] - prefix_pos[start_idx - 1]
-
+            tmp = in_box[np.logical_and(in_box[:, 0] >= t_m, in_box[:, 0] <= t[i])]
+            n_i = tmp.shape[0]
+            npos_i = tmp[:, 1].sum()
             wracc_i = self._wracc(n_i, npos_i, self.N_, self.Np_)
             if wracc_i > wracc_m:  # 11
                 l = t_m  # 12
                 if i == (itert - 1):  # 12
                     r = np.inf
                 else:
-                    r = (unique_vals[i] + unique_vals[i + 1]) / 2
+                    r = (t[i] + t[i + 1]) / 2
                 wracc_m = wracc_i  # 13
-
         box_new = box.copy()
         box_new[:, ind] = [l, r]
         return box_new, wracc_m, int(wracc_m != start_q)
