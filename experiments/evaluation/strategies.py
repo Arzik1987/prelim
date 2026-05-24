@@ -303,7 +303,7 @@ def evaluate_sampled_generators(config, state, fileres, filetme):
             evaluate_balanced_generator(generator, Xgen, meta_model, state, config, fileres, filetme)
 
 
-def _evaluate_ssl_mode(state, fileres, is_balanced_metamodel, Xtest, ytest, Xgen, pool_labels, mode_name):
+def _evaluate_ssl_mode(state, fileres, is_balanced_metamodel, Xtest, ytest, Xgen, pool_labels, sd_labels, mode_name):
     for meta_model in state.all_metamodels:
         ypredtest = meta_model.predict(Xtest)
         ynew = np.concatenate([pool_labels(meta_model, Xgen), state.y])
@@ -333,7 +333,7 @@ def _evaluate_ssl_mode(state, fileres, is_balanced_metamodel, Xtest, ytest, Xgen
             )
 
         if not is_balanced_metamodel(meta_model):
-            ynew = meta_model.predict_proba(Xnew)
+            ynew = sd_labels(meta_model, Xgen)
             for name, model in get_standard_sd_models(state.primcv, state.bicv):
                 score = fit_score_sd_model(model, Xnew, ynew, state.X, state.y, Xtest, ytest)
                 write_result(
@@ -365,6 +365,7 @@ def evaluate_ssl(config, state, fileres, is_balanced_metamodel, get_new_test):
         ytest,
         Xgen,
         lambda meta_model, Xpool: meta_model.predict(Xpool),
+        lambda meta_model, Xpool: meta_model.predict_proba(np.concatenate([Xpool, state.X])),
         "ssl",
     )
     _evaluate_ssl_mode(
@@ -375,5 +376,6 @@ def evaluate_ssl(config, state, fileres, is_balanced_metamodel, get_new_test):
         ytest,
         Xgen,
         lambda meta_model, Xpool: ygen_true,
+        lambda meta_model, Xpool: np.concatenate([ygen_true, state.y]),
         "ssl_oracle",
     )
