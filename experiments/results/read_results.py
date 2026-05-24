@@ -1,5 +1,6 @@
 import argparse
 import os
+import warnings
 from dataclasses import dataclass
 
 import numpy as np
@@ -236,6 +237,12 @@ def draw_heatmap(results, figures_dir, npts, clname, clnameo, plotter = None, ml
         plotter.heatmap(pivot, center = center, **kwargs)
 
     aggregated = res_aggregate(results, mod, npts, clname, clnameo)
+    if aggregated.empty:
+        warnings.warn(
+            'Skipping heatmap for model group=%s, metric=%s, npts=%s because no results are available.'
+            % (mod, clname, npts)
+        )
+        return
     aggregated = pd.concat([separate_baseline(aggregated, clname, clnameo), aggregated.drop(columns = [clnameo])], ignore_index = True)
     aggregated = change_names(aggregated)
     aggregated[clname] = np.round(aggregated[clname] * mlt, 1)
