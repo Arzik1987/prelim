@@ -241,6 +241,7 @@ def draw_heatmap(results, figures_dir, npts, clname, clnameo, plotter = None, ml
         data = kwargs.pop('data')
         kwargs.pop('annot', None)
         kwargs.pop('fmt', None)
+        alg_name = data['alg'].iloc[0]
         center = data[data['gen'] == ' NO'][args[2]].iloc[0]
         pivot = data.pivot(index = args[1], columns = args[0], values = args[2])
         special_present = [name for name in special_generators if name in pivot.index]
@@ -253,7 +254,10 @@ def draw_heatmap(results, figures_dir, npts, clname, clnameo, plotter = None, ml
             pivot = pivot.reindex(ordered_rows)
 
         annot = pivot.copy().astype(object)
-        annot = annot.where(~pd.isna(annot), '')
+        if clname == 'nle' and alg_name == 'DT':
+            annot = annot.applymap(lambda value: '' if pd.isna(value) else str(int(round(float(value)))))
+        else:
+            annot = annot.where(~pd.isna(annot), '')
 
         regular_mask = pd.DataFrame(False, index = pivot.index, columns = pivot.columns)
         special_mask = pd.DataFrame(True, index = pivot.index, columns = pivot.columns)
