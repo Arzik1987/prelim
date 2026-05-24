@@ -158,26 +158,31 @@ def change_names(data):
         'dtcb': 'DT$^{int}$',
         'dtb': 'DT',
         'adasyn': 'ADASYN',
-        'class_gmm': 'CLASS-GMM',
+        'class_gmm': 'C-GMM',
         'cmmrf': 'CMM',
-        'cmmpart': 'CMMPART',
-        'dummy': 'DUMMY',
+        'cmmpart': 'CMMPart',
+        'dummy': 'Dummy',
         'gmm': 'GMM',
-        'gmmal': 'GMMAL',
+        'gmmal': 'GMM-AL',
         'kdebw': 'KDE',
-        'kdeb': 'KDEB',
-        'kdebwm': 'KDEM',
+        'kdeb': 'KDE-B',
+        'kdebwm': 'KDE-M',
         'lhs': 'LHS',
         'munge': 'MUNGE',
-        'randn': 'NORM',
-        'randu': 'UNIF',
+        'randn': 'Normal',
+        'randu': 'Uniform',
         'rerx': 'RE-RX',
         'rose': 'ROSE',
         'smote': 'SMOTE',
         'ssl': 'SSL',
-        'treedens': 'TREEDENS',
-        'vinecopula': 'VINE',
+        'ssl_oracle': 'SSL-O',
+        'treedens': 'TreeDens',
+        'vinecopula': 'VineCop',
         'vva': 'VVA',
+        'gaussiancopula': 'GaussCop',
+        'copulagan': 'CopulaGAN',
+        'ctgan': 'CTGAN',
+        'tvae': 'TVAE',
         'rf': 'RF',
         'xgb': 'BT',
         'rfb': 'RF',
@@ -229,12 +234,63 @@ def my_diverging_palette(plotter, r_neg, r_pos, g_neg, g_pos, b_neg, b_pos, sep 
 
 def draw_heatmap(results, figures_dir, npts, clname, clnameo, plotter = None, mlt = 100, pal = 'normal', mod = 'dt', ylbl = True, ytext = '', fsz = 13):
     plotter = load_plotter(plotter)
+    special_generators = ('SSL', 'SSL-O')
+    spacer_label = ' '
 
     def draw_heatmap_c(*args, **kwargs):
         data = kwargs.pop('data')
+        kwargs.pop('annot', None)
+        kwargs.pop('fmt', None)
         center = data[data['gen'] == ' NO'][args[2]].iloc[0]
         pivot = data.pivot(index = args[1], columns = args[0], values = args[2])
-        plotter.heatmap(pivot, center = center, **kwargs)
+        special_present = [name for name in special_generators if name in pivot.index]
+        regular_rows = [name for name in pivot.index if name not in special_present]
+        ordered_rows = regular_rows + ([spacer_label] + special_present if special_present else [])
+        pivot = pivot.reindex(ordered_rows)
+
+        if special_present:
+            pivot.loc[spacer_label] = np.nan
+            pivot = pivot.reindex(ordered_rows)
+
+        annot = pivot.copy().astype(object)
+        annot = annot.where(~pd.isna(annot), '')
+
+        regular_mask = pd.DataFrame(False, index = pivot.index, columns = pivot.columns)
+        special_mask = pd.DataFrame(True, index = pivot.index, columns = pivot.columns)
+
+        if special_present:
+            regular_mask.loc[special_present + [spacer_label], :] = True
+            special_mask.loc[special_present, :] = False
+
+        scale_source = pivot.mask(regular_mask)
+        scale_values = scale_source.to_numpy(dtype = float)
+        finite_values = scale_values[np.isfinite(scale_values)]
+        layer_kwargs = dict(kwargs)
+        if finite_values.size:
+            layer_kwargs['vmin'] = float(finite_values.min())
+            layer_kwargs['vmax'] = float(finite_values.max())
+
+        ax = plotter.heatmap(
+            pivot,
+            mask = regular_mask,
+            annot = annot,
+            fmt = '',
+            center = center,
+            **layer_kwargs,
+        )
+        if special_present:
+            gray_cmap = plotter.light_palette('#9e9e9e', as_cmap = True)
+            plotter.heatmap(
+                pivot,
+                mask = special_mask,
+                annot = annot.where(~special_mask, ''),
+                fmt = '',
+                cmap = gray_cmap,
+                vmin = 0.0,
+                vmax = 1.0,
+                cbar = False,
+                ax = ax,
+            )
 
     aggregated = res_aggregate(results, mod, npts, clname, clnameo)
     if aggregated.empty:
