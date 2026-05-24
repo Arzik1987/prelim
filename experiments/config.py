@@ -86,6 +86,9 @@ class ExperimentConfig:
     standard_metamodels: tuple[str, ...] = field(default_factory = lambda: DEFAULT_STANDARD_METAMODELS)
     balanced_metamodels: tuple[str, ...] = field(default_factory = lambda: DEFAULT_BALANCED_METAMODELS)
     include_generated_only_tree_models: bool = False
+    skip_rerx: bool = False
+    skip_vva: bool = False
+    skip_ssl: bool = False
     jobs: int = field(default_factory = lambda: os.cpu_count() or 1)
     resume: bool = False
     registry_dir: str = REGISTRY_DIR

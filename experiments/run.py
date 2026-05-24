@@ -187,10 +187,13 @@ def experiment(config, split_index, dataset_name, dataset_size):
     )
 
     fit_generators_and_metamodels(state, filetme, is_balanced_metamodel)
-    evaluate_rerx(state, fileres, is_balanced_metamodel)
-    evaluate_vva(config, state, fileres, filetme, is_balanced_metamodel)
+    if not config.skip_rerx:
+        evaluate_rerx(state, fileres, is_balanced_metamodel)
+    if not config.skip_vva:
+        evaluate_vva(config, state, fileres, filetme, is_balanced_metamodel)
     evaluate_sampled_generators(config, state, fileres, filetme)
-    evaluate_ssl(config, state, fileres, is_balanced_metamodel, get_new_test)
+    if not config.skip_ssl:
+        evaluate_ssl(config, state, fileres, is_balanced_metamodel, get_new_test)
 
     # Only after all phases finish do we mark the shard as completed.
     fileres.close()
@@ -258,6 +261,9 @@ def parse_args():
         action = 'store_true',
         help = 'Also evaluate dtp/dtcp/dtvalp models trained only on generated pseudo-labeled data.',
     )
+    parser.add_argument('--skip-rerx', action = 'store_true', help = 'Skip the RE-RX evaluation phase.')
+    parser.add_argument('--skip-vva', action = 'store_true', help = 'Skip the VVA evaluation phase.')
+    parser.add_argument('--skip-ssl', action = 'store_true', help = 'Skip the SSL and SSL-oracle evaluation phases.')
     parser.add_argument('--resume', action = 'store_true', help = 'Reuse an existing run directory and skip completed shards.')
     return parser.parse_args()
 
@@ -282,6 +288,9 @@ def build_config(args):
         standard_metamodels = standard_metamodels,
         balanced_metamodels = balanced_metamodels,
         include_generated_only_tree_models = getattr(args, "include_generated_only_tree_models", False),
+        skip_rerx = getattr(args, "skip_rerx", False),
+        skip_vva = getattr(args, "skip_vva", False),
+        skip_ssl = getattr(args, "skip_ssl", False),
         jobs = args.jobs,
         resume = args.resume,
     )

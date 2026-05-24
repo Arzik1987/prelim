@@ -100,9 +100,13 @@ def _install_experiment_stubs(monkeypatch):
     fake_wittgenstein = types.SimpleNamespace(RIPPER=_StubRuleModel, IREP=_StubRuleModel)
     fake_xgboost = types.SimpleNamespace(XGBClassifier=object)
     fake_lightgbm = types.SimpleNamespace(LGBMClassifier=object)
+    fake_imblearn_over_sampling = types.SimpleNamespace(ADASYN=object, SMOTE=object)
+    fake_imblearn = types.SimpleNamespace(over_sampling=fake_imblearn_over_sampling)
     monkeypatch.setitem(sys.modules, "wittgenstein", fake_wittgenstein)
     monkeypatch.setitem(sys.modules, "xgboost", fake_xgboost)
     monkeypatch.setitem(sys.modules, "lightgbm", fake_lightgbm)
+    monkeypatch.setitem(sys.modules, "imblearn", fake_imblearn)
+    monkeypatch.setitem(sys.modules, "imblearn.over_sampling", fake_imblearn_over_sampling)
     monkeypatch.syspath_prepend(str(ROOT / "src"))
     monkeypatch.syspath_prepend(str(EXPERIMENTS_DIR))
 
@@ -196,6 +200,9 @@ def test_build_config_accepts_metamodel_cli_selection(monkeypatch):
         generators="dummy",
         standard_metamodels="rf",
         balanced_metamodels="rf",
+        skip_rerx=False,
+        skip_vva=False,
+        skip_ssl=False,
         resume=False,
     )
 
@@ -221,6 +228,9 @@ def test_build_config_rejects_unknown_metamodel_name(monkeypatch):
         generators="dummy",
         standard_metamodels="missing",
         balanced_metamodels="rf",
+        skip_rerx=False,
+        skip_vva=False,
+        skip_ssl=False,
         resume=False,
     )
 
@@ -358,3 +368,41 @@ def test_generated_only_tree_models_can_be_reenabled(monkeypatch, tmp_path):
     assert ("dtp", "stubgen") in alg_gen_pairs
     assert ("dtcp", "stubgen") in alg_gen_pairs
     assert ("dtvalp", "stubgen") in alg_gen_pairs
+
+
+def test_skip_auxiliary_phases_omit_rerx_vva_and_ssl_outputs(monkeypatch, tmp_path):
+    module = _load_experiments_module(monkeypatch)
+    _patch_smoke_components(monkeypatch, module)
+
+    config = module.ExperimentConfig(
+        run_id="skip-aux-phases",
+        datasets=("toy",),
+        dataset_sizes=(10,),
+        nsets=1,
+        split_seed=2020,
+        generated_sample_size=20,
+        rules_sample_size=10,
+        ssl_pool_size=10,
+        vva_grid=(0.5, 1.0),
+        skip_rerx=True,
+        skip_vva=True,
+        skip_ssl=True,
+        jobs=1,
+        registry_dir=str(tmp_path / "registry"),
+    )
+
+    module.ensure_run_layout(config)
+    module.configure_logging(config)
+    result_list, summary = module.exp_parallel(config)
+
+    assert result_list[0][0] == "completed"
+    assert summary["completed"] == 1
+
+    raw_path = Path(module.result_paths(config, "toy", 0, 10)["raw"])
+    alg_gen_pairs = {(row[0], row[1]) for row in _read_raw_rows(raw_path)}
+
+    assert ("dt", "stubgen") in alg_gen_pairs
+    assert ("dt", "rerx") not in alg_gen_pairs
+    assert ("dt", "vva") not in alg_gen_pairs
+    assert ("dt", "ssl") not in alg_gen_pairs
+    assert ("dt", "ssl_oracle") not in alg_gen_pairs
