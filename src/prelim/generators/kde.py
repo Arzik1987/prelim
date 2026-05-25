@@ -10,6 +10,8 @@ from .base import BaseGenerator
 
 
 class Gen_kdebw(BaseGenerator):
+    # Global multivariate KDE with a single scalar bandwidth derived from
+    # Silverman or Scott per-dimension rules and then averaged.
 
     def __init__(self, method='silverman', seed=2020):
         super().__init__("kdebw", seed=seed)
@@ -33,7 +35,73 @@ class Gen_kdebw(BaseGenerator):
     def sample(self, n_samples=1):
         return self.model_.sample(n_samples, random_state=self.rng_)
 
+
+class Gen_classkde(BaseGenerator):
+    # Class-conditional version of Gen_kdebw: fit one global multivariate KDE
+    # per label, then sample classes according to observed or balanced priors.
+
+    def __init__(self, method='silverman', balanced=False, seed=2020):
+        super().__init__("class_kde", seed=seed)
+        if method == 'silverman':
+            self.bw_method_ = bw_silverman
+        elif method == 'scott':
+            self.bw_method_ = bw_scott
+        else:
+            raise ValueError("The method must be either scott or silverman")
+        self.balanced_ = balanced
+        self.classes_ = None
+        self.priors_ = None
+        self.models_ = None
+
+    def fit(self, X, y=None, metamodel=None):
+        del metamodel
+        if y is None:
+            raise ValueError("Gen_classkde.fit requires y")
+
+        X = np.asarray(X)
+        y = np.asarray(y)
+        self.classes_, counts = np.unique(y, return_counts=True)
+        self.priors_ = counts / counts.sum()
+        self.models_ = {}
+
+        for cls in self.classes_:
+            Xcls = X[y == cls]
+            bw = self.bw_method_(Xcls)
+            if bw.max()/bw.min() > 10:
+                warnings.warn("Bandwidths for different dimensions differ by more than order of magnitude. "
+                              "Consider using z-score scaling")
+            self.models_[cls] = KernelDensity(bandwidth=bw.mean()).fit(Xcls)
+        return self
+
+    def _class_counts(self, n_samples):
+        if self.balanced_:
+            base = n_samples // len(self.classes_)
+            counts = np.full(len(self.classes_), base, dtype=int)
+            remainder = n_samples - counts.sum()
+            if remainder:
+                counts[:remainder] += 1
+            return counts
+
+        return self.rng_.multinomial(n_samples, self.priors_)
+
+    def sample(self, n_samples=1):
+        if self.classes_ is None:
+            raise RuntimeError("Gen_classkde.sample called before fit")
+
+        rows = []
+        for cls, count in zip(self.classes_, self._class_counts(n_samples)):
+            if count == 0:
+                continue
+            rows.append(self.models_[cls].sample(count, random_state=self.rng_))
+
+        X = np.vstack(rows)
+        xdim = X.shape[0]
+        return X[self.rng_.choice(np.arange(xdim), size=xdim, replace=False), :].copy()
+
+
 class Gen_kdebwhl(BaseGenerator):
+    # Same KDE fit as Gen_kdebw, but reject sampled rows that leave the
+    # observed feature-wise min/max range ("hard limits").
 
     def __init__(self, method = 'silverman', seed=2020):
         super().__init__("kdebwhl", seed=seed)
@@ -76,6 +144,8 @@ class Gen_kdebwhl(BaseGenerator):
 
 
 class Gen_kdeb(BaseGenerator):
+    # Neighbourhood bootstrap baseline: pick observed rows and perturb them by
+    # a random direction, with radius controlled by a k-NN distance heuristic.
     def __init__(self, knn=10, seed=2020):
         super().__init__("kdeb", seed=seed)
         self.knn_ = knn
@@ -107,6 +177,8 @@ class Gen_kdeb(BaseGenerator):
 
 
 class Gen_kdebwm(BaseGenerator):
+    # Marginal KDE baseline: fit one independent 1D KDE per feature using
+    # per-dimension bandwidths, so cross-feature dependence is ignored.
 
     def __init__(self, method='silverman', seed=2020):
         super().__init__("kdebwm", seed=seed)

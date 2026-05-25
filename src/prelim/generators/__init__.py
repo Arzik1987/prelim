@@ -9,7 +9,7 @@ from .dummy import Gen_dummy
 from .forestdiffusion import Gen_forestdiffusion
 from .gaussiancopula import Gen_gaussiancopula
 from .gmm import Gen_classgmm, Gen_gmm, Gen_gmmbic, Gen_gmmbical
-from .kde import Gen_kdeb, Gen_kdebw, Gen_kdebwhl, Gen_kdebwm
+from .kde import Gen_classkde, Gen_kdeb, Gen_kdebw, Gen_kdebwhl, Gen_kdebwm
 from .munge import Gen_munge
 from .noise import Gen_noise
 from .part import Gen_part
@@ -66,6 +66,7 @@ __all__ = [
     "Gen_forestdiffusion",
     "Gen_gaussiancopula",
     "Gen_classgmm",
+    "Gen_classkde",
     "Gen_great",
     "Gen_gmm",
     "Gen_gmmbic",

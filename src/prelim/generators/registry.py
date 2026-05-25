@@ -13,6 +13,7 @@ GENERATOR_SPECS = {
     "bayesnet": GeneratorSpec(".bayesnet", "Gen_bayesnet"),
     "binarydiffusion": GeneratorSpec(".binarydiffusion", "Gen_binarydiffusion"),
     "class_gmm": GeneratorSpec(".gmm", "Gen_classgmm"),
+    "class_kde": GeneratorSpec(".kde", "Gen_classkde"),
     "cmm": GeneratorSpec(".rfdens", "Gen_rfdens"),
     "cmmpart": GeneratorSpec(".part", "Gen_part"),
     "copulagan": GeneratorSpec(".copulagan", "Gen_copulagan"),
@@ -48,6 +49,7 @@ GENERATOR_SPECS = {
 EXPERIMENT_GENERATOR_NAMES = (
     "gmm",
     "class_gmm",
+    "class_kde",
     "kde",
     "munge",
     "gaussiancopula",

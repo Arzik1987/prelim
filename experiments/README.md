@@ -19,6 +19,7 @@ The default experiment sweep uses `EXPERIMENT_GENERATOR_NAMES` from `src/prelim/
 ```text
 gmm
 class_gmm
+class_kde
 kde
 munge
 gaussiancopula

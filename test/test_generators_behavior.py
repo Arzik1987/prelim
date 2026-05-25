@@ -16,7 +16,7 @@ from prelim.generators import EXPERIMENT_GENERATOR_NAMES
 from prelim.generators.adasyn import Gen_adasyn
 from prelim.generators.dummy import Gen_dummy
 from prelim.generators.gmm import Gen_classgmm, Gen_gmm, Gen_gmmbic, Gen_gmmbical
-from prelim.generators.kde import Gen_kdeb, Gen_kdebw, Gen_kdebwhl, Gen_kdebwm
+from prelim.generators.kde import Gen_classkde, Gen_kdeb, Gen_kdebw, Gen_kdebwhl, Gen_kdebwm
 from prelim.generators.munge import Gen_munge
 from prelim.generators.noise import Gen_noise
 from prelim.generators.part import Gen_part
@@ -607,6 +607,41 @@ def test_kdebwm_samples_requested_shape():
     assert generator.my_name() == "kdebwm"
 
 
+def test_classkde_requires_labels():
+    with pytest.raises(ValueError, match="requires y"):
+        Gen_classkde().fit(_clustered_sample())
+
+
+def test_classkde_fits_one_density_per_class_and_samples_requested_shape():
+    x, y = _labeled_clustered_sample()
+    generator = Gen_classkde(seed=2020).fit(x, y)
+
+    sample = generator.sample(n_samples=30)
+
+    assert sample.shape == (30, x.shape[1])
+    assert set(generator.models_) == set(np.unique(y))
+    assert np.allclose(generator.priors_, [0.5, 0.5])
+    assert generator.my_name() == "class_kde"
+
+
+def test_classkde_balanced_sampling_uses_each_class():
+    x, y = _labeled_clustered_sample()
+    generator = Gen_classkde(balanced=True, seed=2020).fit(x, y)
+
+    sample = generator.sample(n_samples=9)
+    dist0 = np.linalg.norm(sample - x[y == 0].mean(axis=0), axis=1)
+    dist1 = np.linalg.norm(sample - x[y == 1].mean(axis=0), axis=1)
+    assigned = (dist1 < dist0).astype(int)
+    counts = np.bincount(assigned, minlength=2)
+
+    assert sample.shape == (9, x.shape[1])
+    assert sorted(counts.tolist()) == [4, 5]
+
+
+def test_classkde_generator_is_registered():
+    assert build_generator("class_kde", seed=2020).my_name() == "class_kde"
+
+
 def test_munge_rejects_too_small_p_swap():
     with pytest.raises(ValueError, match="p_swap parameter is too small"):
         Gen_munge(p_swap=0.001)
@@ -902,6 +937,10 @@ def test_vinecopula_generator_uses_backend_and_returns_requested_shape(monkeypat
 
 def test_vinecopula_generator_is_registered():
     assert build_generator("vinecopula", seed=2020).my_name() == "vinecopula"
+
+
+def test_classkde_is_included_in_experiment_generators():
+    assert "class_kde" in EXPERIMENT_GENERATOR_NAMES
 
 
 def test_vinecopula_is_excluded_from_experiment_generators():
