@@ -126,5 +126,28 @@ Summary from the generated run:
 
 Across all runs, PRELIM averaged `0.734` accuracy versus `0.718` for the direct decision-tree baseline, an average improvement of `+0.016`.
 
+### Real-Dataset Demonstration
+
+The repository also includes a second README-scale demonstration on the real `gt` dataset. Unlike the synthetic toy example, this script follows the experiment protocol much more closely:
+
+- tuned `rf` mediator from the experiment code
+- `DecisionTreeClassifier(max_leaf_nodes=8)` student tree
+- `kde` generator
+- training sizes of `25, 50, 100, 200, 400` total rows
+- `20` deterministic split positions from the experiment-style splitter
+- z-score scaling fitted on each small training split
+- large synthetic transfer set, matching the experiment setup
+
+For each split and size, the script takes a contiguous small training window from the experiment splitter, evaluates on the complementary held-out data, saves a plot, and writes a JSON summary.
+
+```bash
+PYTHONPATH=src python examples/readme_gt_experiment.py
+```
+
+The generated artifacts are written to:
+
+- `docs/assets/readme-gt-experiment.png`
+- `docs/assets/readme-gt-experiment-summary.json`
+
 ### Reproducing the Experiments
 See respective description in the subdirectory `experiments`.
