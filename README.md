@@ -144,10 +144,19 @@ For each split and size, the script takes a contiguous small training window fro
 PYTHONPATH=src python examples/readme_gt_experiment.py
 ```
 
-The generated artifacts are written to:
+![PRELIM vs. direct decision-tree fitting on gt](docs/assets/readme-gt-experiment.png)
 
-- `docs/assets/readme-gt-experiment.png`
-- `docs/assets/readme-gt-experiment-summary.json`
+Summary from the generated run:
+
+| Training set size | PRELIM mean accuracy | Baseline mean accuracy | Mean improvement |
+| ---: | ---: | ---: | ---: |
+| 25 | 0.696 | 0.678 | +0.018 |
+| 50 | 0.726 | 0.718 | +0.008 |
+| 100 | 0.775 | 0.755 | +0.020 |
+| 200 | 0.790 | 0.775 | +0.015 |
+| 400 | 0.798 | 0.793 | +0.005 |
+
+Across all runs, PRELIM averaged `0.757` accuracy versus `0.744` for the direct decision-tree baseline, an average improvement of `+0.013`.
 
 ### Reproducing the Experiments
 See respective description in the subdirectory `experiments`.
