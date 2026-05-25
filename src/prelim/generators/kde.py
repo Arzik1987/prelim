@@ -38,9 +38,10 @@ class Gen_kdebw(BaseGenerator):
 
 class Gen_classkde(BaseGenerator):
     # Class-conditional version of Gen_kdebw: fit one global multivariate KDE
-    # per label, then sample classes according to observed or balanced priors.
+    # per label. Small classes shrink their scalar bandwidth toward the global
+    # bandwidth using alpha = n_cls / (n_cls + c).
 
-    def __init__(self, method='silverman', balanced=False, seed=2020):
+    def __init__(self, method='silverman', balanced=False, c=20, seed=2020):
         super().__init__("class_kde", seed=seed)
         if method == 'silverman':
             self.bw_method_ = bw_silverman
@@ -49,8 +50,11 @@ class Gen_classkde(BaseGenerator):
         else:
             raise ValueError("The method must be either scott or silverman")
         self.balanced_ = balanced
+        self.c_ = c
         self.classes_ = None
         self.priors_ = None
+        self.global_bandwidth_ = None
+        self.bandwidths_ = None
         self.models_ = None
 
     def fit(self, X, y=None, metamodel=None):
@@ -62,15 +66,24 @@ class Gen_classkde(BaseGenerator):
         y = np.asarray(y)
         self.classes_, counts = np.unique(y, return_counts=True)
         self.priors_ = counts / counts.sum()
+        bw_global = self.bw_method_(X)
+        if bw_global.max()/bw_global.min() > 10:
+            warnings.warn("Bandwidths for different dimensions differ by more than order of magnitude. "
+                          "Consider using z-score scaling")
+        self.global_bandwidth_ = bw_global.mean()
+        self.bandwidths_ = {}
         self.models_ = {}
 
-        for cls in self.classes_:
+        for cls, count in zip(self.classes_, counts):
             Xcls = X[y == cls]
             bw = self.bw_method_(Xcls)
             if bw.max()/bw.min() > 10:
                 warnings.warn("Bandwidths for different dimensions differ by more than order of magnitude. "
                               "Consider using z-score scaling")
-            self.models_[cls] = KernelDensity(bandwidth=bw.mean()).fit(Xcls)
+            alpha = count / (count + self.c_)
+            bandwidth = alpha * bw.mean() + (1 - alpha) * self.global_bandwidth_
+            self.bandwidths_[cls] = bandwidth
+            self.models_[cls] = KernelDensity(bandwidth=bandwidth).fit(Xcls)
         return self
 
     def _class_counts(self, n_samples):

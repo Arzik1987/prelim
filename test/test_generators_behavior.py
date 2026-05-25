@@ -621,6 +621,8 @@ def test_classkde_fits_one_density_per_class_and_samples_requested_shape():
     assert sample.shape == (30, x.shape[1])
     assert set(generator.models_) == set(np.unique(y))
     assert np.allclose(generator.priors_, [0.5, 0.5])
+    assert set(generator.bandwidths_) == set(np.unique(y))
+    assert generator.global_bandwidth_ > 0
     assert generator.my_name() == "class_kde"
 
 
@@ -636,6 +638,32 @@ def test_classkde_balanced_sampling_uses_each_class():
 
     assert sample.shape == (9, x.shape[1])
     assert sorted(counts.tolist()) == [4, 5]
+
+
+def test_classkde_shrinks_class_bandwidth_toward_global():
+    x = np.array(
+        [
+            [0.0, 0.0],
+            [0.1, 0.0],
+            [0.2, 0.1],
+            [10.0, 10.0],
+            [10.4, 10.2],
+            [10.8, 10.1],
+            [11.1, 10.7],
+            [11.5, 10.9],
+        ]
+    )
+    y = np.array([0, 0, 0, 1, 1, 1, 1, 1])
+    generator = Gen_classkde(c=20, seed=2020).fit(x, y)
+
+    bw_global = generator.global_bandwidth_
+    bw_small = generator.bw_method_(x[y == 0]).mean()
+    bw_large = generator.bw_method_(x[y == 1]).mean()
+    alpha_small = 3 / 23
+    alpha_large = 5 / 25
+
+    assert np.isclose(generator.bandwidths_[0], alpha_small * bw_small + (1 - alpha_small) * bw_global)
+    assert np.isclose(generator.bandwidths_[1], alpha_large * bw_large + (1 - alpha_large) * bw_global)
 
 
 def test_classkde_generator_is_registered():
