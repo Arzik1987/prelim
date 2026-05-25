@@ -1,4 +1,4 @@
-wheel
+wheel>=0.38.1
 be-great
 ctgan
 ForestDiffusion
@@ -6,7 +6,7 @@ imbalanced-learn
 lightgbm
 odfpy
 xlrd
-joblib
+joblib>=1.2.0
 liac-arff
 numpy
 pandas
