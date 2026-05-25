@@ -57,6 +57,16 @@ class Gen_classkde(BaseGenerator):
         self.bandwidths_ = None
         self.models_ = None
 
+    def _warn_if_ill_scaled(self, bw):
+        if bw.max()/bw.min() > 10:
+            warnings.warn("Bandwidths for different dimensions differ by more than order of magnitude. "
+                          "Consider using z-score scaling")
+
+    def _scalar_bandwidth(self, X):
+        bw = self.bw_method_(X)
+        self._warn_if_ill_scaled(bw)
+        return bw.mean()
+
     def fit(self, X, y=None, metamodel=None):
         del metamodel
         if y is None:
@@ -66,22 +76,21 @@ class Gen_classkde(BaseGenerator):
         y = np.asarray(y)
         self.classes_, counts = np.unique(y, return_counts=True)
         self.priors_ = counts / counts.sum()
-        bw_global = self.bw_method_(X)
-        if bw_global.max()/bw_global.min() > 10:
-            warnings.warn("Bandwidths for different dimensions differ by more than order of magnitude. "
-                          "Consider using z-score scaling")
-        self.global_bandwidth_ = bw_global.mean()
+        self.global_bandwidth_ = self._scalar_bandwidth(X)
         self.bandwidths_ = {}
         self.models_ = {}
 
         for cls, count in zip(self.classes_, counts):
             Xcls = X[y == cls]
-            bw = self.bw_method_(Xcls)
-            if bw.max()/bw.min() > 10:
-                warnings.warn("Bandwidths for different dimensions differ by more than order of magnitude. "
-                              "Consider using z-score scaling")
+            bw_class = self._scalar_bandwidth(Xcls)
+            if not np.isfinite(bw_class) or bw_class <= 0:
+                warnings.warn(
+                    f"Class {cls!r} produced invalid KDE bandwidth {bw_class}; "
+                    "falling back to the global bandwidth"
+                )
+                bw_class = self.global_bandwidth_
             alpha = count / (count + self.c_)
-            bandwidth = alpha * bw.mean() + (1 - alpha) * self.global_bandwidth_
+            bandwidth = alpha * bw_class + (1 - alpha) * self.global_bandwidth_
             self.bandwidths_[cls] = bandwidth
             self.models_[cls] = KernelDensity(bandwidth=bandwidth).fit(Xcls)
         return self

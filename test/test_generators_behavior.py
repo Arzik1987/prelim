@@ -666,6 +666,18 @@ def test_classkde_shrinks_class_bandwidth_toward_global():
     assert np.isclose(generator.bandwidths_[1], alpha_large * bw_large + (1 - alpha_large) * bw_global)
 
 
+def test_classkde_warns_and_falls_back_to_global_bandwidth_for_singleton_class():
+    x = np.array([[0.0, 0.0], [1.0, 1.0], [1.2, 1.1], [1.4, 1.3]])
+    y = np.array([0, 1, 1, 1])
+
+    with pytest.warns(Warning, match="falling back to the global bandwidth"):
+        generator = Gen_classkde(c=20, seed=2020).fit(x, y)
+
+    alpha_singleton = 1 / 21
+    assert np.isclose(generator.bandwidths_[0], generator.global_bandwidth_)
+    assert np.isclose(generator.bandwidths_[0], alpha_singleton * generator.global_bandwidth_ + (1 - alpha_singleton) * generator.global_bandwidth_)
+
+
 def test_classkde_generator_is_registered():
     assert build_generator("class_kde", seed=2020).my_name() == "class_kde"
 
