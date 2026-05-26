@@ -7,7 +7,7 @@ from sklearn.model_selection import GridSearchCV
 from sklearn.tree import DecisionTreeClassifier
 
 from .helpers import get_bi_param, n_leaves, opt_param
-from .scoring import fit_score_classifier, model_size
+from .scoring import fit_score_classifier, model_complexity, model_size
 from prelim.sd.bi import BI
 from prelim.sd.prim import PRIM
 from ..results.artifacts import write_result
@@ -31,6 +31,7 @@ def fit_reference_models(config, X, y, Xtest, ytest, tree_models, balanced_tree_
             score["elapsed"],
             "na",
             score["bactest"],
+            complexity_detail = model_complexity(name, model),
         )
 
     for name, model in rule_models.items():
@@ -50,6 +51,7 @@ def fit_reference_models(config, X, y, Xtest, ytest, tree_models, balanced_tree_
             score["elapsed"],
             "na",
             score["bactest"],
+            complexity_detail = model_complexity(name, model),
         )
 
     par_vals = [2**number for number in [1, 2, 3, 4, 5, 6, 7]]
@@ -72,6 +74,7 @@ def fit_reference_models(config, X, y, Xtest, ytest, tree_models, balanced_tree_
         end - start,
         "na",
         balanced_accuracy_score(ytest, dtval.predict(Xtest)),
+        complexity_detail = model_complexity("dtval", dtval),
     )
 
     start = time.time()
@@ -91,6 +94,7 @@ def fit_reference_models(config, X, y, Xtest, ytest, tree_models, balanced_tree_
         end - start,
         "na",
         balanced_accuracy_score(ytest, dtvalb.predict(Xtest)),
+        complexity_detail = model_complexity("dtvalb", dtvalb),
     )
 
     dtvalold = copy.deepcopy(dtval)
@@ -116,6 +120,7 @@ def fit_reference_models(config, X, y, Xtest, ytest, tree_models, balanced_tree_
         end - start,
         "na",
         "na",
+        complexity_detail = model_complexity("bicv", bicv),
     )
     bicv = BI(depth=bicv.get_nrestr())
 
@@ -137,6 +142,7 @@ def fit_reference_models(config, X, y, Xtest, ytest, tree_models, balanced_tree_
         end - start,
         "na",
         "na",
+        complexity_detail = model_complexity("primcv", primcv),
     )
 
     return {

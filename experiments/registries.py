@@ -55,8 +55,8 @@ BALANCED_TREE_MODEL_FACTORIES = (
 )
 
 RULE_MODEL_FACTORIES = (
-    ("ripper", lambda: lw.RIPPER(max_rules=8)),
-    ("irep", lambda: lw.IREP(max_rules=8)),
+    ("ripper", lambda: lw.RIPPER(max_rules=8, random_state=2020)),
+    ("irep", lambda: lw.IREP(max_rules=8, random_state=2020)),
     ("grl", lambda: GreedyRuleListClassifier()),
 )
 
