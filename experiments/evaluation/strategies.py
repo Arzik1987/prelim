@@ -228,11 +228,14 @@ def evaluate_standard_generator(generator, Xgen, meta_model, state, config, file
             score["bactest"],
         )
 
-    Xnew = Xnew[: config.rules_sample_size, :]
-    predicted_labels = predicted_labels[: config.rules_sample_size]
-
     for name, model in state.rule_models.items():
-        score = fit_score_classifier(model, Xnew, predicted_labels, state.X, state.y, state.Xtest, state.ytest)
+        if name == "grl":
+            Xfit = Xnew
+            yfit = predicted_labels
+        else:
+            Xfit = Xnew[: config.rules_sample_size, :]
+            yfit = predicted_labels[: config.rules_sample_size]
+        score = fit_score_classifier(model, Xfit, yfit, state.X, state.y, state.Xtest, state.ytest)
         write_result(
             fileres,
             name,

@@ -1,6 +1,7 @@
 from importlib.util import find_spec
 import os
 
+from imodels import GreedyRuleListClassifier
 import wittgenstein as lw
 from sklearn.tree import DecisionTreeClassifier
 
@@ -56,6 +57,7 @@ BALANCED_TREE_MODEL_FACTORIES = (
 RULE_MODEL_FACTORIES = (
     ("ripper", lambda: lw.RIPPER(max_rules=8)),
     ("irep", lambda: lw.IREP(max_rules=8)),
+    ("grl", lambda: GreedyRuleListClassifier()),
 )
 
 

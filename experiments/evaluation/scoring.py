@@ -6,7 +6,7 @@ from sklearn.metrics import balanced_accuracy_score
 from .helpers import n_leaves
 
 
-RULE_MODEL_NAMES = {"ripper", "irep"}
+RULE_MODEL_NAMES = {"ripper", "irep", "grl"}
 SD_MODEL_NAMES = {"primcv", "bicv"}
 GENERATED_TREE_ALIASES = {
     "dt": "dtp",
@@ -16,8 +16,10 @@ GENERATED_TREE_ALIASES = {
 
 
 def model_size(name, model):
-    if name in RULE_MODEL_NAMES:
+    if name in {"ripper", "irep"}:
         return len(model.ruleset_)
+    if name == "grl":
+        return len(model.rules_)
     if name in SD_MODEL_NAMES:
         return model.get_nrestr()
     return n_leaves(model)

@@ -16,7 +16,7 @@ MODEL_GROUPS = {
     'dt': ('dt', 'dtc', 'dtval'),
     'dtp': ('dtp', 'dtcp', 'dtvalp'),
     'dtb': ('dtb', 'dtcb', 'dtvalb'),
-    'rules': ('ripper', 'irep'),
+    'rules': ('ripper', 'irep', 'grl'),
     'sd': ('primcv', 'bicv'),
 }
 
@@ -189,6 +189,7 @@ def change_names(data):
         'rfb': 'RF',
         'xgbb': 'BT',
         'bicv': 'BI',
+        'grl': 'GreedyRL',
         'primcv': 'PRIM',
         'irep': 'IREP',
         'ripper': 'RIPPER',
@@ -420,12 +421,12 @@ def get_table_wil(data, mod = 'dt'):
 
 def build_kdebw_comparison(results):
     comparison = results[results['gen'] == 'kdebw'].copy()
-    comparison = comparison[['alg', 'met', 'npt', 'dat', 'tes', 'ora']].groupby(
+    comparison['dif'] = comparison['tes'] - comparison['ora']
+    comparison = comparison[['alg', 'met', 'npt', 'dat', 'dif']].groupby(
         ['alg', 'met', 'npt', 'dat'],
         as_index = False,
     ).median()
-    comparison['dif'] = comparison['tes'] - comparison['ora']
-    comparison['difs'] = np.sign(comparison['tes'] - comparison['ora'])
+    comparison['difs'] = np.sign(comparison['dif'])
     return comparison
 
 

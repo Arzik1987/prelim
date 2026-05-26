@@ -34,7 +34,11 @@ def fit_reference_models(config, X, y, Xtest, ytest, tree_models, balanced_tree_
         )
 
     for name, model in rule_models.items():
-        score = fit_score_classifier(model, Xr, yr, Xr, yr, Xtest, ytest)
+        if name == "grl":
+            Xfit, yfit = X, y
+        else:
+            Xfit, yfit = Xr, yr
+        score = fit_score_classifier(model, Xfit, yfit, Xfit, yfit, Xtest, ytest)
         write_result(
             fileres,
             name,
