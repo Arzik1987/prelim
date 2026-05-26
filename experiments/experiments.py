@@ -83,19 +83,19 @@ def build_metamodel_groups(config=None):
     return _run.build_metamodel_groups(config)
 
 
-def build_tree_models():
+def build_tree_models(config=None):
     _sync_run_overrides()
-    return _run.build_tree_models()
+    return _run.build_tree_models(config)
 
 
-def build_balanced_tree_models():
+def build_balanced_tree_models(config=None):
     _sync_run_overrides()
-    return _run.build_balanced_tree_models()
+    return _run.build_balanced_tree_models(config)
 
 
-def build_rule_models():
+def build_rule_models(config=None):
     _sync_run_overrides()
-    return _run.build_rule_models()
+    return _run.build_rule_models(config)
 
 
 def experiment(config, split_index, dataset_name, dataset_size):

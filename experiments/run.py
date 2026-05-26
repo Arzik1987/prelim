@@ -43,9 +43,13 @@ from .results.artifacts import (
 )
 from .config import (
     DEFAULT_BALANCED_METAMODELS,
+    DEFAULT_BALANCED_TREE_MODELS,
     DEFAULT_DATASET_NAMES,
     DEFAULT_DATASET_SIZES,
+    DEFAULT_RULE_MODELS,
+    DEFAULT_SD_MODELS,
     DEFAULT_STANDARD_METAMODELS,
+    DEFAULT_TREE_MODELS,
     DEFAULT_VVA_GRID,
     ExperimentConfig,
     default_run_id,
@@ -56,12 +60,15 @@ from .registries import (
     BALANCED_METAMODEL_FACTORIES,
     BALANCED_METAMODEL_FACTORIES_BY_NAME,
     BALANCED_TREE_MODEL_FACTORIES,
+    BALANCED_TREE_MODEL_FACTORIES_BY_NAME,
     build_generators as build_registry_generators,
     GENERATOR_FACTORIES,
     RULE_MODEL_FACTORIES,
+    RULE_MODEL_FACTORIES_BY_NAME,
     STANDARD_METAMODEL_FACTORIES,
     STANDARD_METAMODEL_FACTORIES_BY_NAME,
     TREE_MODEL_FACTORIES,
+    TREE_MODEL_FACTORIES_BY_NAME,
     Gen_rerx,
     Gen_tabddpm,
     Gen_vva,
@@ -108,16 +115,63 @@ def build_metamodel_groups(config=None):
     return standard, balanced
 
 
-def build_tree_models():
-    return {name: factory() for name, factory in TREE_MODEL_FACTORIES}
+def _resolve_named_model_factories(selected_names, factories_by_name, kind):
+    factories = []
+    for name in selected_names:
+        try:
+            factories.append((name, factories_by_name[name]))
+        except KeyError as exc:
+            valid_names = ", ".join(sorted(factories_by_name))
+            raise ValueError(f"Unknown {kind} model '{name}'. Expected one of: {valid_names}") from exc
+    return tuple(factories)
 
 
-def build_balanced_tree_models():
-    return {name: factory() for name, factory in BALANCED_TREE_MODEL_FACTORIES}
+def _validate_named_options(selected_names, valid_names, kind):
+    valid_set = set(valid_names)
+    invalid = [name for name in selected_names if name not in valid_set]
+    if invalid:
+        valid = ", ".join(valid_names)
+        raise ValueError(f"Unknown {kind} model(s) {invalid}. Expected one of: {valid}")
 
 
-def build_rule_models():
-    return {name: factory() for name, factory in RULE_MODEL_FACTORIES}
+def build_tree_models(config=None):
+    if config is None or config.tree_models == DEFAULT_TREE_MODELS:
+        selected = DEFAULT_TREE_MODELS
+    else:
+        selected = config.tree_models
+        _resolve_named_model_factories(
+            tuple(name for name in selected if name in TREE_MODEL_FACTORIES_BY_NAME),
+            TREE_MODEL_FACTORIES_BY_NAME,
+            "tree",
+        )
+    factories = tuple((name, TREE_MODEL_FACTORIES_BY_NAME[name]) for name in selected if name in TREE_MODEL_FACTORIES_BY_NAME)
+    return {name: factory() for name, factory in factories}
+
+
+def build_balanced_tree_models(config=None):
+    if config is None or config.balanced_tree_models == DEFAULT_BALANCED_TREE_MODELS:
+        selected = DEFAULT_BALANCED_TREE_MODELS
+    else:
+        selected = config.balanced_tree_models
+        _resolve_named_model_factories(
+            tuple(name for name in selected if name in BALANCED_TREE_MODEL_FACTORIES_BY_NAME),
+            BALANCED_TREE_MODEL_FACTORIES_BY_NAME,
+            "balanced tree",
+        )
+    factories = tuple(
+        (name, BALANCED_TREE_MODEL_FACTORIES_BY_NAME[name])
+        for name in selected
+        if name in BALANCED_TREE_MODEL_FACTORIES_BY_NAME
+    )
+    return {name: factory() for name, factory in factories}
+
+
+def build_rule_models(config=None):
+    if config is None or config.rule_models == DEFAULT_RULE_MODELS:
+        factories = RULE_MODEL_FACTORIES
+    else:
+        factories = _resolve_named_model_factories(config.rule_models, RULE_MODEL_FACTORIES_BY_NAME, "rule")
+    return {name: factory() for name, factory in factories}
 
 
 def is_balanced_metamodel(model):
@@ -128,9 +182,9 @@ def build_model_state(config=None):
     return _build_model_state(
         build_generators_fn=lambda: build_generators(config.generator_names if config is not None else None),
         build_metamodel_groups_fn=lambda: build_metamodel_groups(config),
-        build_tree_models_fn=build_tree_models,
-        build_balanced_tree_models_fn=build_balanced_tree_models,
-        build_rule_models_fn=build_rule_models,
+        build_tree_models_fn=lambda: build_tree_models(config),
+        build_balanced_tree_models_fn=lambda: build_balanced_tree_models(config),
+        build_rule_models_fn=lambda: build_rule_models(config),
     )
 
 
@@ -256,6 +310,10 @@ def parse_args():
     parser.add_argument('--generators', default = ','.join(EXPERIMENT_GENERATOR_NAMES), help = 'Comma-separated generator names to fit and evaluate.')
     parser.add_argument('--standard-metamodels', default = ','.join(DEFAULT_STANDARD_METAMODELS), help = 'Comma-separated standard metamodel names: rf,lgbm,xgb.')
     parser.add_argument('--balanced-metamodels', default = ','.join(DEFAULT_BALANCED_METAMODELS), help = 'Comma-separated balanced metamodel names: rf,lgbm,xgb.')
+    parser.add_argument('--tree-models', default = ','.join(DEFAULT_TREE_MODELS), help = 'Comma-separated tree white-box model names.')
+    parser.add_argument('--balanced-tree-models', default = ','.join(DEFAULT_BALANCED_TREE_MODELS), help = 'Comma-separated balanced tree white-box model names.')
+    parser.add_argument('--rule-models', default = ','.join(DEFAULT_RULE_MODELS), help = 'Comma-separated rule white-box model names.')
+    parser.add_argument('--sd-models', default = ','.join(DEFAULT_SD_MODELS), help = 'Comma-separated subgroup-discovery model names: primcv,bicv.')
     parser.add_argument(
         '--include-generated-only-tree-models',
         action = 'store_true',
@@ -272,8 +330,19 @@ def build_config(args):
     run_id = args.run_id or default_run_id()
     standard_metamodels = parse_csv_list(args.standard_metamodels, str)
     balanced_metamodels = parse_csv_list(args.balanced_metamodels, str)
+    tree_models = parse_csv_list(getattr(args, "tree_models", ",".join(DEFAULT_TREE_MODELS)), str)
+    balanced_tree_models = parse_csv_list(
+        getattr(args, "balanced_tree_models", ",".join(DEFAULT_BALANCED_TREE_MODELS)),
+        str,
+    )
+    rule_models = parse_csv_list(getattr(args, "rule_models", ",".join(DEFAULT_RULE_MODELS)), str)
+    sd_models = parse_csv_list(getattr(args, "sd_models", ",".join(DEFAULT_SD_MODELS)), str)
     _resolve_named_factories(standard_metamodels, STANDARD_METAMODEL_FACTORIES_BY_NAME, "standard")
     _resolve_named_factories(balanced_metamodels, BALANCED_METAMODEL_FACTORIES_BY_NAME, "balanced")
+    _validate_named_options(tree_models, DEFAULT_TREE_MODELS, "tree")
+    _validate_named_options(balanced_tree_models, DEFAULT_BALANCED_TREE_MODELS, "balanced tree")
+    _resolve_named_model_factories(rule_models, RULE_MODEL_FACTORIES_BY_NAME, "rule")
+    _validate_named_options(sd_models, DEFAULT_SD_MODELS, "sd")
     return ExperimentConfig(
         run_id = run_id,
         datasets = parse_csv_list(args.datasets, str),
@@ -287,6 +356,10 @@ def build_config(args):
         generator_names = parse_csv_list(args.generators, str),
         standard_metamodels = standard_metamodels,
         balanced_metamodels = balanced_metamodels,
+        tree_models = tree_models,
+        balanced_tree_models = balanced_tree_models,
+        rule_models = rule_models,
+        sd_models = sd_models,
         include_generated_only_tree_models = getattr(args, "include_generated_only_tree_models", False),
         skip_rerx = getattr(args, "skip_rerx", False),
         skip_vva = getattr(args, "skip_vva", False),

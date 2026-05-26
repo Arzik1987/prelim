@@ -212,6 +212,72 @@ def test_build_config_accepts_metamodel_cli_selection(monkeypatch):
     assert config.balanced_metamodels == ("rf",)
 
 
+def test_build_config_accepts_empty_white_box_model_groups(monkeypatch):
+    module = _load_experiments_module(monkeypatch)
+    args = types.SimpleNamespace(
+        run_id="configured-run",
+        datasets="ccpp",
+        sizes="100",
+        nsets=1,
+        split_seed=2020,
+        jobs=1,
+        generated_sample_size=100,
+        rules_sample_size=50,
+        ssl_pool_size=50,
+        vva_grid="0.5,1.0",
+        generators="dummy",
+        standard_metamodels="rf",
+        balanced_metamodels="rf",
+        tree_models="",
+        balanced_tree_models="",
+        rule_models="",
+        sd_models="",
+        skip_rerx=False,
+        skip_vva=False,
+        skip_ssl=False,
+        resume=False,
+    )
+
+    config = module.build_config(args)
+
+    assert config.tree_models == ()
+    assert config.balanced_tree_models == ()
+    assert config.rule_models == ()
+    assert config.sd_models == ()
+
+
+def test_build_config_accepts_empty_metamodel_groups(monkeypatch):
+    module = _load_experiments_module(monkeypatch)
+    args = types.SimpleNamespace(
+        run_id="configured-run",
+        datasets="ccpp",
+        sizes="100",
+        nsets=1,
+        split_seed=2020,
+        jobs=1,
+        generated_sample_size=100,
+        rules_sample_size=50,
+        ssl_pool_size=50,
+        vva_grid="0.5,1.0",
+        generators="dummy",
+        standard_metamodels="",
+        balanced_metamodels="",
+        tree_models="dtc",
+        balanced_tree_models="dtcb",
+        rule_models="grl",
+        sd_models="bicv",
+        skip_rerx=False,
+        skip_vva=False,
+        skip_ssl=False,
+        resume=False,
+    )
+
+    config = module.build_config(args)
+
+    assert config.standard_metamodels == ()
+    assert config.balanced_metamodels == ()
+
+
 def test_build_config_rejects_unknown_metamodel_name(monkeypatch):
     module = _load_experiments_module(monkeypatch)
     args = types.SimpleNamespace(
@@ -236,6 +302,43 @@ def test_build_config_rejects_unknown_metamodel_name(monkeypatch):
 
     with pytest.raises(ValueError, match="Unknown standard metamodel"):
         module.build_config(args)
+
+
+def test_build_model_groups_accept_empty_white_box_model_groups(monkeypatch, tmp_path):
+    module = _load_experiments_module(monkeypatch)
+    config = module.ExperimentConfig(
+        run_id="empty-wb-selection",
+        datasets=("toy",),
+        dataset_sizes=(10,),
+        standard_metamodels=("rf",),
+        balanced_metamodels=("rf",),
+        tree_models=(),
+        balanced_tree_models=(),
+        rule_models=(),
+        sd_models=(),
+        registry_dir=str(tmp_path / "registry"),
+    )
+
+    assert module.build_tree_models(config) == {}
+    assert module.build_balanced_tree_models(config) == {}
+    assert module.build_rule_models(config) == {}
+
+
+def test_build_metamodel_groups_accept_empty_groups(monkeypatch, tmp_path):
+    module = _load_experiments_module(monkeypatch)
+    config = module.ExperimentConfig(
+        run_id="empty-meta-selection",
+        datasets=("toy",),
+        dataset_sizes=(10,),
+        standard_metamodels=(),
+        balanced_metamodels=(),
+        registry_dir=str(tmp_path / "registry"),
+    )
+
+    standard, balanced = module.build_metamodel_groups(config)
+
+    assert standard == []
+    assert balanced == []
 
 
 def test_build_metamodel_groups_uses_configured_metamodel_names(monkeypatch, tmp_path):

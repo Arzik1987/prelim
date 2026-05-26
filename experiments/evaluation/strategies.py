@@ -197,7 +197,13 @@ def evaluate_standard_generator(generator, Xgen, meta_model, state, config, file
     write_meta(filetme, generator.my_name() + meta_model.my_name(), end - start)
 
     if config.include_generated_only_tree_models:
-        for name, model in [("dt", state.tree_models["dt"]), ("dtc", state.tree_models["dtc"]), ("dtval", state.dtval)]:
+        generated_only_tree_models = []
+        for name in ("dt", "dtc"):
+            if name in state.tree_models:
+                generated_only_tree_models.append((name, state.tree_models[name]))
+        if state.dtval is not None:
+            generated_only_tree_models.append(("dtval", state.dtval))
+        for name, model in generated_only_tree_models:
             score = fit_score_classifier(model, Xnew, predicted_labels, state.X, state.y, state.Xtest, state.ytest)
             write_result(
                 fileres,
@@ -218,7 +224,13 @@ def evaluate_standard_generator(generator, Xgen, meta_model, state, config, file
     Xnew = np.concatenate([state.X, Xnew])
     predicted_labels = np.concatenate([state.y, predicted_labels])
 
-    for name, model in [("dt", state.tree_models["dt"]), ("dtc", state.tree_models["dtc"]), ("dtval", state.dtval)]:
+    standard_tree_models = []
+    for name in ("dt", "dtc"):
+        if name in state.tree_models:
+            standard_tree_models.append((name, state.tree_models[name]))
+    if state.dtval is not None:
+        standard_tree_models.append(("dtval", state.dtval))
+    for name, model in standard_tree_models:
         score = fit_score_classifier(model, Xnew, predicted_labels, state.X, state.y, state.Xtest, state.ytest)
         write_result(
             fileres,
@@ -285,7 +297,10 @@ def evaluate_balanced_generator(generator, Xgen, meta_model, state, config, file
     end = time.time()
     write_meta(filetme, generator.my_name() + meta_model.my_name(), end - start)
 
-    for name, model in list(state.balanced_tree_models.items()) + [("dtvalb", state.dtvalb)]:
+    balanced_tree_models = list(state.balanced_tree_models.items())
+    if state.dtvalb is not None:
+        balanced_tree_models.append(("dtvalb", state.dtvalb))
+    for name, model in balanced_tree_models:
         score = fit_score_classifier(model, Xnew, ynew, state.X, state.y, state.Xtest, state.ytest)
         write_result(
             fileres,

@@ -60,9 +60,14 @@ def fit_score_sd_model(model, Xfit, yfit, Xtrain, ytrain, Xtest, ytest):
 
 def get_supervised_models(meta_model, tree_models, balanced_tree_models, rule_models, dtval, dtvalb, is_balanced_metamodel, include_rules=True):
     if is_balanced_metamodel(meta_model):
-        return list(balanced_tree_models.items()) + [("dtvalb", dtvalb)]
+        models = list(balanced_tree_models.items())
+        if dtvalb is not None:
+            models.append(("dtvalb", dtvalb))
+        return models
 
-    models = list(tree_models.items()) + [("dtval", dtval)]
+    models = list(tree_models.items())
+    if dtval is not None:
+        models.append(("dtval", dtval))
     if include_rules:
         models.extend(rule_models.items())
     return models
@@ -80,8 +85,13 @@ def get_vva_models(meta_model, tree_models, balanced_tree_models, rule_models, d
     )
     if is_balanced_metamodel(meta_model):
         return models
-    return models + [("primcv", primcv), ("bicv", bicv)]
+    return models + get_standard_sd_models(primcv, bicv)
 
 
 def get_standard_sd_models(primcv, bicv):
-    return [("primcv", primcv), ("bicv", bicv)]
+    models = []
+    if primcv is not None:
+        models.append(("primcv", primcv))
+    if bicv is not None:
+        models.append(("bicv", bicv))
+    return models

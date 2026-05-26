@@ -57,93 +57,104 @@ def fit_reference_models(config, X, y, Xtest, ytest, tree_models, balanced_tree_
     par_vals = [2**number for number in [1, 2, 3, 4, 5, 6, 7]]
     parameters = {"max_leaf_nodes": par_vals}
 
-    start = time.time()
-    tmp = GridSearchCV(dtval, parameters, refit=False).fit(X, y).cv_results_
-    tmp = opt_param(tmp, len(par_vals))
-    dtval = DecisionTreeClassifier(max_leaf_nodes=par_vals[np.argmax(tmp)])
-    dtval.fit(X, y)
-    end = time.time()
-    write_result(
-        fileres,
-        "dtval",
-        "na",
-        "na",
-        dtval.score(X, y),
-        dtval.score(Xtest, ytest),
-        model_size("dtval", dtval),
-        end - start,
-        "na",
-        balanced_accuracy_score(ytest, dtval.predict(Xtest)),
-        complexity_detail = model_complexity("dtval", dtval),
-    )
+    dtvalold = None
+    if "dtval" in config.tree_models:
+        start = time.time()
+        tmp = GridSearchCV(dtval, parameters, refit=False).fit(X, y).cv_results_
+        tmp = opt_param(tmp, len(par_vals))
+        dtval = DecisionTreeClassifier(max_leaf_nodes=par_vals[np.argmax(tmp)])
+        dtval.fit(X, y)
+        end = time.time()
+        write_result(
+            fileres,
+            "dtval",
+            "na",
+            "na",
+            dtval.score(X, y),
+            dtval.score(Xtest, ytest),
+            model_size("dtval", dtval),
+            end - start,
+            "na",
+            balanced_accuracy_score(ytest, dtval.predict(Xtest)),
+            complexity_detail = model_complexity("dtval", dtval),
+        )
+        dtvalold = copy.deepcopy(dtval)
+        dtval = DecisionTreeClassifier(max_leaf_nodes=max(n_leaves(dtval), 2))
+    else:
+        dtval = None
 
-    start = time.time()
-    tmp = GridSearchCV(dtvalb, parameters, refit=False, scoring="balanced_accuracy").fit(X, y).cv_results_
-    tmp = opt_param(tmp, len(par_vals))
-    dtvalb = DecisionTreeClassifier(max_leaf_nodes=par_vals[np.argmax(tmp)], class_weight="balanced")
-    dtvalb.fit(X, y)
-    end = time.time()
-    write_result(
-        fileres,
-        "dtvalb",
-        "na",
-        "na",
-        dtvalb.score(X, y),
-        dtvalb.score(Xtest, ytest),
-        model_size("dtvalb", dtvalb),
-        end - start,
-        "na",
-        balanced_accuracy_score(ytest, dtvalb.predict(Xtest)),
-        complexity_detail = model_complexity("dtvalb", dtvalb),
-    )
+    dtvalbold = None
+    if "dtvalb" in config.balanced_tree_models:
+        start = time.time()
+        tmp = GridSearchCV(dtvalb, parameters, refit=False, scoring="balanced_accuracy").fit(X, y).cv_results_
+        tmp = opt_param(tmp, len(par_vals))
+        dtvalb = DecisionTreeClassifier(max_leaf_nodes=par_vals[np.argmax(tmp)], class_weight="balanced")
+        dtvalb.fit(X, y)
+        end = time.time()
+        write_result(
+            fileres,
+            "dtvalb",
+            "na",
+            "na",
+            dtvalb.score(X, y),
+            dtvalb.score(Xtest, ytest),
+            model_size("dtvalb", dtvalb),
+            end - start,
+            "na",
+            balanced_accuracy_score(ytest, dtvalb.predict(Xtest)),
+            complexity_detail = model_complexity("dtvalb", dtvalb),
+        )
+        dtvalbold = copy.deepcopy(dtvalb)
+        dtvalb = DecisionTreeClassifier(max_leaf_nodes=max(n_leaves(dtvalb), 2), class_weight="balanced")
+    else:
+        dtvalb = None
 
-    dtvalold = copy.deepcopy(dtval)
-    dtvalbold = copy.deepcopy(dtvalb)
-    dtval = DecisionTreeClassifier(max_leaf_nodes=max(n_leaves(dtval), 2))
-    dtvalb = DecisionTreeClassifier(max_leaf_nodes=max(n_leaves(dtvalb), 2), class_weight="balanced")
+    bicv = None
+    if "bicv" in config.sd_models:
+        parsbi = get_bi_param(5, X.shape[1])
+        start = time.time()
+        tmp = GridSearchCV(BI(), {"depth": parsbi}, refit=False).fit(X, y).cv_results_
+        tmp = opt_param(tmp, len(parsbi))
+        bicv = BI(depth=parsbi[np.argmax(tmp)])
+        bicv.fit(X, y)
+        end = time.time()
+        write_result(
+            fileres,
+            "bicv",
+            "na",
+            "na",
+            bicv.score(X, y),
+            bicv.score(Xtest, ytest),
+            model_size("bicv", bicv),
+            end - start,
+            "na",
+            "na",
+            complexity_detail = model_complexity("bicv", bicv),
+        )
+        bicv = BI(depth=bicv.get_nrestr())
 
-    parsbi = get_bi_param(5, X.shape[1])
-    start = time.time()
-    tmp = GridSearchCV(BI(), {"depth": parsbi}, refit=False).fit(X, y).cv_results_
-    tmp = opt_param(tmp, len(parsbi))
-    bicv = BI(depth=parsbi[np.argmax(tmp)])
-    bicv.fit(X, y)
-    end = time.time()
-    write_result(
-        fileres,
-        "bicv",
-        "na",
-        "na",
-        bicv.score(X, y),
-        bicv.score(Xtest, ytest),
-        model_size("bicv", bicv),
-        end - start,
-        "na",
-        "na",
-        complexity_detail = model_complexity("bicv", bicv),
-    )
-    bicv = BI(depth=bicv.get_nrestr())
-
-    par_vals = [0.03, 0.05, 0.07, 0.1, 0.13, 0.16, 0.2]
-    start = time.time()
-    tmp = GridSearchCV(PRIM(), {"alpha": par_vals}, refit=False).fit(X, y).cv_results_
-    tmp = opt_param(tmp, len(par_vals))
-    primcv = PRIM(alpha=par_vals[np.argmax(tmp)])
-    primcv.fit(X, y)
-    end = time.time()
-    write_result(
-        fileres,
-        "primcv",
-        "na",
-        "na",
-        primcv.score(X, y),
-        primcv.score(Xtest, ytest),
-        model_size("primcv", primcv),
-        end - start,
-        "na",
-        "na",
-        complexity_detail = model_complexity("primcv", primcv),
-    )
+    primcv = None
+    if "primcv" in config.sd_models:
+        par_vals = [0.03, 0.05, 0.07, 0.1, 0.13, 0.16, 0.2]
+        start = time.time()
+        tmp = GridSearchCV(PRIM(), {"alpha": par_vals}, refit=False).fit(X, y).cv_results_
+        tmp = opt_param(tmp, len(par_vals))
+        primcv = PRIM(alpha=par_vals[np.argmax(tmp)])
+        primcv.fit(X, y)
+        end = time.time()
+        write_result(
+            fileres,
+            "primcv",
+            "na",
+            "na",
+            primcv.score(X, y),
+            primcv.score(Xtest, ytest),
+            model_size("primcv", primcv),
+            end - start,
+            "na",
+            "na",
+            complexity_detail = model_complexity("primcv", primcv),
+        )
 
     return {
         "dtval": dtval,

@@ -25,6 +25,10 @@ DEFAULT_DATASET_SIZES = (400, 100)
 DEFAULT_VVA_GRID = (0.5, 1.0, 1.5, 2.0, 2.5)
 DEFAULT_STANDARD_METAMODELS = ('rf', 'lgbm', 'xgb')
 DEFAULT_BALANCED_METAMODELS = ('rf', 'lgbm', 'xgb')
+DEFAULT_TREE_MODELS = ('dt', 'dtc', 'dtval')
+DEFAULT_BALANCED_TREE_MODELS = ('dtb', 'dtcb', 'dtvalb')
+DEFAULT_RULE_MODELS = ('ripper', 'irep', 'grl')
+DEFAULT_SD_MODELS = ('primcv', 'bicv')
 
 
 def utc_timestamp():
@@ -85,6 +89,10 @@ class ExperimentConfig:
     generator_names: tuple[str, ...] = field(default_factory = lambda: EXPERIMENT_GENERATOR_NAMES)
     standard_metamodels: tuple[str, ...] = field(default_factory = lambda: DEFAULT_STANDARD_METAMODELS)
     balanced_metamodels: tuple[str, ...] = field(default_factory = lambda: DEFAULT_BALANCED_METAMODELS)
+    tree_models: tuple[str, ...] = field(default_factory = lambda: DEFAULT_TREE_MODELS)
+    balanced_tree_models: tuple[str, ...] = field(default_factory = lambda: DEFAULT_BALANCED_TREE_MODELS)
+    rule_models: tuple[str, ...] = field(default_factory = lambda: DEFAULT_RULE_MODELS)
+    sd_models: tuple[str, ...] = field(default_factory = lambda: DEFAULT_SD_MODELS)
     include_generated_only_tree_models: bool = False
     skip_rerx: bool = False
     skip_vva: bool = False
