@@ -48,17 +48,20 @@ TREE_MODEL_FACTORIES = (
     # ranking of generators will not generally change (still kde is the best).
     ("dtc", lambda: DecisionTreeClassifier(max_leaf_nodes=8)),
 )
+TREE_MODEL_FACTORIES_BY_NAME = dict(TREE_MODEL_FACTORIES)
 
 BALANCED_TREE_MODEL_FACTORIES = (
     ("dtb", lambda: DecisionTreeClassifier(min_samples_split=10, class_weight="balanced")),
     ("dtcb", lambda: DecisionTreeClassifier(max_leaf_nodes=8, class_weight="balanced")),
 )
+BALANCED_TREE_MODEL_FACTORIES_BY_NAME = dict(BALANCED_TREE_MODEL_FACTORIES)
 
 RULE_MODEL_FACTORIES = (
     ("ripper", lambda: lw.RIPPER(max_rules=8, random_state=2020)),
     ("irep", lambda: lw.IREP(max_rules=8, random_state=2020)),
     ("grl", lambda: GreedyRuleListClassifier()),
 )
+RULE_MODEL_FACTORIES_BY_NAME = dict(RULE_MODEL_FACTORIES)
 
 
 def build_generators(generator_names=None):
@@ -77,16 +80,25 @@ def build_metamodel_groups():
     return standard, balanced
 
 
-def build_tree_models():
-    return {name: factory() for name, factory in TREE_MODEL_FACTORIES}
+def build_tree_models(model_names=None):
+    factories = TREE_MODEL_FACTORIES if model_names is None else tuple(
+        (name, TREE_MODEL_FACTORIES_BY_NAME[name]) for name in model_names
+    )
+    return {name: factory() for name, factory in factories}
 
 
-def build_balanced_tree_models():
-    return {name: factory() for name, factory in BALANCED_TREE_MODEL_FACTORIES}
+def build_balanced_tree_models(model_names=None):
+    factories = BALANCED_TREE_MODEL_FACTORIES if model_names is None else tuple(
+        (name, BALANCED_TREE_MODEL_FACTORIES_BY_NAME[name]) for name in model_names
+    )
+    return {name: factory() for name, factory in factories}
 
 
-def build_rule_models():
-    return {name: factory() for name, factory in RULE_MODEL_FACTORIES}
+def build_rule_models(model_names=None):
+    factories = RULE_MODEL_FACTORIES if model_names is None else tuple(
+        (name, RULE_MODEL_FACTORIES_BY_NAME[name]) for name in model_names
+    )
+    return {name: factory() for name, factory in factories}
 
 
 def is_balanced_metamodel(model):
