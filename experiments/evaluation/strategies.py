@@ -12,7 +12,6 @@ from .scoring import (
     get_standard_sd_models,
     get_supervised_models,
     get_vva_models,
-    model_complexity,
     model_size,
 )
 from prelim.generators.vva import Gen_vva
@@ -78,7 +77,6 @@ def evaluate_rerx(state, fileres, is_balanced_metamodel):
                 score["elapsed"],
                 fidelity_score(model.predict(state.Xtest), ypredtest),
                 score["bactest"],
-                complexity_detail = model_complexity(name, model),
             )
 
         if not is_balanced_metamodel(meta_model):
@@ -96,7 +94,6 @@ def evaluate_rerx(state, fileres, is_balanced_metamodel):
                     score["elapsed"],
                     "na",
                     "na",
-                    complexity_detail = model_complexity(name, model),
                 )
 
 
@@ -183,7 +180,6 @@ def evaluate_vva(config, state, fileres, filetme, is_balanced_metamodel):
                 score["elapsed"],
                 fidelity,
                 bactest,
-                complexity_detail = model_complexity(name, model),
             )
 
 
@@ -216,7 +212,6 @@ def evaluate_standard_generator(generator, Xgen, meta_model, state, config, file
                 score["elapsed"],
                 fidelity_score(model.predict(state.Xtest), ypredtest),
                 score["bactest"],
-                complexity_detail = model_complexity(name, model),
             )
 
     Xnew = Xnew[: config.generated_sample_size - len(state.y), :]
@@ -243,7 +238,6 @@ def evaluate_standard_generator(generator, Xgen, meta_model, state, config, file
             score["elapsed"],
             fidelity_score(model.predict(state.Xtest), ypredtest),
             score["bactest"],
-            complexity_detail = model_complexity(name, model),
         )
 
     for name, model in state.rule_models.items():
@@ -265,7 +259,6 @@ def evaluate_standard_generator(generator, Xgen, meta_model, state, config, file
             score["elapsed"],
             fidelity_score(model.predict(state.Xtest), ypredtest),
             score["bactest"],
-            complexity_detail = model_complexity(name, model),
         )
 
     ynew = meta_model.predict_proba(Xnew)
@@ -282,7 +275,6 @@ def evaluate_standard_generator(generator, Xgen, meta_model, state, config, file
             score["elapsed"],
             "na",
             "na",
-            complexity_detail = model_complexity(name, model),
         )
 
 
@@ -313,7 +305,6 @@ def evaluate_balanced_generator(generator, Xgen, meta_model, state, config, file
             score["elapsed"],
             fidelity_score(model.predict(state.Xtest), ypredtest),
             score["bactest"],
-            complexity_detail = model_complexity(name, model),
         )
 
 
@@ -357,7 +348,6 @@ def _evaluate_ssl_mode(state, fileres, is_balanced_metamodel, Xtest, ytest, Xgen
                 score["elapsed"],
                 fidelity_score(model.predict(Xtest), ypredtest),
                 score["bactest"],
-                complexity_detail = model_complexity(name, model),
             )
 
         if not is_balanced_metamodel(meta_model):
@@ -375,7 +365,6 @@ def _evaluate_ssl_mode(state, fileres, is_balanced_metamodel, Xtest, ytest, Xgen
                     score["elapsed"],
                     "na",
                     "na",
-                    complexity_detail = model_complexity(name, model),
                 )
 
 

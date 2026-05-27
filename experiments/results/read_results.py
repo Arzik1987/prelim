@@ -10,8 +10,8 @@ from ..config import read_latest_run_id, resolve_run_dir
 
 
 FILEPATH = os.path.dirname(os.path.abspath(__file__))
-RESULT_COLUMNS = ['alg', 'gen', 'met', 'tra', 'tes', 'nle', 'cmp', 'tme', 'fid', 'bac']
-RESULT_NUMERIC_COLUMNS = ['tra', 'tes', 'ora', 'bac', 'orb', 'nle', 'orn', 'cmp', 'orc', 'tme', 'fid', 'orf', 'itr', 'npt']
+RESULT_COLUMNS = ['alg', 'gen', 'met', 'tra', 'tes', 'nle', 'tme', 'fid', 'bac']
+RESULT_NUMERIC_COLUMNS = ['tra', 'tes', 'ora', 'bac', 'orb', 'nle', 'orn', 'tme', 'fid', 'orf', 'itr', 'npt']
 MODEL_GROUPS = {
     'dt': ('dt', 'dtc', 'dtval'),
     'dtp': ('dtp', 'dtcp', 'dtvalp'),
@@ -87,7 +87,6 @@ def qual_change(data, meta):
         baseline = baseline_rows.iloc[0]
         data.loc[data['alg'] == alg, 'ora'] = baseline['tes']
         data.loc[data['alg'] == alg, 'orn'] = baseline['nle']
-        data.loc[data['alg'] == alg, 'orc'] = baseline['cmp']
         data.loc[data['alg'] == alg, 'orb'] = baseline['bac']
 
     for alg, met in data[['alg', 'met']].drop_duplicates().itertuples(index = False):
@@ -113,11 +112,13 @@ def load_shard_result(paths, raw_filename):
     meta.columns = ['alg', 'val']
 
     data = pd.read_csv(os.path.join(paths.raw_dir, raw_filename), delimiter = ',', header = None)
-    if data.shape[1] == len(RESULT_COLUMNS) - 1:
-        data.columns = [name for name in RESULT_COLUMNS if name != 'cmp']
-        data['cmp'] = data['nle']
-    else:
+    if data.shape[1] == len(RESULT_COLUMNS):
         data.columns = RESULT_COLUMNS
+    elif data.shape[1] == len(RESULT_COLUMNS) + 1:
+        data.columns = ['alg', 'gen', 'met', 'tra', 'tes', 'nle', 'cmp', 'tme', 'fid', 'bac']
+        data = data[RESULT_COLUMNS]
+    else:
+        raise ValueError('Unexpected result column count %s in %s' % (data.shape[1], raw_filename))
     data = qual_change(data, meta)
 
     dat, itr, npt = raw_filename.split('.')[0].split('_')

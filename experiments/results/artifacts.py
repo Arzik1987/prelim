@@ -5,7 +5,7 @@ from dataclasses import asdict, dataclass
 from itertools import product
 
 
-RESULT_FIELDS = ("alg", "gen", "met", "tra", "tes", "nle", "cmp", "tme", "fid", "bac")
+RESULT_FIELDS = ("alg", "gen", "met", "tra", "tes", "nle", "tme", "fid", "bac")
 META_FIELDS = ("alg", "val")
 
 
@@ -17,7 +17,6 @@ class ExperimentResult:
     tra: object
     tes: object
     nle: object
-    cmp: object
     tme: object
     fid: object
     bac: object
@@ -49,7 +48,7 @@ def shard_is_complete(config, dataset_name, split_index, dataset_size):
     )
 
 
-def write_result(handle, model_name, gen_name, meta_name, sctrain, sctest, complexity, elapsed, fidelity, bactest, complexity_detail = None):
+def write_result(handle, model_name, gen_name, meta_name, sctrain, sctest, complexity, elapsed, fidelity, bactest):
     row = ExperimentResult(
         alg=model_name,
         gen=gen_name,
@@ -57,7 +56,6 @@ def write_result(handle, model_name, gen_name, meta_name, sctrain, sctest, compl
         tra=sctrain,
         tes=sctest,
         nle=complexity,
-        cmp=complexity if complexity_detail is None else complexity_detail,
         tme=elapsed,
         fid=fidelity,
         bac=bactest,

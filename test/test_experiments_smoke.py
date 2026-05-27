@@ -20,7 +20,7 @@ def _repeat_rows(X, n_rows):
 
 
 class _StubRuleModel:
-    def __init__(self, max_rules=8):
+    def __init__(self, max_rules=8, **kwargs):
         self.max_rules = max_rules
         self.ruleset_ = []
 

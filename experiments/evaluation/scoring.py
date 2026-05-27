@@ -25,12 +25,6 @@ def model_size(name, model):
     return n_leaves(model)
 
 
-def model_complexity(name, model):
-    if name == "grl":
-        return model.complexity_
-    return model_size(name, model)
-
-
 def fidelity_score(predicted, reference):
     return np.count_nonzero(predicted == reference) / len(reference)
 
