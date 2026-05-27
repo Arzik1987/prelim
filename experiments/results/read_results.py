@@ -37,6 +37,9 @@ def parse_args():
     parser.add_argument('--run-id', default = None, help = 'Run id under experiments/registry/runs/. Defaults to the latest run.')
     parser.add_argument('--run-dir', default = None, help = 'Absolute or relative path to a run directory.')
     parser.add_argument('--skip-figures', action = 'store_true', help = 'Compute derived tables without rendering heatmaps.')
+    parser.add_argument('--reuse-res', action = 'store_true', help = 'If derived/res.csv already exists, reuse it and skip raw-to-derived aggregation.')
+    parser.add_argument('--figure-height', type = float, default = None, help = 'Optional FacetGrid height override for generated heatmaps.')
+    parser.add_argument('--figure-aspect', type = float, default = None, help = 'Optional FacetGrid aspect override for generated heatmaps.')
     return parser.parse_args()
 
 
@@ -152,6 +155,14 @@ def load_run_results(paths):
     return results, meta_frames, raw_filenames
 
 
+def load_existing_res(paths):
+    results = pd.read_csv(paths.res_path)
+    for name in RESULT_NUMERIC_COLUMNS:
+        if name in results.columns:
+            results[name] = pd.to_numeric(results[name], errors = 'coerce')
+    return results
+
+
 def change_names(data):
     return data.replace({
         'dtval': 'DT*',
@@ -164,8 +175,8 @@ def change_names(data):
         'dtcb': 'DT$^{int}$',
         'dtb': 'DT',
         'adasyn': 'ADASYN',
-        'class_gmm': 'C-GMM',
-        'class_kde': 'C-KDE',
+        'class_gmm': 'GMM-C',
+        'class_kde': 'KDE-C',
         'cmmrf': 'CMM',
         'cmmpart': 'CMMPart',
         'dummy': 'Dummy',
@@ -240,7 +251,7 @@ def my_diverging_palette(plotter, r_neg, r_pos, g_neg, g_pos, b_neg, b_pos, sep 
     return plotter.blend_palette(np.concatenate([neg, mid, pos]), n, as_cmap = as_cmap)
 
 
-def draw_heatmap(results, figures_dir, npts, clname, clnameo, plotter = None, mlt = 100, pal = 'normal', mod = 'dt', ylbl = True, ytext = '', fsz = 13):
+def draw_heatmap(results, figures_dir, npts, clname, clnameo, plotter = None, mlt = 100, pal = 'normal', mod = 'dt', ylbl = True, ytext = '', fsz = 13, figure_height = None, figure_aspect = None):
     plotter = load_plotter(plotter)
     special_generators = ('SSL', 'SSL-O')
     spacer_label = ' '
@@ -322,8 +333,9 @@ def draw_heatmap(results, figures_dir, npts, clname, clnameo, plotter = None, ml
     else:
         cmap = my_diverging_palette(plotter, 255, 0, 213, 91, 0, 183, sep = 3, as_cmap = True)
 
-    aspect = 0.42 / 1.2 if ylbl else 0.33 / 1.2
-    grid = plotter.FacetGrid(aggregated, row = 'npt', col = 'alg', margin_titles = False, despine = False, height = 4.2, aspect = aspect)
+    aspect = figure_aspect if figure_aspect is not None else (0.42 / 1.2 if ylbl else 0.33 / 1.2)
+    height = figure_height if figure_height is not None else 4.2
+    grid = plotter.FacetGrid(aggregated, row = 'npt', col = 'alg', margin_titles = False, despine = False, height = height, aspect = aspect)
     grid.map_dataframe(draw_heatmap_c, 'met', 'gen', clname, cbar = False, cmap = cmap, annot = True, fmt = 'g')
     if not ylbl:
         grid.set(yticklabels = [])
@@ -337,20 +349,20 @@ def available_sizes(results):
     return sorted(int(value) for value in results['npt'].dropna().unique())
 
 
-def draw_heatmap_suite(results, figures_dir, plotter = None, sizes = None):
+def draw_heatmap_suite(results, figures_dir, plotter = None, sizes = None, figure_height = None, figure_aspect = None):
     sizes = sizes or available_sizes(results)
     for index, npts in enumerate(sizes):
         ylbl = index == 0
-        draw_heatmap(results, figures_dir, npts, 'tes', 'ora', plotter = plotter, fsz = 13, ylbl = ylbl)
-        draw_heatmap(results, figures_dir, npts, 'fid', 'orf', plotter = plotter, ylbl = ylbl)
-        draw_heatmap(results, figures_dir, npts, 'nle', 'orn', plotter = plotter, mlt = 1, pal = 'inverse', ylbl = ylbl)
-        draw_heatmap(results, figures_dir, npts, 'tes', 'ora', plotter = plotter, mod = 'dtp', ylbl = ylbl)
-        draw_heatmap(results, figures_dir, npts, 'bac', 'orb', plotter = plotter, mod = 'dtb', ylbl = ylbl)
-        draw_heatmap(results, figures_dir, npts, 'tes', 'ora', plotter = plotter, mod = 'rules', ylbl = ylbl)
-        draw_heatmap(results, figures_dir, npts, 'fid', 'orf', plotter = plotter, mod = 'rules', ylbl = ylbl)
-        draw_heatmap(results, figures_dir, npts, 'nle', 'orn', plotter = plotter, mlt = 1, pal = 'inverse', mod = 'rules', ylbl = ylbl)
-        draw_heatmap(results, figures_dir, npts, 'tes', 'ora', plotter = plotter, mod = 'sd', ylbl = ylbl)
-        draw_heatmap(results, figures_dir, npts, 'nle', 'orn', plotter = plotter, mlt = 1, pal = 'inverse', mod = 'sd', ylbl = ylbl)
+        draw_heatmap(results, figures_dir, npts, 'tes', 'ora', plotter = plotter, fsz = 13, ylbl = ylbl, figure_height = figure_height, figure_aspect = figure_aspect)
+        draw_heatmap(results, figures_dir, npts, 'fid', 'orf', plotter = plotter, ylbl = ylbl, figure_height = figure_height, figure_aspect = figure_aspect)
+        draw_heatmap(results, figures_dir, npts, 'nle', 'orn', plotter = plotter, mlt = 1, pal = 'inverse', ylbl = ylbl, figure_height = figure_height, figure_aspect = figure_aspect)
+        draw_heatmap(results, figures_dir, npts, 'tes', 'ora', plotter = plotter, mod = 'dtp', ylbl = ylbl, figure_height = figure_height, figure_aspect = figure_aspect)
+        draw_heatmap(results, figures_dir, npts, 'bac', 'orb', plotter = plotter, mod = 'dtb', ylbl = ylbl, figure_height = figure_height, figure_aspect = figure_aspect)
+        draw_heatmap(results, figures_dir, npts, 'tes', 'ora', plotter = plotter, mod = 'rules', ylbl = ylbl, figure_height = figure_height, figure_aspect = figure_aspect)
+        draw_heatmap(results, figures_dir, npts, 'fid', 'orf', plotter = plotter, mod = 'rules', ylbl = ylbl, figure_height = figure_height, figure_aspect = figure_aspect)
+        draw_heatmap(results, figures_dir, npts, 'nle', 'orn', plotter = plotter, mlt = 1, pal = 'inverse', mod = 'rules', ylbl = ylbl, figure_height = figure_height, figure_aspect = figure_aspect)
+        draw_heatmap(results, figures_dir, npts, 'tes', 'ora', plotter = plotter, mod = 'sd', ylbl = ylbl, figure_height = figure_height, figure_aspect = figure_aspect)
+        draw_heatmap(results, figures_dir, npts, 'nle', 'orn', plotter = plotter, mlt = 1, pal = 'inverse', mod = 'sd', ylbl = ylbl, figure_height = figure_height, figure_aspect = figure_aspect)
 
 
 def bb_qual_change(meta):
@@ -461,19 +473,31 @@ def write_derived_outputs(paths, results, meta_frames):
     }
 
 
-def postprocess_run(run_dir, draw_figures = True, plotter = None):
+def postprocess_run(run_dir, draw_figures = True, plotter = None, figure_height = None, figure_aspect = None, reuse_res = False):
     paths = build_run_paths(run_dir)
-    results, meta_frames, _ = load_run_results(paths)
-    outputs = write_derived_outputs(paths, results, meta_frames)
+    if reuse_res:
+        if not os.path.exists(paths.res_path):
+            raise FileNotFoundError('Cannot reuse derived results because %s does not exist.' % paths.res_path)
+        results = load_existing_res(paths)
+        outputs = {'res': results}
+    else:
+        results, meta_frames, _ = load_run_results(paths)
+        outputs = write_derived_outputs(paths, results, meta_frames)
     if draw_figures:
-        draw_heatmap_suite(results, paths.figures_dir, plotter = plotter)
+        draw_heatmap_suite(results, paths.figures_dir, plotter = plotter, figure_height = figure_height, figure_aspect = figure_aspect)
     return outputs
 
 
 def main():
     args = parse_args()
     run_dir = resolve_selected_run(args)
-    postprocess_run(run_dir, draw_figures = not args.skip_figures)
+    postprocess_run(
+        run_dir,
+        draw_figures = not args.skip_figures,
+        figure_height = args.figure_height,
+        figure_aspect = args.figure_aspect,
+        reuse_res = args.reuse_res,
+    )
 
 
 if __name__ == '__main__':
