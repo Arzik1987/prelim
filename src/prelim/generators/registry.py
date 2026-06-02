@@ -19,6 +19,7 @@ GENERATOR_SPECS = {
     "copulagan": GeneratorSpec(".copulagan", "Gen_copulagan"),
     "ctgan": GeneratorSpec(".ctgan", "Gen_ctgan"),
     "dummy": GeneratorSpec(".dummy", "Gen_dummy"),
+    "gibbs": GeneratorSpec(".gibbs", "Gen_gibbs"),
     "forestdiffusion": GeneratorSpec(".forestdiffusion", "Gen_forestdiffusion"),
     "gaussiancopula": GeneratorSpec(".gaussiancopula", "Gen_gaussiancopula"),
     "gmm": GeneratorSpec(".gmm", "Gen_gmmbic"),

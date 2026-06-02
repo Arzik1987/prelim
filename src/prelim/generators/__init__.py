@@ -8,6 +8,7 @@ from .ctgan import Gen_ctgan
 from .dummy import Gen_dummy
 from .forestdiffusion import Gen_forestdiffusion
 from .gaussiancopula import Gen_gaussiancopula
+from .gibbs import Gen_gibbs
 from .gmm import Gen_classgmm, Gen_gmm, Gen_gmmbic, Gen_gmmbical
 from .kde import Gen_classkde, Gen_kdeb, Gen_kdebw, Gen_kdebwhl, Gen_kdebwm
 from .munge import Gen_munge
@@ -65,6 +66,7 @@ __all__ = [
     "Gen_dummy",
     "Gen_forestdiffusion",
     "Gen_gaussiancopula",
+    "Gen_gibbs",
     "Gen_classgmm",
     "Gen_classkde",
     "Gen_great",

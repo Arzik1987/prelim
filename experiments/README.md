@@ -15,7 +15,12 @@ Internal layout:
 - `metamodels/`: experiment-local metamodel wrappers
 
 ### Generator Sets
-The default experiment sweep uses `EXPERIMENT_GENERATOR_NAMES` from `src/prelim/generators/registry.py`:
+Generator usage in this folder is defined by code, not by the public API surface:
+- the default sampled-generator sweep uses `EXPERIMENT_GENERATOR_NAMES` from `src/prelim/generators/registry.py`
+- `rerx` and legacy `vva` are instantiated separately in `registries.py` and evaluated through dedicated phases in `evaluation/strategies.py`
+- `tabddpm` is only added to the experiment generator list when `TABDDPM_REPO_PATH` is set in the environment
+
+Default sampled-generator sweep:
 ```text
 gmm
 class_gmm
@@ -44,21 +49,27 @@ kdem
 kdeb
 ```
 
-Implemented generators that are not part of `EXPERIMENT_GENERATOR_NAMES`:
+Separate experiment paths that are used, but not part of the default sampled-generator sweep:
+- `rerx`
+- `vva_legacy`
+
+Conditionally used in experiments:
+- `tabddpm` via `TABDDPM_REPO_PATH`
+
+Implemented generators that are not used by the experiment runner:
 - `bayesnet`
 - `binarydiffusion`
 - `forestdiffusion`
+- `gibbs`
 - `great`
-- `rerx`
-- `tabddpm`
 - `tabsyn`
 - `vinecopula`
 - `vva`
 
 Notes:
-- `rerx` and `vva` are implemented as separate evaluation paths, not as standard sweep generators.
-- `bayesnet`, `binarydiffusion`, `forestdiffusion`, `great`, `tabddpm`, `tabsyn`, and `vinecopula` are implemented backends that are available through the generator API, but they are excluded from the default experiment sweep because fitting them is prohibitively slow in the current experiment setup.
-- `cmmpart` is part of the default experiment sweep and requires `python-weka-wrapper3` plus a working Java installation available through `java` or `JAVA_HOME`.
+- the experiment runner wires `vva_legacy` to `src/prelim/generators/vva.py`; the public registry key `vva` points to `src/prelim/generators/vva_p.py` and is not used here
+- `cmmpart` is part of the default experiment sweep and requires `python-weka-wrapper3` plus a working Java installation available through `java` or `JAVA_HOME`
+- `tabddpm` is implemented in the experiment registry, but it is only instantiated when `TABDDPM_REPO_PATH` is present
 
 The CLI entry points remain:
 - `experiments.py`

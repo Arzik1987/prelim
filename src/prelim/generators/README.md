@@ -26,6 +26,7 @@ Generator modules are organized by backend or method family where it keeps impor
 - `rfdens.py`, `part.py`, and `treedens.py`: rule/tree partition density samplers.
 - `smote.py`, `adasyn.py`, and `rose.py`: supervised oversampling-style generators.
 - `gaussiancopula.py`, `copulagan.py`, and `vinecopula.py`: copula-based tabular generators.
+- `gibbs.py`: masked-conditionals Gibbs sampler with an optional PyTorch Transformer backend.
 - `tabgan.py`, `ctgan.py`, `tvae.py`, `great.py`, `tabsyn.py`, `tabddpm.py`, and `binarydiffusion.py`: wrappers around heavier optional tabular synthesis backends.
 
 Prefer adding new variants to an existing family module when they share dependencies and implementation style. Keep standalone backend wrappers in their own modules, especially when they import optional or heavyweight packages.
@@ -34,7 +35,7 @@ Prefer adding new variants to an existing family module when they share dependen
 
 If the generator should be available through the high-level `prelim(...)` API:
 1. Add the class to `src/prelim/generators/__init__.py`.
-2. Add an entry to `build_generator(...)` in the same file.
+2. Add an entry to `GENERATOR_SPECS` in `src/prelim/generators/registry.py`.
 3. Use a short lowercase key such as `kde`, `smote`, or `vva`.
 4. If the backend is optional or heavy, add a focused test that stubs the external library instead of training the real model in CI.
 5. For dataframe-based tabular synthesizers such as `TabGAN`, `CTGAN`, `TVAE`, `CopulaGAN`, or `GaussianCopula`, convert internal NumPy arrays at the wrapper boundary and keep the public PRELIM interface NumPy-based.

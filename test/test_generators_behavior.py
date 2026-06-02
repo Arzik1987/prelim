@@ -8,6 +8,7 @@ from prelim.generators import Gen_copulagan
 from prelim.generators import Gen_ctgan
 from prelim.generators import Gen_forestdiffusion
 from prelim.generators import Gen_gaussiancopula
+from prelim.generators import Gen_gibbs
 from prelim.generators import Gen_tabgan
 from prelim.generators import Gen_tvae
 from prelim.generators import Gen_vva_proba as Gen_vva_proba_export
@@ -182,6 +183,57 @@ def test_tabgan_generator_pads_if_backend_underproduces(monkeypatch):
 
     assert sample.shape == (5, 2)
     assert np.all(sample == sample[0])
+
+
+def test_gibbs_generator_uses_backend_and_preserves_mixed_column_types(monkeypatch):
+    calls = []
+
+    class _FakeEstimator:
+        def fit(self, train_data, column_specs, train_kwargs, sample_seed):
+            calls.append(("fit", train_data.copy(), column_specs, train_kwargs, sample_seed))
+            self.train_shape_ = train_data.shape
+            return self
+
+        def sample(self, n_samples, train_data, column_specs, sample_kwargs, sample_seed):
+            calls.append(("sample", n_samples, train_data.copy(), column_specs, sample_kwargs, sample_seed))
+            del sample_kwargs, sample_seed
+            first = train_data[0].copy()
+            rows = np.tile(first, (n_samples, 1))
+            rows[:, 0] = np.linspace(-1.0, 1.0, n_samples)
+            rows[:, 1] = np.arange(n_samples) % len(column_specs[1].categories)
+            return rows
+
+    monkeypatch.setattr(Gen_gibbs, "_build_estimator", lambda self: _FakeEstimator())
+
+    x = np.array(
+        [
+            [0.0, "a", 10],
+            [1.0, "b", 20],
+            [2.0, "a", 30],
+        ],
+        dtype=object,
+    )
+
+    generator = Gen_gibbs(
+        model_kwargs={"hidden_dim": 16},
+        train_kwargs={"epochs": 1, "batch_size": 2},
+        sample_kwargs={"gibbs_rounds": 1},
+        seed=2020,
+    ).fit(x)
+
+    sample = generator.sample(n_samples=5)
+
+    assert sample.shape == (5, x.shape[1])
+    assert generator.my_name() == "gibbs"
+    assert calls[0][0] == "fit"
+    assert calls[0][1].shape == x.shape
+    assert calls[0][3]["epochs"] == 1
+    assert calls[0][4] == 2020
+    assert calls[1][0] == "sample"
+    assert calls[1][1] == 5
+    assert list(sample[:, 1]) == ["a", "b", "a", "b", "a"]
+    assert list(sample[:, 2]) == [10, 10, 10, 10, 10]
+    assert build_generator("gibbs", seed=2020).my_name() == "gibbs"
 
 
 def test_tabgan_generator_fails_if_backend_returns_no_rows(monkeypatch):
