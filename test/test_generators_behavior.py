@@ -11,6 +11,7 @@ from prelim.generators import Gen_gaussiancopula
 from prelim.generators import Gen_gibbs
 from prelim.generators import Gen_tabgan
 from prelim.generators import Gen_tvae
+from prelim.generators import Gen_vva as Gen_vva_export
 from prelim.generators import Gen_vva_proba as Gen_vva_proba_export
 from prelim.generators import build_generator
 from prelim.generators import EXPERIMENT_GENERATOR_NAMES
@@ -29,7 +30,7 @@ from prelim.generators.rose import Gen_rose
 from prelim.generators.smote import Gen_smote
 from prelim.generators.treedens import Gen_treedens
 from prelim.generators.vinecopula import Gen_vinecopula
-from prelim.generators.vva import Gen_vva as Gen_vva_legacy
+from prelim.generators.vva import Gen_vva
 from prelim.generators.vva_p import Gen_vva as Gen_vva_proba
 
 
@@ -108,6 +109,7 @@ def test_dummy_returns_full_copy_of_fitted_data():
 
 def test_generator_package_exports_public_surface():
     assert Gen_dummy_export is Gen_dummy
+    assert Gen_vva_export is Gen_vva
     assert Gen_vva_proba_export is Gen_vva_proba
     assert build_generator("dummy", seed=2020).my_name() == "dummy"
 
@@ -1081,17 +1083,17 @@ def test_vva_proba_generates_requested_number_of_boundary_points():
     assert sample.shape == (len(x), x.shape[1])
 
 
-def test_vva_legacy_disables_generation_when_all_predictions_are_on_one_side():
+def test_vva_disables_generation_when_all_predictions_are_on_one_side():
     x = _clustered_sample()
-    generator = Gen_vva_legacy().fit(x, _SingleSideScoreMeta())
+    generator = Gen_vva().fit(x, _SingleSideScoreMeta())
 
     assert generator.will_generate() is False
     assert generator.sample(r=1.0).shape == (0, x.shape[1])
 
 
-def test_vva_legacy_generates_requested_number_of_boundary_points():
+def test_vva_generates_requested_number_of_boundary_points():
     x = _clustered_sample()
-    generator = Gen_vva_legacy(rho=0.2).fit(x, _LinearScoreMeta())
+    generator = Gen_vva(rho=0.2).fit(x, _LinearScoreMeta())
 
     sample = generator.sample(r=1.0)
 

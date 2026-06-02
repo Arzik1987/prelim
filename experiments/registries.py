@@ -1,8 +1,8 @@
+from importlib import import_module
 from importlib.util import find_spec
 import os
+import sys
 
-from imodels import GreedyRuleListClassifier
-import wittgenstein as lw
 from sklearn.tree import DecisionTreeClassifier
 
 from .metamodels.rf import Meta_rf
@@ -18,7 +18,7 @@ GENERATOR_FACTORIES = tuple(make_generator_factory(name) for name in EXPERIMENT_
 GENERATOR_FACTORIES_BY_NAME = {name: make_generator_factory(name) for name in EXPERIMENT_GENERATOR_NAMES}
 Gen_rerx = get_generator_class("rerx")
 Gen_tabddpm = get_generator_class("tabddpm")
-Gen_vva = get_generator_class("vva_legacy")
+Gen_vva = get_generator_class("vva")
 
 STANDARD_METAMODEL_FACTORIES = (
     Meta_rf,
@@ -57,11 +57,28 @@ BALANCED_TREE_MODEL_FACTORIES = (
 BALANCED_TREE_MODEL_FACTORIES_BY_NAME = dict(BALANCED_TREE_MODEL_FACTORIES)
 
 RULE_MODEL_FACTORIES = (
-    ("ripper", lambda: lw.RIPPER(max_rules=8, random_state=2020)),
-    ("irep", lambda: lw.IREP(max_rules=8, random_state=2020)),
-    ("grl", lambda: GreedyRuleListClassifier()),
+    ("ripper", lambda: import_module("wittgenstein").RIPPER(max_rules=8, random_state=2020)),
+    ("irep", lambda: import_module("wittgenstein").IREP(max_rules=8, random_state=2020)),
+    ("grl", lambda: import_module("imodels").GreedyRuleListClassifier()),
 )
 RULE_MODEL_FACTORIES_BY_NAME = dict(RULE_MODEL_FACTORIES)
+
+
+def _module_is_available(module_name):
+    if module_name in sys.modules:
+        return True
+    try:
+        return find_spec(module_name) is not None
+    except ValueError:
+        return False
+
+
+def rule_model_is_available(name):
+    if name in {"ripper", "irep"}:
+        return _module_is_available("wittgenstein")
+    if name == "grl":
+        return _module_is_available("imodels")
+    return True
 
 
 def build_generators(generator_names=None):
@@ -95,9 +112,10 @@ def build_balanced_tree_models(model_names=None):
 
 
 def build_rule_models(model_names=None):
-    factories = RULE_MODEL_FACTORIES if model_names is None else tuple(
-        (name, RULE_MODEL_FACTORIES_BY_NAME[name]) for name in model_names
-    )
+    if model_names is None:
+        factories = tuple((name, factory) for name, factory in RULE_MODEL_FACTORIES if rule_model_is_available(name))
+    else:
+        factories = tuple((name, RULE_MODEL_FACTORIES_BY_NAME[name]) for name in model_names)
     return {name: factory() for name, factory in factories}
 
 

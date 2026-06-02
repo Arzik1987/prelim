@@ -65,6 +65,7 @@ from .registries import (
     GENERATOR_FACTORIES,
     RULE_MODEL_FACTORIES,
     RULE_MODEL_FACTORIES_BY_NAME,
+    rule_model_is_available,
     STANDARD_METAMODEL_FACTORIES,
     STANDARD_METAMODEL_FACTORIES_BY_NAME,
     TREE_MODEL_FACTORIES,
@@ -168,7 +169,7 @@ def build_balanced_tree_models(config=None):
 
 def build_rule_models(config=None):
     if config is None or config.rule_models == DEFAULT_RULE_MODELS:
-        factories = RULE_MODEL_FACTORIES
+        factories = tuple((name, factory) for name, factory in RULE_MODEL_FACTORIES if rule_model_is_available(name))
     else:
         factories = _resolve_named_model_factories(config.rule_models, RULE_MODEL_FACTORIES_BY_NAME, "rule")
     return {name: factory() for name, factory in factories}

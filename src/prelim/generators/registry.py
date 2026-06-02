@@ -43,8 +43,8 @@ GENERATOR_SPECS = {
     "tvae": GeneratorSpec(".tvae", "Gen_tvae"),
     "unif": GeneratorSpec(".rand", "Gen_randu"),
     "vinecopula": GeneratorSpec(".vinecopula", "Gen_vinecopula"),
-    "vva": GeneratorSpec(".vva_p", "Gen_vva"),
-    "vva_legacy": GeneratorSpec(".vva", "Gen_vva"),
+    "vva": GeneratorSpec(".vva", "Gen_vva"),
+    "vva_proba": GeneratorSpec(".vva_p", "Gen_vva"),
 }
 
 EXPERIMENT_GENERATOR_NAMES = (
@@ -76,7 +76,7 @@ EXPERIMENT_GENERATOR_NAMES = (
 )
 
 PUBLIC_GENERATOR_NAMES = tuple(
-    name for name in GENERATOR_SPECS if name not in {"noise", "perfect", "vva_legacy"}
+    name for name in GENERATOR_SPECS if name not in {"noise", "perfect"}
 )
 
 

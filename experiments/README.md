@@ -17,7 +17,7 @@ Internal layout:
 ### Generator Sets
 Generator usage in this folder is defined by code, not by the public API surface:
 - the default sampled-generator sweep uses `EXPERIMENT_GENERATOR_NAMES` from `src/prelim/generators/registry.py`
-- `rerx` and legacy `vva` are instantiated separately in `registries.py` and evaluated through dedicated phases in `evaluation/strategies.py`
+- `rerx` and original `vva` are instantiated separately in `registries.py` and evaluated through dedicated phases in `evaluation/strategies.py`
 - `tabddpm` is only added to the experiment generator list when `TABDDPM_REPO_PATH` is set in the environment
 
 Default sampled-generator sweep:
@@ -51,7 +51,7 @@ kdeb
 
 Separate experiment paths that are used, but not part of the default sampled-generator sweep:
 - `rerx`
-- `vva_legacy`
+- original `vva` (`vva` registry key)
 
 Conditionally used in experiments:
 - `tabddpm` via `TABDDPM_REPO_PATH`
@@ -64,10 +64,10 @@ Implemented generators that are not used by the experiment runner:
 - `great`
 - `tabsyn`
 - `vinecopula`
-- `vva`
+- `vva_proba`
 
 Notes:
-- the experiment runner wires `vva_legacy` to `src/prelim/generators/vva.py`; the public registry key `vva` points to `src/prelim/generators/vva_p.py` and is not used here
+- the experiment runner wires `vva` to `src/prelim/generators/vva.py`, the original VVA implementation used by the experiments; `vva_proba` points to `src/prelim/generators/vva_p.py` and is not used here
 - `cmmpart` is part of the default experiment sweep and requires `python-weka-wrapper3` plus a working Java installation available through `java` or `JAVA_HOME`
 - `tabddpm` is implemented in the experiment registry, but it is only instantiated when `TABDDPM_REPO_PATH` is present
 
