@@ -41,6 +41,7 @@ def parse_args():
     parser.add_argument('--reuse-res', action = 'store_true', help = 'If derived/res.csv already exists, reuse it and skip raw-to-derived aggregation.')
     parser.add_argument('--figure-height', type = float, default = None, help = 'Optional FacetGrid height override for generated heatmaps.')
     parser.add_argument('--figure-aspect', type = float, default = None, help = 'Optional FacetGrid aspect override for generated heatmaps.')
+    parser.add_argument('--no-ylabels', action = 'store_true', help = 'Hide generator row labels on all figures and use the narrower no-label default aspect unless --figure-aspect is set.')
     return parser.parse_args()
 
 
@@ -422,10 +423,10 @@ def available_sizes(results):
     return sorted(int(value) for value in results['npt'].dropna().unique())
 
 
-def draw_heatmap_suite(results, figures_dir, plotter = None, sizes = None, figure_height = None, figure_aspect = None):
+def draw_heatmap_suite(results, figures_dir, plotter = None, sizes = None, figure_height = None, figure_aspect = None, no_ylabels = False):
     sizes = sizes or available_sizes(results)
     for index, npts in enumerate(sizes):
-        ylbl = index == 0
+        ylbl = (index == 0) and not no_ylabels
         draw_heatmap(results, figures_dir, npts, 'tes', 'ora', plotter = plotter, fsz = 13, ylbl = ylbl, figure_height = figure_height, figure_aspect = figure_aspect)
         draw_heatmap(results, figures_dir, npts, 'fid', 'orf', plotter = plotter, ylbl = ylbl, figure_height = figure_height, figure_aspect = figure_aspect)
         draw_heatmap(results, figures_dir, npts, 'nle', 'orn', plotter = plotter, mlt = 1, pal = 'inverse', ylbl = ylbl, figure_height = figure_height, figure_aspect = figure_aspect)
@@ -546,7 +547,7 @@ def write_derived_outputs(paths, results, meta_frames):
     }
 
 
-def postprocess_run(run_dir, draw_figures = True, plotter = None, figure_height = None, figure_aspect = None, reuse_res = False):
+def postprocess_run(run_dir, draw_figures = True, plotter = None, figure_height = None, figure_aspect = None, reuse_res = False, no_ylabels = False):
     paths = build_run_paths(run_dir)
     if reuse_res:
         if not os.path.exists(paths.res_path):
@@ -557,7 +558,14 @@ def postprocess_run(run_dir, draw_figures = True, plotter = None, figure_height 
         results, meta_frames, _ = load_run_results(paths)
         outputs = write_derived_outputs(paths, results, meta_frames)
     if draw_figures:
-        draw_heatmap_suite(results, paths.figures_dir, plotter = plotter, figure_height = figure_height, figure_aspect = figure_aspect)
+        draw_heatmap_suite(
+            results,
+            paths.figures_dir,
+            plotter = plotter,
+            figure_height = figure_height,
+            figure_aspect = figure_aspect,
+            no_ylabels = no_ylabels,
+        )
     return outputs
 
 
@@ -570,6 +578,7 @@ def main():
         figure_height = args.figure_height,
         figure_aspect = args.figure_aspect,
         reuse_res = args.reuse_res,
+        no_ylabels = args.no_ylabels,
     )
 
 
