@@ -3,6 +3,7 @@ import os
 import warnings
 from dataclasses import dataclass
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
@@ -254,23 +255,19 @@ def my_diverging_palette(plotter, r_neg, r_pos, g_neg, g_pos, b_neg, b_pos, sep 
 def draw_heatmap(results, figures_dir, npts, clname, clnameo, plotter = None, mlt = 100, pal = 'normal', mod = 'dt', ylbl = True, ytext = '', fsz = 13, figure_height = None, figure_aspect = None):
     plotter = load_plotter(plotter)
     special_generators = ('SSL', 'SSL-O')
-    spacer_label = ' '
 
     def draw_heatmap_c(*args, **kwargs):
         data = kwargs.pop('data')
         kwargs.pop('annot', None)
         kwargs.pop('fmt', None)
         alg_name = data['alg'].iloc[0]
+        host_ax = plt.gca()
         center = data[data['gen'] == ' NO'][args[2]].iloc[0]
         pivot = data.pivot(index = args[1], columns = args[0], values = args[2])
         special_present = [name for name in special_generators if name in pivot.index]
         regular_rows = [name for name in pivot.index if name not in special_present]
-        ordered_rows = regular_rows + ([spacer_label] + special_present if special_present else [])
+        ordered_rows = regular_rows + special_present
         pivot = pivot.reindex(ordered_rows)
-
-        if special_present:
-            pivot.loc[spacer_label] = np.nan
-            pivot = pivot.reindex(ordered_rows)
 
         annot = pivot.copy().astype(object)
         if clname == 'nle' and alg_name == 'DT':
@@ -282,7 +279,7 @@ def draw_heatmap(results, figures_dir, npts, clname, clnameo, plotter = None, ml
         special_mask = pd.DataFrame(True, index = pivot.index, columns = pivot.columns)
 
         if special_present:
-            regular_mask.loc[special_present + [spacer_label], :] = True
+            regular_mask.loc[special_present, :] = True
             special_mask.loc[special_present, :] = False
 
         scale_source = pivot.mask(regular_mask)
@@ -293,26 +290,98 @@ def draw_heatmap(results, figures_dir, npts, clname, clnameo, plotter = None, ml
             layer_kwargs['vmin'] = float(finite_values.min())
             layer_kwargs['vmax'] = float(finite_values.max())
 
-        ax = plotter.heatmap(
-            pivot,
-            mask = regular_mask,
-            annot = annot,
-            fmt = '',
-            center = center,
-            **layer_kwargs,
-        )
         if special_present:
+            gap_units = 0.35
+            total_units = len(regular_rows) + len(special_present) + gap_units
+            bottom_fraction = len(special_present) / total_units
+            gap_fraction = gap_units / total_units
+            top_fraction = len(regular_rows) / total_units
+
+            top_ax = host_ax.inset_axes([0, bottom_fraction + gap_fraction, 1, top_fraction])
+            bottom_ax = host_ax.inset_axes([0, 0, 1, bottom_fraction])
+
+            regular_pivot = pivot.loc[regular_rows]
+            regular_annot = annot.loc[regular_rows]
+            special_pivot = pivot.loc[special_present]
+            special_annot = annot.loc[special_present]
+
+            plotter.heatmap(
+                regular_pivot,
+                annot = regular_annot,
+                fmt = '',
+                center = center,
+                ax = top_ax,
+                **layer_kwargs,
+            )
             gray_cmap = plotter.light_palette('#9e9e9e', as_cmap = True)
             plotter.heatmap(
-                pivot,
-                mask = special_mask,
-                annot = annot.where(~special_mask, ''),
+                special_pivot,
+                annot = special_annot,
                 fmt = '',
                 cmap = gray_cmap,
                 vmin = 0.0,
                 vmax = 1.0,
                 cbar = False,
-                ax = ax,
+                ax = bottom_ax,
+            )
+            top_ax.tick_params(axis = 'x', bottom = False, labelbottom = False)
+            bottom_ax.tick_params(axis = 'x', bottom = True, labelbottom = True)
+            top_ax.tick_params(axis = 'y', left = False, labelleft = False)
+            bottom_ax.tick_params(axis = 'y', left = False, labelleft = False)
+            top_ax.set_xlabel('')
+            top_ax.set_ylabel('')
+            bottom_ax.set_xlabel('')
+            bottom_ax.set_ylabel('')
+            for spine in top_ax.spines.values():
+                spine.set_visible(False)
+            for spine in bottom_ax.spines.values():
+                spine.set_visible(False)
+
+            host_ax.set_xlim(0, 1)
+            host_ax.set_ylim(0, 1)
+            host_ax.set_xticks([])
+            for spine in host_ax.spines.values():
+                spine.set_visible(False)
+
+            if ylbl:
+                yticks = []
+                yticklabels = []
+                if regular_rows:
+                    yticks.extend(
+                        bottom_fraction + gap_fraction + top_fraction * (1 - ((idx + 0.5) / len(regular_rows)))
+                        for idx in range(len(regular_rows))
+                    )
+                    yticklabels.extend(regular_rows)
+                if special_present:
+                    yticks.extend(
+                        bottom_fraction * (1 - ((idx + 0.5) / len(special_present)))
+                        for idx in range(len(special_present))
+                    )
+                    yticklabels.extend(special_present)
+                host_ax.set_yticks(yticks)
+                host_ax.set_yticklabels(yticklabels)
+                host_ax.tick_params(axis = 'y', length = 0)
+            else:
+                host_ax.set_yticks([])
+
+            host_ax.plot(
+                [0, 1],
+                [bottom_fraction + (gap_fraction / 2)] * 2,
+                transform = host_ax.transAxes,
+                color = 'white',
+                linewidth = 2.5,
+                solid_capstyle = 'butt',
+                zorder = 20,
+            )
+        else:
+            plotter.heatmap(
+                pivot,
+                mask = regular_mask,
+                annot = annot,
+                fmt = '',
+                center = center,
+                ax = host_ax,
+                **layer_kwargs,
             )
 
     aggregated = res_aggregate(results, mod, npts, clname, clnameo)
@@ -342,7 +411,11 @@ def draw_heatmap(results, figures_dir, npts, clname, clnameo, plotter = None, ml
     grid.set_axis_labels('', ytext, fontsize = fsz)
     grid.set_titles(col_template = '{col_name}', row_template = '{row_name}')
     grid.tight_layout()
-    grid.savefig(os.path.join(figures_dir, mod + '_' + clname + str(npts) + '.pdf'))
+    grid.savefig(
+        os.path.join(figures_dir, mod + '_' + clname + str(npts) + '.pdf'),
+        bbox_inches = 'tight',
+        pad_inches = 0.02,
+    )
 
 
 def available_sizes(results):
