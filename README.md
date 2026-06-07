@@ -30,7 +30,10 @@ To install directly from GitHub instead of a local checkout:
 python -m pip install git+https://github.com/Arzik1987/prelim
 ```
 
-The package currently keeps older dependency pins in `setup.cfg`; if you use a newer Python stack, run the tests after installing.
+The base package install keeps only the core dependencies needed by `prelim` and the lightweight built-in generators. Some generator backends are intentionally optional because they add heavy dependencies. To install the package together with those optional generator backends, use:
+```
+python -m pip install -e .[optional-generators]
+```
 
 To run the manuscript reproduction code, install the package first and then install the experiment-only requirements:
 ```

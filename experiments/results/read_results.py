@@ -180,7 +180,7 @@ def change_names(data):
         'class_gmm': 'GMM-C',
         'class_kde': 'KDE-C',
         'cmmrf': 'CMM',
-        'cmmpart': 'CMMPart',
+        'cmmpart': 'CMM',
         'dummy': 'Dummy',
         'gmm': 'GMM',
         'gmmal': 'GMM-AL',
@@ -208,7 +208,7 @@ def change_names(data):
         'rfb': 'RF',
         'xgbb': 'BT',
         'bicv': 'BI',
-        'grl': 'GreedyRL',
+        'grl': 'GRL',
         'primcv': 'PRIM',
         'irep': 'IREP',
         'ripper': 'RIPPER',
@@ -403,8 +403,14 @@ def draw_heatmap(results, figures_dir, npts, clname, clnameo, plotter = None, ml
     else:
         cmap = my_diverging_palette(plotter, 255, 0, 213, 91, 0, 183, sep = 3, as_cmap = True)
 
-    aspect = figure_aspect if figure_aspect is not None else (0.42 / 1.2 if ylbl else 0.33 / 1.2)
-    height = figure_height if figure_height is not None else 4.2
+    default_height = 4.2
+    default_aspect = 0.42 / 1.2 if ylbl else 0.33 / 1.2
+    default_width = default_height * default_aspect
+    height = figure_height if figure_height is not None else default_height
+    if figure_aspect is not None:
+        aspect = figure_aspect
+    else:
+        aspect = default_width / height
     grid = plotter.FacetGrid(aggregated, row = 'npt', col = 'alg', margin_titles = False, despine = False, height = height, aspect = aspect)
     grid.map_dataframe(draw_heatmap_c, 'met', 'gen', clname, cbar = False, cmap = cmap, annot = True, fmt = 'g')
     if not ylbl:
