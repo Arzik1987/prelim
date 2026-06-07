@@ -27,8 +27,10 @@ python -m pip install -e .
 
 To install directly from GitHub instead of a local checkout:
 ```
-python -m pip install git+https://github.com/Arzik1987/prelim
+python -m pip install git+BLIND_RESTORE_GIT_REMOTE
 ```
+
+For blinded submissions, repository identity fields are replaced with `BLIND_RESTORE_*` placeholders. Restore them later in `README.md`, `setup.cfg`, and `LICENSE` before a public release.
 
 The base package install keeps only the core dependencies needed by `prelim` and the lightweight built-in generators. Some generator backends are intentionally optional because they add heavy dependencies. To install the package together with those optional generator backends, use:
 ```

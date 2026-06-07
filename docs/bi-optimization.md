@@ -4,11 +4,11 @@
 
 The previous implementation is preserved as:
 
-- [bi_slow.py](/C:/Users/arzamasov/OneDrive/Documents/KIT_PRojects_to_Finish/2022_1_PRELIM/prelim/src/prelim/sd/bi_slow.py)
+- `src/prelim/sd/bi_slow.py`
 
 The optimized implementation lives at:
 
-- [bi.py](/C:/Users/arzamasov/OneDrive/Documents/KIT_PRojects_to_Finish/2022_1_PRELIM/prelim/src/prelim/sd/bi.py)
+- `src/prelim/sd/bi.py`
 
 ### What changed
 
@@ -38,4 +38,4 @@ Runtime on the final fit only:
 
 The generated comparison table is:
 
-- [bi_comparison_10000.csv](/C:/Users/arzamasov/OneDrive/Documents/KIT_PRojects_to_Finish/2022_1_PRELIM/prelim/docs/assets/bi_comparison_10000.csv)
+- `docs/assets/bi_comparison_10000.csv`

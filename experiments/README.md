@@ -81,7 +81,7 @@ The CLI entry points remain:
 - `read_results.py`
 
 ### Environment
-The paper reproduction commands below were inspected against the virtual environment at `C:\Users\arzamasov\.virtualenvs\prelim\Scripts\Activate.ps1`.
+The paper reproduction commands below were inspected against the project virtual environment.
 
 Core runtime:
 - `python==3.12.7`
