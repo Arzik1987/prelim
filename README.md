@@ -133,7 +133,7 @@ Across all runs, PRELIM averaged `0.734` accuracy versus `0.718` for the direct 
 
 ### Real-Dataset Demonstration
 
-The repository also includes a second README-scale demonstration on the real `gt` dataset. Unlike the synthetic toy example, this script follows the experiment protocol much more closely:
+The repository also includes a second README-scale demonstration on the real `gt` dataset.
 
 - tuned `rf` mediator from the experiment code
 - `DecisionTreeClassifier(max_leaf_nodes=8)` student tree
