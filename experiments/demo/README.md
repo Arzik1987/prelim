@@ -25,3 +25,27 @@ python experiments/demo/run_demo.py --step 50 --max-train-size 1000 --threads 8
 ```
 
 The partitions are generated deterministically in memory and are not written to disk.
+## Generator-assisted learning experiment
+
+Run the generator experiment with a 600-point training set by default:
+
+```powershell
+python experiments/demo/generator_learning.py `
+  --output-dir experiments/demo/generator_output `
+  --train-size 600 `
+  --gen-sizes "100,500,1000,2000,5000,10000" `
+  --repetitions 10 `
+  --threads 8
+```
+
+Each outer repetition creates its CSV immediately and appends rows as fits finish, so partial progress is visible. A repetition is complete only when all expected configuration rows are present. With `--resume`, existing rows are retained and only missing configurations are appended, so additional generation sizes can be added to an existing CSV without duplicating results. The experiment records baseline RF, pruned-tree, and shallow-tree accuracy; generated-point augmentation using `uniform` and Silverman-bandwidth `kde`; and the optional RF-labelled test-cut augmentation when more than 5,000 test points remain. Use `--resume` to skip completed repetitions or add missing configurations; use `--overwrite` to reset the requested repetition files.
+For the generator-learning experiment, aggregate first and plot second:
+
+```powershell
+python experiments/demo/aggregate_generator_learning.py `
+  --input-dir experiments/demo/generator_output
+
+python experiments/demo/plot_generator_learning.py
+python experiments/demo/plot_generator_learning.py --log-x `
+  --output experiments/demo/generator_output/generator_learning_dt_pruned_logx.png
+```

@@ -1,4 +1,4 @@
-﻿"""Plot annotated turbine learning curves."""
+"""Plot annotated turbine learning curves."""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ from matplotlib.ticker import LogLocator, MaxNLocator
 
 MODELS = ("rf", "dtc", "dt_pruned")
 LABELS = {"rf": "random forest", "dtc": "shallow decision tree", "dt_pruned": "decision tree"}
-COLORS = {"rf": "#1f77b4", "dtc": "#2ca02c", "dt_pruned": "#ff7f0e"}
+COLORS = {"rf": "#0072B2", "dtc": "#009E73", "dt_pruned": "#D55E00"}
 MARKERS = {"rf": "o", "dtc": "s", "dt_pruned": "^"}
 
 
