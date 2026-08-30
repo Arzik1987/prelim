@@ -108,7 +108,7 @@ def main() -> None:
     else:
         axis.set_xlim(0, max_train_size)
         axis.xaxis.set_major_locator(MaxNLocator(integer=True, nbins=10))
-    axis.set_ylim(0.7, 0.925)
+    axis.set_ylim(0.7, 0.935)
     axis.grid(True, alpha=0.25)
     axis.legend(frameon=False, ncol=2)
     figure.tight_layout()

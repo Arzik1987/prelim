@@ -3,46 +3,25 @@
 Run from the repository root:
 
 ```powershell
-python experiments/demo/run_demo.py --step 50 --max-train-size 1000
+python experiments/demo/run_demo.py --train-sizes "50,75,100,6000,7000,8000,9000,10000" --threads 8
 ```
 
-The script evaluates the direct models used by the main experiments, plus a demo-specific post-pruned tree, on the
-`turbine` dataset for training sizes `50, 100, ..., 1000`, with ten
-repetitions per size.  At a given size, the ten training sets are disjoint when possible;
-the test set for each repetition is the complement of its training set.
+The runner evaluates five models on the requested number of splits for each train size (controlled by `--repetitions`, default 10). Each `(train_size, repetition)` experiment is an independent task and writes one atomic five-row CSV to `output/experiments/`. The worker queue is shared by all threads, and `--threads` limits the total number of concurrent worker threads (default: 8). The scikit-learn grid searches use `n_jobs=1` so they do not create another layer of demo workers.
 
-Outputs are written to `experiments/demo/output/`:
+Use `--resume` to skip valid task files already present. Use `--overwrite` to rerun all splits for requested train sizes; old excess splits for those sizes are removed. Unrequested train sizes are left untouched. Do not run two runner processes against the same output directory at once.
 
-- `results.csv`: one row per model, size, and repetition, written after every
-  completed repetition;
-- `manifest.json`: configuration and preprocessing details;
-- `mean_results.csv`: means and standard deviations grouped by model and size.
-
-The models match the experiment code:
-
-- `rf`: `RandomForestClassifier` with a 5-fold search over
-  `max_features=[2, "sqrt", None]` and `random_state=2020`;
-- `dt`: `DecisionTreeClassifier(min_samples_split=10)`;
-- `dtc`: `DecisionTreeClassifier(max_leaf_nodes=8)`;
-- `dtval`: a decision tree with 5-fold selection from
-  `max_leaf_nodes=[2, 4, 8, 16, 32, 64, 128]`.
-
-The `naive` point at size zero is the largest class proportion in the full
-loaded dataset.
-
-Use --step and --max-train-size to change the learning-curve grid. The partitions are generated in memory and are not written to disk.
-
-For a nonuniform grid, provide an explicit comma-separated list instead:
+Aggregate the task files separately:
 
 ```powershell
-python experiments/demo/run_demo.py --train-sizes 50,75,100,150,225,350,500,750,1000,1500,2250,3000
+python experiments/demo/aggregate_results.py
 ```
 
-When `--train-sizes` is supplied, it overrides `--step` and `--max-train-size`.
-With `--resume`, already completed sizes are skipped, so the list can include
-both existing and new sizes.
+Aggregation writes `results.csv` and `mean_results.csv` to `output/`; these are the inputs used by `plot_learning_curves.py`. The run manifest is written to `output/manifest.json`.
 
+For a regular grid, use `--step` and `--max-train-size`:
 
-- `dt_pruned`: a Gini CART tree with 5-fold selection of the cost-complexity
-  pruning parameter (`ccp_alpha`). Candidate alphas are drawn from the
-  training split's cost-complexity pruning paths.
+```powershell
+python experiments/demo/run_demo.py --step 50 --max-train-size 1000 --threads 8
+```
+
+The partitions are generated deterministically in memory and are not written to disk.

@@ -152,3 +152,4 @@ experiments/data/dataset_stats.csv
 experiments/registry/*
 
 experiments/demo/output/
+experiments/demo/output_parallel/
