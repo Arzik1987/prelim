@@ -1,4 +1,4 @@
-﻿# Byte-compiled / optimized / DLL files
+# Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
 *$py.class
@@ -151,6 +151,14 @@ experiments/data/dataset_stats.csv
 # Generated experiment outputs
 experiments/registry/*
 
-experiments/demo/output/
-experiments/demo/output_parallel/
-experiments/demo/generator_output/
+experiments/demo/learning_curve_tasks/
+experiments/demo/generator_learning_tasks/
+experiments/demo/icons/
+experiments/demo/learning_curve_manifest.json
+experiments/demo/learning_curve_results.csv
+experiments/demo/learning_curve_summary.csv
+experiments/demo/learning_curve.png
+experiments/demo/generator_learning_manifest.json
+experiments/demo/generator_learning_results.csv
+experiments/demo/generator_learning_dt_pruned.png
+experiments/demo/generator_learning_dtc.png

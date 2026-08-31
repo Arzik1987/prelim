@@ -5,7 +5,7 @@ from pathlib import Path
 import pandas as pd
 FIELDS=["train_size","repetition","stage","generator","gen_size","model","accuracy","train_accuracy","fit_seconds","selected_max_leaf_nodes"]
 def main():
-    here=Path(__file__).resolve().parent; p=argparse.ArgumentParser(description=__doc__); p.add_argument("--input-dir",type=Path,default=here/"generator_output"); p.add_argument("--output",type=Path,default=here/"generator_output"/"aggregated_results.csv"); a=p.parse_args(); files=sorted(a.input_dir.glob("repetition_*.csv"))
+    here=Path(__file__).resolve().parent; p=argparse.ArgumentParser(description=__doc__); p.add_argument("--input-dir",type=Path,default=here/"generator_learning_tasks"); p.add_argument("--output",type=Path,default=here/"generator_learning_results.csv"); a=p.parse_args(); files=sorted(a.input_dir.glob("repetition_*.csv"))
     if not files: raise FileNotFoundError(f"No repetition CSV files found in {a.input_dir}")
     frames=[]
     for f in files:

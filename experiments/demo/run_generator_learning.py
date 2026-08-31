@@ -26,8 +26,8 @@ for import_root in (REPO_ROOT, SRC_ROOT):
 
 from experiments.data.loader import load_data
 from experiments.data.partitioner import DataSplitter
-from prelim.generators.kde import Gen_kdebw
-from prelim.generators.rand import Gen_randu
+
+
 
 DATASET = "turbine"
 SPLIT_SEED = 2020
@@ -60,9 +60,9 @@ def parse_csv_ints(raw: str, name: str) -> tuple[int, ...]:
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "--output-dir",
+        "--tasks-dir",
         type=Path,
-        default=Path(__file__).resolve().parent / "generator_output",
+        default=Path(__file__).resolve().parent / "generator_learning_tasks",
     )
     parser.add_argument("--train-size", type=int, default=600)
     parser.add_argument(
@@ -236,6 +236,10 @@ def task_complete(
 
 
 def run_repetition(X, y, train_size, repetition, repetitions, gen_sizes, path):
+    from prelim.generators.kde import Gen_kdebw
+    from prelim.generators.rand import Gen_randu
+    
+    
     splitter = DataSplitter(seed=SPLIT_SEED)
     splitter.fit(X, y)
     splitter.configure(repetitions, train_size)
@@ -294,7 +298,8 @@ def main() -> None:
         raise ValueError("train-size, repetitions, and threads must be positive")
     gen_sizes = parse_csv_ints(args.gen_sizes, "--gen-sizes")
     X, y = load_data(DATASET)
-    output_dir = args.output_dir.resolve()
+    tasks_dir = args.tasks_dir.resolve()
+    output_dir = tasks_dir
     output_dir.mkdir(parents=True, exist_ok=True)
     files = [output_dir / f"repetition_{rep:03d}.csv" for rep in range(args.repetitions)]
     if not args.overwrite and not args.resume and any(path.exists() for path in files):
@@ -328,7 +333,7 @@ def main() -> None:
         "labeler": "hard RF predict labels",
         "task_format": "one CSV per outer repetition",
     }
-    (output_dir / "manifest.json").write_text(
+    (tasks_dir.parent / "generator_learning_manifest.json").write_text(
         json.dumps(manifest, indent=2) + "\n", encoding="utf-8"
     )
 

@@ -7,7 +7,7 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 import pandas as pd
-from matplotlib.ticker import LogLocator, MaxNLocator
+from matplotlib.ticker import LogLocator
 
 
 GENERATORS = {
@@ -23,7 +23,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--input",
         type=Path,
-        default=here / "generator_output" / "aggregated_results.csv",
+        default=here / "generator_learning_results.csv",
     )
     parser.add_argument("--output", type=Path)
     parser.add_argument(
@@ -33,15 +33,13 @@ def parse_args() -> argparse.Namespace:
         help="Tree model to plot (default: dt_pruned).",
     )
     parser.add_argument("--dpi", type=int, default=180)
-    parser.add_argument("--log-x", action="store_true", help="Use a logarithmic x-axis.")
     return parser.parse_args()
 
 
 def main() -> None:
     args = parse_args()
     here = Path(__file__).resolve().parent
-    suffix = "_logx" if args.log_x else ""
-    output = args.output or here / "generator_output" / f"generator_learning_{args.model}{suffix}.png"
+    output = args.output or here / f"generator_learning_{args.model}.png"
 
     data = pd.read_csv(args.input)
     train_size = int(data["train_size"].iloc[0])
@@ -67,7 +65,7 @@ def main() -> None:
         if curve.empty:
             continue
         curve_min = min(curve_min, curve["mean_accuracy"].min())
-        start_x = 1 if args.log_x else 0
+        start_x = 1
         plot_data = pd.concat(
             [
                 pd.DataFrame({"gen_size": [start_x], "mean_accuracy": [baseline]}),
@@ -132,7 +130,7 @@ def main() -> None:
     axis.spines["left"].set_visible(True)
     axis.spines["bottom"].set_visible(True)
 
-    label_x = max_gen_size * (1.25 if args.log_x else 1.12)
+    label_x = max_gen_size * 1.25
     for generator, label, color, last_x, last_y in plotted:
         if generator == "rf_labelled_test":
             axis.annotate(
@@ -196,13 +194,9 @@ def main() -> None:
         annotation_clip=False,
     )
 
-    if args.log_x:
-        axis.set_xscale("log")
-        axis.set_xlim(1, max_gen_size * 1.45)
-        axis.xaxis.set_major_locator(LogLocator(base=10))
-    else:
-        axis.set_xlim(0, max_gen_size * 1.3)
-        axis.xaxis.set_major_locator(MaxNLocator(integer=True, nbins=10))
+    axis.set_xscale("log")
+    axis.set_xlim(1, max_gen_size * 1.45)
+    axis.xaxis.set_major_locator(LogLocator(base=10))
 
     figure.tight_layout()
     output.parent.mkdir(parents=True, exist_ok=True)

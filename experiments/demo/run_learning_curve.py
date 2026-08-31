@@ -17,7 +17,7 @@ PRUNING_CRITERION="gini"; MAX_PRUNING_ALPHAS=12
 MODEL_NAMES=("rf","dt","dtc","dtval","dt_pruned")
 RESULT_FIELDS=["dataset","train_size","repetition","model","accuracy","train_accuracy","cv_accuracy","fit_seconds","n_features","selected_max_features","selected_max_leaf_nodes","selected_ccp_alpha"]
 def parse_args():
-    p=argparse.ArgumentParser(description=__doc__); p.add_argument("--output-dir",type=Path,default=Path(__file__).resolve().parent/"output"); p.add_argument("--overwrite",action="store_true"); p.add_argument("--resume",action="store_true"); p.add_argument("--step",type=int,default=50); p.add_argument("--max-train-size",type=int,default=1000); p.add_argument("--train-sizes",help="Comma-separated explicit training sizes; overrides step and max-train-size."); p.add_argument("--threads", type=int, default=8, help="Maximum concurrent worker threads (default: 8).") ; p.add_argument("--repetitions", type=int, default=DEFAULT_REPETITIONS, help="Number of splits per train size (default: 10)."); return p.parse_args()
+    p=argparse.ArgumentParser(description=__doc__); p.add_argument("--tasks-dir",type=Path,default=Path(__file__).resolve().parent/"learning_curve_tasks"); p.add_argument("--overwrite",action="store_true"); p.add_argument("--resume",action="store_true"); p.add_argument("--step",type=int,default=50); p.add_argument("--max-train-size",type=int,default=1000); p.add_argument("--train-sizes",help="Comma-separated explicit training sizes; overrides step and max-train-size."); p.add_argument("--threads", type=int, default=8, help="Maximum concurrent worker threads (default: 8).") ; p.add_argument("--repetitions", type=int, default=DEFAULT_REPETITIONS, help="Number of splits per train size (default: 10)."); return p.parse_args()
 def sizes_for(args):
     if args.train_sizes is not None:
         try: sizes=tuple(sorted({int(v.strip()) for v in args.train_sizes.split(",") if v.strip()}))
@@ -74,13 +74,13 @@ def main():
     args=parse_args();
     if args.threads<=0: raise ValueError("--threads must be positive")
     if args.repetitions<=0: raise ValueError("--repetitions must be positive")
-    sizes=sizes_for(args); output=args.output_dir.resolve(); tasks_dir=output/"experiments"; output.mkdir(parents=True,exist_ok=True); tasks_dir.mkdir(parents=True,exist_ok=True)
+    sizes=sizes_for(args); tasks_dir=args.tasks_dir.resolve(); output=tasks_dir.parent; output.mkdir(parents=True,exist_ok=True); tasks_dir.mkdir(parents=True,exist_ok=True)
     if list(tasks_dir.glob("size_*.csv")) and not args.overwrite and not args.resume: raise FileExistsError("Experiment files exist; use --overwrite or --resume")
     if args.overwrite:
         for size in sizes:
             for path in tasks_dir.glob(f"size_{size:05d}_split_*.csv"):
                 path.unlink()
-    X,y=load_data(DATASET); manifest={"dataset":DATASET,"n_rows":int(len(y)),"train_sizes":list(sizes),"n_repetitions":args.repetitions,"split_seed":SPLIT_SEED,"partition_policy":"requested shuffled training sets per size; disjoint when possible, otherwise evenly spaced windows; test is complement","task_format":"one CSV per train size and repetition, containing five model rows","naive_accuracy":float(max(np.mean(y),1-np.mean(y))),"models":{"rf":{"max_features":RF_MAX_FEATURES,"cv":5},"dt":{"min_samples_split":10},"dtc":{"max_leaf_nodes":8},"dtval":{"max_leaf_nodes":DTVAL_MAX_LEAVES,"cv":5},"dt_pruned":{"criterion":PRUNING_CRITERION,"ccp_alpha":"up to 12 pruning-path values","cv":5}}}; (output/"manifest.json").write_text(json.dumps(manifest,indent=2)+"\n",encoding="utf-8")
+    X,y=load_data(DATASET); manifest={"dataset":DATASET,"n_rows":int(len(y)),"train_sizes":list(sizes),"n_repetitions":args.repetitions,"split_seed":SPLIT_SEED,"partition_policy":"requested shuffled training sets per size; disjoint when possible, otherwise evenly spaced windows; test is complement","task_format":"one CSV per train size and repetition, containing five model rows","naive_accuracy":float(max(np.mean(y),1-np.mean(y))),"models":{"rf":{"max_features":RF_MAX_FEATURES,"cv":5},"dt":{"min_samples_split":10},"dtc":{"max_leaf_nodes":8},"dtval":{"max_leaf_nodes":DTVAL_MAX_LEAVES,"cv":5},"dt_pruned":{"criterion":PRUNING_CRITERION,"ccp_alpha":"up to 12 pruning-path values","cv":5}}}; (output/"learning_curve_manifest.json").write_text(json.dumps(manifest,indent=2)+"\n",encoding="utf-8")
     tasks=[]
     for size in sizes:
         for repetition,indices in enumerate(make_partitions(y,size,args.repetitions)):
